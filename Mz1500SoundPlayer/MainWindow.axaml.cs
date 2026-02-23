@@ -46,13 +46,36 @@ public partial class MainWindow : Window
             }
             catch (System.Exception ex)
             {
-                // エラー時は何もしない簡易実装
-                System.Console.WriteLine($"MML Parse Error: {ex.Message}");
+                LogOutput.Text = $"MML Parse Error: {ex.Message}";
             }
             finally
             {
                 btn.IsEnabled = true;
             }
+        }
+    }
+
+    private void StopButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _player.Stop();
+        LogOutput.Text = "Playback stopped.";
+    }
+
+    private void ExportQdcButton_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string mml = MmlInput.Text ?? "";
+            
+            // 本当はSaveFileDialogを使うべきだが、簡便化のため実行ファイルと同じ場所に固定で吐き出す
+            string outPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "output.qdc");
+            
+            string log = _player.ExportQdc(mml, outPath);
+            LogOutput.Text = log;
+        }
+        catch (System.Exception ex)
+        {
+            LogOutput.Text = $"Export Error: {ex.Message}";
         }
     }
 }

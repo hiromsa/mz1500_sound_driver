@@ -57,6 +57,49 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
+    public string ExportQdc(string mmlString, string filePath)
+    {
+        var parser = new MultiTrackMmlParser();
+        var tracks = parser.Parse(mmlString);
+
+        var expander = new TrackEventExpander();
+        var compiler = new MmlToZ80Compiler();
+        
+        var musicAssembler = new Z80.MZ1500MusicAssembler();
+        
+        int trackIndex = 0;
+        // 各トラックごとにMML展開 -> Z80コマンドコンパイル -> Channelオブジェクトとしてアセンブラに登録
+        foreach (var kvp in tracks)
+        {
+            // トラック番号からPSGのIC(左右)とチャンネル(0〜2)を割り当てる
+            // 0,1,2 : 左(0xF2) の ch 0,1,2
+            // 3,4,5 : 右(0xF3) の ch 0,1,2
+            byte psgChannel = (byte)(trackIndex % 3);
+            byte ioPort = (byte)(trackIndex < 3 ? 0xF2 : 0xF3);
+
+            var events = expander.Expand(kvp.Value);
+            byte[] seqBin = compiler.CompileTrack(events, psgChannel);
+            
+            musicAssembler.AppendChannel(new Z80.Channel("track_" + kvp.Key, ioPort, seqBin));
+            trackIndex++;
+        }
+
+        // Z80の再生ドライバ一式を含む完全なバイナリプログラムをビルド
+        byte[] z80Bin = musicAssembler.Build();
+
+        var qdcBuilder = new QdcImageBuilder();
+        byte[] qdcData = qdcBuilder.BuildStandardExecutable("MZTUNE", z80Bin);
+
+        System.IO.File.WriteAllBytes(filePath, qdcData);
+
+        var log = new System.Text.StringBuilder();
+        log.AppendLine($"[Export] QDC file generated at {filePath}");
+        log.AppendLine($"- Compiled {tracks.Count} sound tracks.");
+        log.AppendLine($"- Z80 Executable built: {z80Bin.Length} bytes");
+        log.AppendLine($"- Total QDC image size: {qdcData.Length} bytes");
+        return log.ToString();
+    }
+
     private async Task PlayEventDictAsync(Dictionary<string, List<NoteEvent>> trackEvents, double totalMs = 3000)
     {
         Stop(); // 前の再生を安全に停止
