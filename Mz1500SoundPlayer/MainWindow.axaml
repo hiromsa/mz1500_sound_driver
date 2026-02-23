@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Mz1500SoundPlayer.MainWindow"
+        Title="Mz1500SoundPlayer">
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="20">
+    <TextBlock Text="MZ-1500 Sound Player MML Preview" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+    <TextBlock Text="MMLを入力してPlayボタンを押してください:" Margin="0,10,0,0"/>
+    <TextBox Name="MmlInput" Width="600" Height="300" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas">
+      <TextBox.Text>
+ABC @t1,86
+A @1 @v0 o5 l8 q8 
+B @1 v12 o3 l16 @q0
+C         o4 l8 @q2 
+ 
+A o4v15 
+A La+12r12a+12a+12a+12a+12a+12>c12d12c12r12&lt;a+12>
+A f2r4d+12f12g12
+A f12r6a+4r12a12a+12a12f12d12
+A c2.r4
+A &lt;b12r12b12b12b12b12b12>c+12d+12c+12&lt;r12b12>
+A f+2r4g+12f+12e12
+A f+12r6g+12f+12e12f+12r12 e12d+12&lt;b12g+12>
+A c+2&lt;b4>d12r12d12
+A e2r12d12e12g12f+12d12
+A g12f+12d12e4f12r12f12
+A g4r12f12g12a+12a12f12
+A a+12a12f12g2f4
+
+C o5v15
+C Ld12d12d12d+12r6 d12d12d12d+12r6 
+C d12d12d12d+12r6 f12r6 a+4
+C a12r6 a+4a12r6 f12r6
+C d+12r6d+12r6f12r6f12r6
+C d+12d+12d+12e12r6 d+12d+12d+12e12r6
+C d+12d+12d+12e12r6 f+12r6b4
+C a+12r6b4a+12r6f+12r6
+C a+12r6a+12g+12a+12d+12r6r4
+C r4r4r4r4>d12d12&lt;b12>c+4r4
+C r4r4r4f12f12d12e2c12&lt;a12f12
+
+B o4v15
+B L&lt;a+12a+12a+12>c12r6 &lt;a+12a+12a+12>c12r6
+B &lt;a+12a+12a+12>c12r6 d12r6 g4
+B f12r6g4f12r6d12r6
+B c12r6&lt;g12r6a12g12a12g12r12f12>
+B &lt;b12b12b12>c+12r6 &lt;b12b12b12>c+12r6
+B &lt;b12b12b12>c+12r6 d+12r6g+4
+B f+12r6g+4f+12r6d+12r6
+B f+12r6&lt;f+12f+12f+12b12r6r4>
+B r4d12r12d12e12d12e12g12f+12d12b12a12g12a4r4
+B f12r12f12g12f12g12a+12a12f12>d6&lt;a+12>c2&lt;a12f12&lt;f12>
+      </TextBox.Text>
+    </TextBox>
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+        <Button Name="PlayMmlButton" Content="Play MML" Click="PlayMmlButton_Click"/>
+        <Button Name="ClearButton" Content="Clear Text" Click="ClearButton_Click"/>
+        <Button Name="PlayDemoButton" Content="Play Single Track Demo" Click="PlayDemoButton_Click"/>
+    </StackPanel>
+    <TextBlock Name="LogOutput" Foreground="Blue" TextWrapping="Wrap" MaxWidth="600" Margin="0,10,0,0"/>
+  </StackPanel>
+</Window>

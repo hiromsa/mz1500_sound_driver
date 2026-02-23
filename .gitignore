@@ -1,0 +1,9 @@
+# デバッグ用の一時プロジェクトを無視
+DebugApp/
+
+# .NET 関連の無視設定
+bin/
+obj/
+*.user
+*.suo
+.vs/
