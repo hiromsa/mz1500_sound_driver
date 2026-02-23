@@ -23,17 +23,38 @@ public class MmlToZ80Compiler
         var output = new List<byte>();
         
         int currentVol = -1; // -1 means uninitialized
+        double currentTimeMs = 0;
+        int currentFrame = 0;
 
         foreach (var ev in events)
         {
-            // NoteEvent は msec 単位。Z80ドライバのウェイト基準単位に変換する
-            // 簡易的に 1 unit = 1ms とする (要Z80ドライバ実装次第調整)
-            ushort durationUnits = (ushort)ev.DurationMs;
-            ushort gateUnits = (ushort)ev.GateTimeMs;
+            double nextTimeMs = currentTimeMs + ev.DurationMs;
+            int nextFrame = (int)Math.Round(nextTimeMs * 60.0 / 1000.0);
+            int totalFrames = nextFrame - currentFrame;
+            
+            if (totalFrames < 1) totalFrames = 1;
 
-            if (ev.Frequency == 0 || ev.Volume == 0)
+            double gateEndTimeMs = currentTimeMs + ev.GateTimeMs;
+            int gateEndFrame = (int)Math.Round(gateEndTimeMs * 60.0 / 1000.0);
+            int gateFrames = gateEndFrame - currentFrame;
+            
+            // 連続音を分離するため、Gateは必ずTotalより最低でも1フレーム短くする
+            if (gateFrames >= totalFrames) gateFrames = totalFrames - 1;
+            if (gateFrames < 1 && ev.Frequency > 0) gateFrames = 1; // 少なくとも1フレームは鳴らす（非常に短い音の場合）
+
+            // 万が一 totalFrames が1フレームしかなく、音が鳴る場合、gateFrames=1、restFrames=0になる可能性がある。
+            // テンポが極端に早い場合を除き、休符が優先か発音が優先かのトレードオフ。
+
+            if (ev.Frequency == 0 || ev.Volume == 0 || gateFrames <= 0)
             {
+                // Mute before rest
+                byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
+                output.Add(CMD_VOL);
+                output.Add(muteVolCmd);
+                currentVol = 15;
+
                 // 休符 (Kyufu)
+                ushort durationUnits = (ushort)(totalFrames - 1);
                 output.Add(CMD_REST);
                 output.Add((byte)(durationUnits & 0xFF));
                 output.Add((byte)((durationUnits >> 8) & 0xFF));
@@ -41,48 +62,65 @@ public class MmlToZ80Compiler
             else
             {
                 // 音量チェンジがあれば先に吐く
-                // ev.Volumeは0.0~0.2くらいにスケーリングされている。元の 0-15 に戻して15を引く(反転)などの処理が要る
-                // ここでは仮に(ev.Volume / 0.15) * 15 でMAX=15に戻す計算とする
                 int vol15 = (int)Math.Round((ev.Volume / 0.15) * 15.0);
                 if (vol15 < 0) vol15 = 0;
                 if (vol15 > 15) vol15 = 15;
-
-                // ドライバ用のボリュームは HW依存(0x00=大, 0x0F=無音)なので反転
                 byte hwVol = (byte)(15 - vol15);
 
                 if (currentVol != hwVol)
                 {
                     output.Add(CMD_VOL);
-                    // SN76489 Volume Command: 1 c c 1 v v v v (c=channel, v=volume)
+                    // SN76489 Volume Command
                     byte volCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | (hwVol & 0x0F));
                     output.Add(volCmd);
                     currentVol = hwVol;
                 }
 
                 // トーン出力 (Tone)
-                double regVal = BaseClockFreq / ev.Frequency;
-                if (regVal > 1023) regVal = 1023; // SN76489は10bitレジスタ
+                double freq = ev.Frequency;
+                // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
+                // 1023でクリップすると全部A2辺りに張り付いて音痴になるため、収まるまでオクターブを上げる
+                while (freq > 0 && BaseClockFreq / freq > 1023)
+                {
+                    freq *= 2.0;
+                }
+
+                double regVal = BaseClockFreq / freq;
+                if (regVal > 1023) regVal = 1023; // Safety (Should not hit normally)
                 ushort regUshort = (ushort)regVal;
 
                 output.Add(CMD_TONE);
                 
                 // 周波数レジスタ: Base 10bit
-                // Byte 1: 1 c c 0 d d d d (c=channel, d=lower 4 bits)
                 byte toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
-                // Byte 2: 0 - d d d d d d (d=upper 6 bits)
                 byte toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
 
                 output.Add(toneCmd1);
                 output.Add(toneCmd2);
 
                 // 長さ (2バイト)
+                ushort durationUnits = (ushort)(gateFrames - 1);
                 output.Add((byte)(durationUnits & 0xFF));
                 output.Add((byte)((durationUnits >> 8) & 0xFF));
 
-                // 発音長(Gate) (2バイト)
-                output.Add((byte)(gateUnits & 0xFF));
-                output.Add((byte)((gateUnits >> 8) & 0xFF));
+                // Rest 処理
+                int restFrames = totalFrames - gateFrames;
+                if (restFrames > 0)
+                {
+                    byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
+                    output.Add(CMD_VOL);
+                    output.Add(muteVolCmd);
+                    currentVol = 15;
+                    
+                    ushort restUnits = (ushort)(restFrames - 1);
+                    output.Add(CMD_REST);
+                    output.Add((byte)(restUnits & 0xFF));
+                    output.Add((byte)((restUnits >> 8) & 0xFF));
+                }
             }
+
+            currentTimeMs = nextTimeMs;
+            currentFrame = nextFrame;
         }
         
         // 曲端 (Terminator)

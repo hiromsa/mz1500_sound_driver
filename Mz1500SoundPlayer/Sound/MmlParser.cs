@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound;
 
-public record NoteEvent(double Frequency, int DurationMs, double Volume, int GateTimeMs);
+public record NoteEvent(double Frequency, double DurationMs, double Volume, double GateTimeMs);
 
 public class MmlParser
 {
@@ -73,17 +73,17 @@ public class MmlParser
         double durationMs = (quarterNoteMs * 4.0) / length;
         if (dotted) durationMs *= 1.5;
 
-        int gateTimeMs = (int)(durationMs * (_quantize / 8.0));
+        double gateTimeMs = durationMs * (_quantize / 8.0);
         
         if (noteChar == 'r')
         {
-            events.Add(new NoteEvent(0, (int)durationMs, 0, 0));
+            events.Add(new NoteEvent(0, durationMs, 0, 0));
         }
         else
         {
             double freq = GetFrequency(noteChar, semiToneOffset, _octave);
             double vol = _volume / 15.0 * 0.2; // 0.2 is max volume to avoid clipping
-            events.Add(new NoteEvent(freq, (int)durationMs, vol, gateTimeMs));
+            events.Add(new NoteEvent(freq, durationMs, vol, gateTimeMs));
         }
     }
 

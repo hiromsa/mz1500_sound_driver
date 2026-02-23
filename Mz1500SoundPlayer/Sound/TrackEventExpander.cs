@@ -77,14 +77,14 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, (int)durationMs, 0, 0));
+                    events.Add(new NoteEvent(0, durationMs, 0, 0));
                 }
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, (int)durationMs, vol, (int)gateMs));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs));
                 }
             }
         }

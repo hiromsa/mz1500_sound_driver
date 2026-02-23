@@ -229,10 +229,6 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, asm.A);
         asm.INC(asm.DE);
 
-        // Read Gate (L, H) -> ignoring logic for now
-        asm.INC(asm.DE);
-        asm.INC(asm.DE);
-
         // Save position
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.HLref, asm.E);
@@ -282,6 +278,9 @@ public class MZ1500MusicAssembler
         
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
         asm.LD(asm.HLref, asm.A); // save
+
+        // SN76489に即時ボリューム/ミュートを反映
+        asm.OUT(port);
 
         // Save pos & Read Next
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
