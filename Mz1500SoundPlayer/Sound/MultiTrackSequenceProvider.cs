@@ -13,7 +13,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
     private readonly List<MmlSequenceProvider> _trackProviders;
     private float[]? _tempBuffer;
 
-    public MultiTrackSequenceProvider(Dictionary<string, List<NoteEvent>> trackEvents, int sampleRate = 44100)
+    public MultiTrackSequenceProvider(Dictionary<string, List<NoteEvent>> trackEvents, Dictionary<int, List<int>> envelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<MmlSequenceProvider>();
@@ -25,7 +25,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
             if (kvp.Value.Count > 0)
             {
                 Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Count} events.");
-                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, sampleRate));
+                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, sampleRate));
             }
         }
     }

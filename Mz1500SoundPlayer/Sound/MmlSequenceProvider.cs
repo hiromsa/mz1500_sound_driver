@@ -18,10 +18,13 @@ public class MmlSequenceProvider : ISampleProvider
     private long _samplesCurrentNoteGate;
     private long _currentSampleCount;
 
-    public MmlSequenceProvider(List<NoteEvent> sequence, int sampleRate = 44100)
+    private readonly Dictionary<int, List<int>> _envelopes;
+
+    public MmlSequenceProvider(List<NoteEvent> sequence, Dictionary<int, List<int>> envelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _sequence = sequence;
+        _envelopes = envelopes ?? new Dictionary<int, List<int>>();
         Reset();
     }
 
@@ -49,6 +52,8 @@ public class MmlSequenceProvider : ISampleProvider
     public int Read(float[] buffer, int offset, int count)
     {
         int samplesWritten = 0;
+        // 定数: 1フレーム(60Hz)あたりのサンプル数
+        long samplesPer60HzFrame = (long)(WaveFormat.SampleRate / 60.0);
 
         while (samplesWritten < count)
         {
@@ -66,16 +71,31 @@ public class MmlSequenceProvider : ISampleProvider
             float sampleValue = 0f;
             if (_currentSampleCount < _samplesCurrentNoteGate && note.Frequency > 0 && note.Volume > 0)
             {
-                // 矩形波生成
-                float rawWave = (float)((_phase < 0.5) ? note.Volume : -note.Volume);
-                
-                // ポップノイズ防止の簡易エンベロープ (Attack: 50 , Release: 200 samples)
-                float envelope = 1.0f;
-                long samplesFromEnd = _samplesCurrentNoteGate - _currentSampleCount;
-                if (_currentSampleCount < 50) envelope = _currentSampleCount / 50.0f;
-                else if (samplesFromEnd < 200) envelope = samplesFromEnd / 200.0f;
+                // ソフトウェアエンベロープの適用
+                double activeVol = note.Volume;
+                if (note.EnvelopeId >= 0 && _envelopes.TryGetValue(note.EnvelopeId, out var envData) && envData.Count > 0)
+                {
+                    // 現在の経過フレームインデックス = _currentSampleCount / samplesPer60HzFrame
+                    int frameIndex = (int)(_currentSampleCount / samplesPer60HzFrame);
+                    if (frameIndex >= envData.Count) frameIndex = envData.Count - 1; // 0xFFの場合は末尾でループを止める簡易挙動相当
+                    
+                    // エンベロープ配列は 0-15。0.15のスケーリングに合わせる (0-15 * 0.01)
+                    double evVolRaw = envData[frameIndex];
+                    if (evVolRaw == 255) { evVolRaw = envData[^1]; } // End marker -> keep last val (簡単な対処)
+                    
+                    activeVol = (evVolRaw / 15.0) * 0.15;
+                }
 
-                sampleValue = rawWave * envelope;
+                // 矩形波生成
+                float rawWave = (float)((_phase < 0.5) ? activeVol : -activeVol);
+                
+                // ポップノイズ防止の簡易補間 (Attack: 50 , Release: 200 samples)
+                float envelopeFilter = 1.0f;
+                long samplesFromEnd = _samplesCurrentNoteGate - _currentSampleCount;
+                if (_currentSampleCount < 50) envelopeFilter = _currentSampleCount / 50.0f;
+                else if (samplesFromEnd < 200) envelopeFilter = samplesFromEnd / 200.0f;
+
+                sampleValue = rawWave * envelopeFilter;
                 
                 _phase += _phaseIncrement;
                 if (_phase >= 1.0) _phase -= 1.0;

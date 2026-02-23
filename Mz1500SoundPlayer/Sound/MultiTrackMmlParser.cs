@@ -8,9 +8,10 @@ namespace Mz1500SoundPlayer.Sound;
 // PPMCK/MCK互換のマルチトラックMMLパーサー
 public class MultiTrackMmlParser
 {
-    public Dictionary<string, TrackData> Parse(string mmlText)
+    public MmlData Parse(string mmlText)
     {
-        var tracks = new Dictionary<string, TrackData>();
+        var result = new MmlData();
+        var tracks = result.Tracks;
         
         // ; または / 以降の行末までをコメントとして削除
         var lines = mmlText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
@@ -25,6 +26,24 @@ public class MultiTrackMmlParser
             var line = originalLine.Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
+            // エンベロープマクロの定義のパース (例: @v0 = {15,14,13} )
+            var envMatch = Regex.Match(line, @"^@v(\d+)\s*=\s*\{(.*?)\}");
+            if (envMatch.Success)
+            {
+                int envId = int.Parse(envMatch.Groups[1].Value);
+                string[] valuesStr = envMatch.Groups[2].Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                var values = new List<int>();
+                foreach (var v in valuesStr)
+                {
+                    if (int.TryParse(v.Trim(), out int val))
+                    {
+                        values.Add(val);
+                    }
+                }
+                result.VolumeEnvelopes[envId] = values;
+                continue;
+            }
+
             // 行頭がアルファベットの連続で始まり、その後に空白が続く場合はトラックヘッダとみなす (ex: "ABC @t1,86")
             var match = Regex.Match(line, @"^([A-Za-z]+)\s+(.*)");
             string mmlData = line;
@@ -38,6 +57,7 @@ public class MultiTrackMmlParser
             // スペースはパースの邪魔なので消すが、すでにトークン化する際に見るなら残してもよい
             // ここでは1文字ずつ舐める単純な字句解析を行う
             mmlData = mmlData.ToLowerInvariant().Replace(" ", "").Replace("\t", "");
+            mmlData = mmlData.Replace("ll", "l"); // LLのTypoをLとして扱う対応
             
             var commandsLine = ParseLine(mmlData);
 
@@ -53,7 +73,7 @@ public class MultiTrackMmlParser
             }
         }
 
-        return tracks;
+        return result;
     }
 
     private List<MmlCommand> ParseLine(string data)
@@ -91,6 +111,9 @@ public class MultiTrackMmlParser
                     break;
                 case ']':
                     cmds.Add(new LoopEndCommand { Count = ReadInt(data, ref i, 2) });
+                    break;
+                case '^':
+                    ParseTie(data, ref i, cmds);
                     break;
                 case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
                 case 'r':
@@ -162,6 +185,23 @@ public class MultiTrackMmlParser
             Length = length, 
             Dots = dots 
         });
+    }
+
+    private void ParseTie(string data, ref int i, List<MmlCommand> cmds)
+    {
+        int length = 0; // 0 == use default length
+        if (i < data.Length && char.IsDigit(data[i]))
+        {
+            length = ReadInt(data, ref i, 0);
+        }
+
+        int dots = 0;
+        while (i < data.Length && data[i] == '.')
+        {
+            dots++; i++;
+        }
+
+        cmds.Add(new TieCommand { Length = length, Dots = dots });
     }
 
     private int ReadInt(string str, ref int i, int defaultValue)

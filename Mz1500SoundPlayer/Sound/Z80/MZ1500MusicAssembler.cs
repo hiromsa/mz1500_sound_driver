@@ -20,6 +20,9 @@ public class Channel
 public class MZ1500MusicAssembler
 {
     public List<Channel> ChannelList { get; } = new();
+    
+    // MmlPlayerModelから渡されるエンベロープ定義データ (EnvId -> ボリューム配列)
+    public Dictionary<int, List<int>> VolumeEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
 
@@ -30,14 +33,19 @@ public class MZ1500MusicAssembler
         StatGateRemain,         // 2 bytes
         StatNoteOn,             // 1 byte
         StatHwVolume,           // 1 byte (0=Louder, 15=Silent)
+        StatEnvActive,          // 1 byte (0=Off, 1=On)
+        StatEnvDataPtr,         // 2 bytes (Current Env Table Address)
+        StatEnvPosOffset,       // 1 byte (Current offset in table)
         
         // Routines
         OutputSoundByStatus,
         ReadSongDataOne,
         ReadToneData,
         ReadVolumeData,
+        ReadEnvData,
         ReadKyufuData,
-        DataSong
+        DataSong,
+        DataEnvTableBase
     }
 
     public byte[] Build()
@@ -195,7 +203,65 @@ public class MZ1500MusicAssembler
         asm.CP(asm.B);
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadVolumeData)));
 
+        // 0x04 (Envelope)
+        asm.LD(asm.A, 0x04);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadEnvData)));
+
         asm.RET(); // Unknown commmand
+
+        // -- Read Envelope Command --
+        asm.Label(prefix + "_" + nameof(Labels.ReadEnvData));
+        asm.LD(asm.A, asm.DEref); // EnvelopeId (or 0xFF for Off)
+        asm.INC(asm.DE);
+        
+        // Save pos
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        // Check if Off (0xFF)
+        asm.LD(asm.B, asm.A);
+        asm.LD(asm.A, 0xFF);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_off"));
+
+        // Set Env Active
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.LD(asm.HLref, 0x01);
+        
+        // Offset = 0
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+
+        // Compute BaseAddress = DataEnvTableBase + (EnvId * 2)
+        // Since we have EnvId in B
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.DataEnvTableBase)));
+        asm.LD(asm.A, asm.B); 
+        asm.ADD(asm.A, asm.A); // A = EnvId * 2
+        // Calculate HL + A
+        asm.LD(asm.C, asm.A);
+        asm.LD(asm.B, 0);
+        asm.ADD(asm.HL, asm.BC); // HL points to address containing the pointer for this Env
+        
+        // Fetch Env data pointer -> DE (Read from address pointed by HL)
+        asm.LD(asm.E, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.D, asm.HLref); // DE is now EnvData Pointer
+
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvDataPtr)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
+        // Env Off
+        asm.Label(prefix + "_env_off");
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.LD(asm.HLref, 0x00);
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
 
         // -- Read Tone -- 
         asm.Label(prefix + "_" + nameof(Labels.ReadToneData));
@@ -206,6 +272,10 @@ public class MZ1500MusicAssembler
         // Byte 2: 0 - d d d d d d 
         // We assume DE points to raw register values provided by compiler, to simplify
         
+        // Reset Env Pos Offset for the new note
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+
         // Note On flag (1)
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
         asm.LD(asm.HLref, 0x01);
@@ -304,8 +374,77 @@ public class MZ1500MusicAssembler
 
         // -- Output By Status --
         asm.Label(prefix + "_" + nameof(Labels.OutputSoundByStatus));
-        // Play Gate logic or envelopes goes here.
+        // Check Note On
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.A, asm.HLref);
+        asm.OR(asm.A);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // Note Off -> Do nothing
+
+        // Check Env Active
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.LD(asm.A, asm.HLref);
+        asm.OR(asm.A);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // Env Off -> Do nothing
+
+        // Read Env Data pointer
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvDataPtr)));
+        asm.LD(asm.E, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.D, asm.HLref);
+
+        // Read Env Pos Offset
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.C, asm.HLref);
+        asm.LD(asm.B, 0);
+
+        // Calculate Data Address (DE + BC)
+        asm.LD(asm.H, asm.D);
+        asm.LD(asm.L, asm.E);
+        asm.ADD(asm.HL, asm.BC);
+
+        // Read current envelope Volume into A
+        asm.LD(asm.A, asm.HLref);
+
+        // is it Loop Endpoint? (0xFF)
+        asm.CP(asm.Value((byte)0xFF));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_loop_end"));
+
+        // Valid Volume in A (0-15).
+        // Save Volume to B
+        asm.LD(asm.B, asm.A);
+
+        // Extract channel bits from existing StatHwVolume
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+        asm.LD(asm.A, asm.HLref);
+        asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
+        asm.OR((byte)0x90);  // Base Vol command: 1001 0000
+        asm.LD(asm.C, asm.A); // C = 1001 c c 00
+
+        // Envelope Vol is in B (0-15) where 0=silent, 15=max in MML.
+        // HW requires 15=silent, 0=max.
+        asm.LD(asm.A, (byte)15);
+        asm.SUB(asm.B); // A = 15 - B
+        asm.OR(asm.C);  // Combine with channel bits: 1001 c c X X
+
+        // Save back for consistency and OUT
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+        asm.LD(asm.HLref, asm.A);
+        asm.OUT(port);
+
+        // Increment Offset
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.INC(asm.HLref);
+
+        asm.Label(prefix + "_output_end");
         asm.RET();
+
+        asm.Label(prefix + "_env_loop_end");
+        // For now, if loop end (0xFF), we just stay at the last valid position.
+        // (Decrement offset so it reads the last valid value again next time)
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.DEC(asm.HLref);
+        // Then re-run output
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
 
         // -- Stat Variables --
@@ -323,5 +462,51 @@ public class MZ1500MusicAssembler
 
         asm.Label(prefix + "_" + nameof(Labels.StatHwVolume));
         asm.DB(0); // Holds the raw SN76489 volume byte
+
+        asm.Label(prefix + "_" + nameof(Labels.StatEnvActive));
+        asm.DB(0); 
+
+        asm.Label(prefix + "_" + nameof(Labels.StatEnvDataPtr));
+        asm.DB(new byte[] { 0, 0 });
+
+        asm.Label(prefix + "_" + nameof(Labels.StatEnvPosOffset));
+        asm.DB(0);
+
+        // -- Envelope Data Tables --
+        // To make it simpler, we embed the global VolumeEnvelopes table inside each channel's memory block,
+        // or we can embed it once globally. Since we only loop channels here, we'll embed one copy per channel for simplicity of addressing.
+        asm.Label(prefix + "_" + nameof(Labels.DataEnvTableBase));
+        
+        // Find max EnvId to allocate contiguous pointer table
+        int maxEnvId = -1;
+        foreach (var id in VolumeEnvelopes.Keys) if (id > maxEnvId) maxEnvId = id;
+
+        for (int i = 0; i <= maxEnvId; i++)
+        {
+            if (VolumeEnvelopes.ContainsKey(i))
+            {
+                asm.DW(asm.LabelRef(prefix + "_env_data_" + i));
+            }
+            else
+            {
+                // Dummy/empty
+                asm.DW(asm.LabelRef(prefix + "_env_data_empty"));
+            }
+        }
+
+        // Dummy empty data
+        asm.Label(prefix + "_env_data_empty");
+        asm.DB(0xFF);
+
+        // Env Array Definitions
+        foreach (var kvp in VolumeEnvelopes)
+        {
+            asm.Label(prefix + "_env_data_" + kvp.Key);
+            foreach (var vol in kvp.Value)
+            {
+                asm.DB((byte)(vol & 0xFF));
+            }
+            asm.DB(0xFF); // Terminator
+        }
     }
 }

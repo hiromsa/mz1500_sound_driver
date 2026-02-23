@@ -9,6 +9,12 @@ public class TrackData
     public List<MmlCommand> Commands { get; set; } = new List<MmlCommand>();
 }
 
+public class MmlData
+{
+    public Dictionary<string, TrackData> Tracks { get; set; } = new();
+    public Dictionary<int, List<int>> VolumeEnvelopes { get; set; } = new();
+}
+
 public abstract class MmlCommand { }
 
 // 休符・音符など時間経過を伴うイベント
@@ -30,8 +36,12 @@ public class RelativeOctaveCommand : MmlCommand { public int Offset { get; set; 
 public class DefaultLengthCommand : MmlCommand { public int Length { get; set; } }
 
 public class VolumeCommand : MmlCommand { public int Volume { get; set; } }
-// ※@v などのエンベロープマクロは将来拡張用としてここではVolumeと同等に扱うか、無視して保持する
+
+// エンベロープマクロ呼び出し (@v1 等)
 public class EnvelopeCommand : MmlCommand { public int EnvelopeId { get; set; } }
+
+// 音長減算用パラメータ (タイ)
+public class TieCommand : MmlCommand { public int Length { get; set; } public int Dots { get; set; } }
 
 public class QuantizeCommand : MmlCommand { public int Quantize { get; set; } }
 public class FrameQuantizeCommand : MmlCommand { public int Frames { get; set; } }

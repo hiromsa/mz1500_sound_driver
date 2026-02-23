@@ -10,6 +10,7 @@ public class MmlPlayerModel
     private IWavePlayer? _waveOut;
     private MultiTrackSequenceProvider? _multiSequenceProvider;
     private TaskCompletionSource<bool>? _playbackCompletion;
+    private System.Threading.CancellationTokenSource? _cancellationTokenSource;
 
     public MmlPlayerModel()
     {
@@ -26,13 +27,14 @@ public class MmlPlayerModel
             new NoteEvent(329.63, 500, 0.2, 500)
         };
         var dict = new Dictionary<string, List<NoteEvent>> { { "A", demo } };
-        await PlayEventDictAsync(dict);
+        await PlayEventDictAsync(dict, null!);
     }
 
     public async Task<string> PlayMmlAsync(string mmlString)
     {
         var parser = new MultiTrackMmlParser();
-        var tracks = parser.Parse(mmlString);
+        var mmlData = parser.Parse(mmlString);
+        var tracks = mmlData.Tracks;
 
         var expander = new TrackEventExpander();
         var trackEvents = new Dictionary<string, List<NoteEvent>>();
@@ -40,6 +42,7 @@ public class MmlPlayerModel
         double maxMs = 0;
         var log = new System.Text.StringBuilder();
         log.AppendLine($"[Parser] Found {tracks.Count} tracks.");
+        log.AppendLine($"[Parser] Found {mmlData.VolumeEnvelopes.Count} volume envelopes.");
 
         foreach (var kvp in tracks)
         {
@@ -53,19 +56,21 @@ public class MmlPlayerModel
             log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, duration {totalMs:F1}ms");
         }
 
-        await PlayEventDictAsync(trackEvents, maxMs);
+        await PlayEventDictAsync(trackEvents, mmlData.VolumeEnvelopes, maxMs);
         return log.ToString();
     }
 
     public string ExportQdc(string mmlString, string filePath)
     {
         var parser = new MultiTrackMmlParser();
-        var tracks = parser.Parse(mmlString);
+        var mmlData = parser.Parse(mmlString);
+        var tracks = mmlData.Tracks;
 
         var expander = new TrackEventExpander();
         var compiler = new MmlToZ80Compiler();
         
         var musicAssembler = new Z80.MZ1500MusicAssembler();
+        musicAssembler.VolumeEnvelopes = mmlData.VolumeEnvelopes; // Z80ドライバにエンベロープ辞書を渡す
         
         int trackIndex = 0;
         // 各トラックごとにMML展開 -> Z80コマンドコンパイル -> Channelオブジェクトとしてアセンブラに登録
@@ -100,11 +105,15 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayEventDictAsync(Dictionary<string, List<NoteEvent>> trackEvents, double totalMs = 3000)
+    private async Task PlayEventDictAsync(Dictionary<string, List<NoteEvent>> trackEvents, Dictionary<int, List<int>> envelopes = null!, double totalMs = 3000)
     {
         Stop(); // 前の再生を安全に停止
 
-        _multiSequenceProvider = new MultiTrackSequenceProvider(trackEvents);
+        _cancellationTokenSource = new System.Threading.CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+
+        if (envelopes == null) envelopes = new Dictionary<int, List<int>>();
+        _multiSequenceProvider = new MultiTrackSequenceProvider(trackEvents, envelopes);
         
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
         var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);
@@ -121,13 +130,31 @@ public class MmlPlayerModel
 
         _waveOut.Play();
 
-        // 一番長いトラックに合わせて待機
-        await Task.Delay((int)totalMs + 100); 
+        // 一番長いトラックに合わせて待機。キャンセル時は例外をキャッチして抜ける
+        try
+        {
+            await Task.Delay((int)totalMs + 100, token); 
+        }
+        catch (TaskCanceledException)
+        {
+            // Stop()が呼ばれてキャンセルされた正常フロー
+        }
+        
         Stop();
     }
 
     public void Stop()
     {
+        if (_cancellationTokenSource != null)
+        {
+            if (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Cancel();
+            }
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = null;
+        }
+
         if (_waveOut != null)
         {
             _waveOut.Stop();

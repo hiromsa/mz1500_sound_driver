@@ -16,6 +16,7 @@ public class MmlToZ80Compiler
     public const byte CMD_TONE = 0x01;
     public const byte CMD_REST = 0x02;
     public const byte CMD_VOL  = 0x03;
+    public const byte CMD_ENV  = 0x04; // ソフトウェア音量エンベロープのセット
     public const byte CMD_END  = 0xFF; // 曲の終わり
 
     public byte[] CompileTrack(List<NoteEvent> events, byte psgChannel = 0)
@@ -23,6 +24,7 @@ public class MmlToZ80Compiler
         var output = new List<byte>();
         
         int currentVol = -1; // -1 means uninitialized
+        int currentEnvId = -1;
         double currentTimeMs = 0;
         int currentFrame = 0;
 
@@ -45,6 +47,21 @@ public class MmlToZ80Compiler
             // 万が一 totalFrames が1フレームしかなく、音が鳴る場合、gateFrames=1、restFrames=0になる可能性がある。
             // テンポが極端に早い場合を除き、休符が優先か発音が優先かのトレードオフ。
 
+            // エンベロープの状態変化があればまず出力する
+            if (ev.EnvelopeId >= 0 && ev.EnvelopeId != currentEnvId)
+            {
+                output.Add(CMD_ENV);
+                output.Add((byte)ev.EnvelopeId);
+                currentEnvId = ev.EnvelopeId;
+            }
+            else if (ev.EnvelopeId < 0 && currentEnvId >= 0)
+            {
+                output.Add(CMD_ENV);
+                output.Add(0xFF); // 0xFF means off
+                currentEnvId = -1;
+                currentVol = -1; 
+            }
+
             if (ev.Frequency == 0 || ev.Volume == 0 || gateFrames <= 0)
             {
                 // Mute before rest
@@ -61,7 +78,8 @@ public class MmlToZ80Compiler
             }
             else
             {
-                // 音量チェンジがあれば先に吐く
+
+                // 音量チェンジがあれば先に吐く (エンベロープが効いていればZ80側で上書きされるため初期値として機能する)
                 int vol15 = (int)Math.Round((ev.Volume / 0.15) * 15.0);
                 if (vol15 < 0) vol15 = 0;
                 if (vol15 > 15) vol15 = 15;

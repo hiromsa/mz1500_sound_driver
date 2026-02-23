@@ -20,6 +20,7 @@ public class TrackEventExpander
         int defaultLength = 4;
         int currentOctave = 4;
         int currentVolume = 15; // 0-15
+        int currentEnvelopeId = -1; // -1 = off
         int currentQuantize = 7; // MCK/PPMCKに合わせデフォルトをやや短く(7/8など)して音の区切りをつける
         int frameQuantize = 0; // @q
 
@@ -44,8 +45,35 @@ public class TrackEventExpander
             else if (cmd is OctaveCommand oc) { currentOctave = oc.Octave; }
             else if (cmd is RelativeOctaveCommand rc) { currentOctave += rc.Offset; }
             else if (cmd is VolumeCommand vc) { currentVolume = vc.Volume; } // (0-15)
+            else if (cmd is EnvelopeCommand evc) { currentEnvelopeId = evc.EnvelopeId; }
             else if (cmd is QuantizeCommand qc) { currentQuantize = qc.Quantize; }
             else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; }
+            else if (cmd is TieCommand tieCmd)
+            {
+                if (events.Count > 0)
+                {
+                    // 直前の音符の長さを延長する
+                    int len = tieCmd.Length == 0 ? defaultLength : tieCmd.Length;
+                    double quarterNoteMs = 60000.0 / currentTempo;
+                    double durationMs = (quarterNoteMs * 4.0) / len;
+                    if (tieCmd.Dots > 0)
+                    {
+                        double add = durationMs / 2.0;
+                        for (int i = 0; i < tieCmd.Dots; i++) { durationMs += add; add /= 2.0; }
+                    }
+
+                    var lastEvent = events[^1];
+                    // タイなのでGateTimeは「延長後の全体長」に対して再計算するか、単純にDurationと同じだけ増やす
+                    // ここでは後ろに繋がるためGateは事実上「100%」相当で繋げる
+                    double newGateMs = lastEvent.GateTimeMs + durationMs; 
+
+                    events[^1] = lastEvent with 
+                    { 
+                        DurationMs = lastEvent.DurationMs + durationMs,
+                        GateTimeMs = newGateMs
+                    };
+                }
+            }
             else if (cmd is NoteCommand nc)
             {
                 int len = nc.Length == 0 ? defaultLength : nc.Length;
@@ -77,14 +105,14 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, durationMs, 0, 0));
+                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId));
                 }
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId));
                 }
             }
         }
