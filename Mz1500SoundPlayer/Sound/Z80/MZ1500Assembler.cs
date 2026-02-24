@@ -66,6 +66,7 @@ public class MZ1500Assembler
     public Register BC { get; } = new("BC");
     public Register DE { get; } = new("DE");
     public Register HL { get; } = new("HL");
+    public Register AF { get; } = new("AF");
     public Register IX { get; } = new("IX");
     public Register IY { get; } = new("IY");
     public Register Z { get; } = new("Z");
@@ -224,10 +225,12 @@ public class MZ1500Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, BC }, new byte[]{ 0xC5 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, DE }, new byte[]{ 0xD5 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, HL }, new byte[]{ 0xE5 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, AF }, new byte[]{ 0xF5 });
         
         _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, BC }, new byte[]{ 0xC1 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, DE }, new byte[]{ 0xD1 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, HL }, new byte[]{ 0xE1 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, AF }, new byte[]{ 0xF1 });
         
         _mnemonicMap.Add(new Z80Part[]{ OpCodeRET }, new byte[]{ 0xC9 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeSLA, A }, new byte[]{ 0xCB, 0x27 });

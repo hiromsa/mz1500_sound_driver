@@ -113,6 +113,10 @@ public class MZ1500MusicAssembler
 
         // ===== 割り込みハンドラ =====
         assembler.Label("sound:");
+        assembler.PUSH(assembler.AF);
+        assembler.PUSH(assembler.BC);
+        assembler.PUSH(assembler.DE);
+        assembler.PUSH(assembler.HL);
         
         // 8253タイマ再設定
         assembler.LD(assembler.HL, 0xE006);
@@ -124,8 +128,14 @@ public class MZ1500MusicAssembler
             assembler.CALL(assembler.LabelRef(ch.Name));
         }
 
+        assembler.POP(assembler.HL);
+        assembler.POP(assembler.DE);
+        assembler.POP(assembler.BC);
+        assembler.POP(assembler.AF);
+
         assembler.EI();
         assembler.RET();
+
 
         // ===== チャンネルごとの処理ルーチン =====
         foreach (var ch in ChannelList)
