@@ -9,10 +9,16 @@ public class TrackData
     public List<MmlCommand> Commands { get; set; } = new List<MmlCommand>();
 }
 
+public class EnvelopeData
+{
+    public List<int> Values { get; set; } = new();
+    public int LoopIndex { get; set; } = -1;
+}
+
 public class MmlData
 {
     public Dictionary<string, TrackData> Tracks { get; set; } = new();
-    public Dictionary<int, List<int>> VolumeEnvelopes { get; set; } = new();
+    public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
 }
 
 public abstract class MmlCommand { }

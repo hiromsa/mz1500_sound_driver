@@ -13,18 +13,18 @@ public class MultiTrackSequenceProvider : ISampleProvider
     private readonly List<MmlSequenceProvider> _trackProviders;
     private float[]? _tempBuffer;
 
-    public MultiTrackSequenceProvider(Dictionary<string, List<NoteEvent>> trackEvents, Dictionary<int, List<int>> envelopes, int sampleRate = 44100)
+    public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<MmlSequenceProvider>();
 
-        Console.WriteLine($"[MultiTrackSequenceProvider] Init with {trackEvents.Count} tracks.");
+        Console.WriteLine($"[MultiTrackSequenceProvider] Init with {trackBinaries.Count} tracks.");
 
-        foreach (var kvp in trackEvents)
+        foreach (var kvp in trackBinaries)
         {
-            if (kvp.Value.Count > 0)
+            if (kvp.Value.Length > 0)
             {
-                Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Count} events.");
+                Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Length} bytes.");
                 _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, sampleRate));
             }
         }
@@ -40,14 +40,11 @@ public class MultiTrackSequenceProvider : ISampleProvider
         // 最終出力バッファをゼロクリア
         Array.Clear(buffer, offset, count);
 
-        bool hasMoreData = false;
-
         foreach (var provider in _trackProviders)
         {
             int read = provider.Read(_tempBuffer, 0, count);
             if (read > 0)
             {
-                hasMoreData = true;
                 for (int i = 0; i < read; i++)
                 {
                     buffer[offset + i] += _tempBuffer[i];

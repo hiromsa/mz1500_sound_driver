@@ -22,7 +22,7 @@ public class MZ1500MusicAssembler
     public List<Channel> ChannelList { get; } = new();
     
     // MmlPlayerModelから渡されるエンベロープ定義データ (EnvId -> ボリューム配列)
-    public Dictionary<int, List<int>> VolumeEnvelopes { get; set; } = new();
+    public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
 
@@ -289,7 +289,7 @@ public class MZ1500MusicAssembler
         asm.INC(asm.DE);
         asm.OUT(port);
 
-        // Read Dur (L, H)
+        // Fetch Duration (2 bytes) -> StatLengthRemain
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
         asm.LD(asm.A, asm.DEref); // Dur L
         asm.LD(asm.HLref, asm.A);
@@ -299,7 +299,15 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, asm.A);
         asm.INC(asm.DE);
 
-        // Save position
+        // Turn on Note Active
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HLref, 0x01);
+
+        // Reset Envelope Pos Offset to 0 so note re-triggers envelope correctly
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+
+        // Save pos
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
@@ -329,11 +337,14 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, 0x00);
 
         // Send Volume=0 (0x0F) to mute
-        // Format of mute: 1 c c 1 1 1 1 1
-        // We will just do a simple mute (channel needs to be pre-calculated by compiler or tracked here,
-        // Since SN76489 vol reg needs channel info, we should ideally let compiler provide raw vol command
-        // For now, let compiler send pre-formatted vol byte in ReadVolume)
-        
+        // Extract channel bits from existing StatHwVolume, append 0x0F to mute
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+        asm.LD(asm.A, asm.HLref);
+        asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
+        asm.OR((byte)0x9F);  // Base Vol command + 15 (Mute): 1001 1111
+        asm.OUT(port);
+        // Note: we do not save this mute volume to StatHwVolume so it remembers original channel base
+
         // Save pos
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.HLref, asm.E);
@@ -405,9 +416,13 @@ public class MZ1500MusicAssembler
         // Read current envelope Volume into A
         asm.LD(asm.A, asm.HLref);
 
-        // is it Loop Endpoint? (0xFF)
-        asm.CP(asm.Value((byte)0xFF));
+        // is it Loop Endpoint? (0xFE)
+        asm.CP(asm.Value((byte)0xFE));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_env_loop_end"));
+
+        // it might be End marker (0xFF)
+        asm.CP(asm.Value((byte)0xFF));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_end"));
 
         // Valid Volume in A (0-15).
         // Save Volume to B
@@ -439,11 +454,20 @@ public class MZ1500MusicAssembler
         asm.RET();
 
         asm.Label(prefix + "_env_loop_end");
-        // For now, if loop end (0xFF), we just stay at the last valid position.
-        // (Decrement offset so it reads the last valid value again next time)
+        // Read the next byte which contains the loop offset
+        // HL currently points to the 0xFE byte. The offset is at HL+1.
+        asm.INC(asm.HL);
+        asm.LD(asm.A, asm.HLref); // A = loop offset
+        // Store it to StatEnvPosOffset
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, asm.A);
+        // JP back to OutputSoundByStatus to output the looped value in the same frame
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        
+        asm.Label(prefix + "_env_end");
+        // If 0xFF, stay at the last valid position
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.DEC(asm.HLref);
-        // Then re-run output
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
 
@@ -502,11 +526,23 @@ public class MZ1500MusicAssembler
         foreach (var kvp in VolumeEnvelopes)
         {
             asm.Label(prefix + "_env_data_" + kvp.Key);
-            foreach (var vol in kvp.Value)
+            
+            var envData = kvp.Value;
+            foreach (var vol in envData.Values)
             {
                 asm.DB((byte)(vol & 0xFF));
             }
-            asm.DB(0xFF); // Terminator
+            
+            // Output loop or end marker
+            if (envData.LoopIndex >= 0 && envData.LoopIndex < envData.Values.Count)
+            {
+                asm.DB(0xFE); // Loop marker
+                asm.DB((byte)(envData.LoopIndex & 0xFF)); // Offset
+            }
+            else
+            {
+                asm.DB(0xFF); // Terminator (End marker)
+            }
         }
     }
 }

@@ -8,94 +8,191 @@ public class MmlSequenceProvider : ISampleProvider
 {
     public WaveFormat WaveFormat { get; }
 
-    private readonly List<NoteEvent> _sequence;
-    private int _noteIndex;
-    private double _phase;
-    private double _phaseIncrement;
+    private readonly byte[] _bytecode;
+    private int _pc; // Program Counter
     
-    // サンプル単位でのカウンタ
-    private long _samplesCurrentNoteTotal;
-    private long _samplesCurrentNoteGate;
-    private long _currentSampleCount;
+    // SN76489 VM State
+    private int _hwVolume = 15; // 0=Max, 15=Silent (Hardware logic)
+    private ushort _hwFreqRaw = 0; // 10-bit value
+    private double _phase = 0;
+    private double _phaseIncrement = 0;
+    
+    // Engine State
+    private int _waitFrames = 0;
+    private bool _isEnd = false;
+    
+    // Envelope State
+    private bool _envActive = false;
+    private int _envId = -1;
+    private int _envPosOffset = 0;
+    private readonly Dictionary<int, EnvelopeData> _envelopes;
 
-    private readonly Dictionary<int, List<int>> _envelopes;
+    // Constants
+    private const double BaseClockFreq = 111860.0;
+    private readonly double _samplesPerFrame;
+    private double _samplesCurrentFrameCount = 0;
 
-    public MmlSequenceProvider(List<NoteEvent> sequence, Dictionary<int, List<int>> envelopes, int sampleRate = 44100)
+    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
-        _sequence = sequence;
-        _envelopes = envelopes ?? new Dictionary<int, List<int>>();
+        _bytecode = bytecode;
+        _envelopes = envelopes ?? new Dictionary<int, EnvelopeData>();
+        _samplesPerFrame = WaveFormat.SampleRate / 60.0;
+        
         Reset();
     }
 
     public void Reset()
     {
-        _noteIndex = 0;
+        _pc = 0;
+        _hwVolume = 15;
+        _hwFreqRaw = 0;
         _phase = 0;
-        LoadNextNote();
+        _phaseIncrement = 0;
+        _waitFrames = 0;
+        _isEnd = false;
+        
+        _envActive = false;
+        _envId = -1;
+        _envPosOffset = 0;
+        _samplesCurrentFrameCount = 0;
+
+        // Boot VM for the very first frame
+        ProcessVM();
     }
 
-    private void LoadNextNote()
+    private void ProcessVM()
     {
-        if (_noteIndex < _sequence.Count)
+        bool fetchNext = true;
+        while (fetchNext && !_isEnd && _pc < _bytecode.Length)
         {
-            var note = _sequence[_noteIndex];
-            _phaseIncrement = note.Frequency / WaveFormat.SampleRate;
-            
-            // ms -> サンプル数への変換
-            _samplesCurrentNoteTotal = (long)(note.DurationMs * WaveFormat.SampleRate / 1000.0);
-            _samplesCurrentNoteGate = (long)(note.GateTimeMs * WaveFormat.SampleRate / 1000.0);
-            _currentSampleCount = 0;
+            byte cmd = _bytecode[_pc++];
+            switch (cmd)
+            {
+                case MmlToZ80Compiler.CMD_TONE:
+                    byte t1 = _bytecode[_pc++];
+                    byte t2 = _bytecode[_pc++];
+                    byte lenL = _bytecode[_pc++];
+                    byte lenH = _bytecode[_pc++];
+                    
+                    _hwFreqRaw = (ushort)((t1 & 0x0F) | ((t2 & 0x3F) << 4));
+                    _waitFrames = lenL | (lenH << 8);
+                    
+                    // Reset envelope
+                    _envPosOffset = 0;
+                    
+                    // Update frequency
+                    if (_hwFreqRaw > 0)
+                    {
+                        // SN76489 Formula: freq_hz = (MasterClock/32) / reg_value
+                        // Here BaseClockFreq is already MasterClock/32 (111860)
+                        double freqHz = BaseClockFreq / _hwFreqRaw;
+                        _phaseIncrement = freqHz / WaveFormat.SampleRate;
+                    }
+                    else
+                    {
+                        _phaseIncrement = 0;
+                    }
+                    
+                    fetchNext = false; // Yield VM processing until next tick
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_REST:
+                    byte rlenL = _bytecode[_pc++];
+                    byte rlenH = _bytecode[_pc++];
+                    _waitFrames = rlenL | (rlenH << 8);
+                    
+                    fetchNext = false; // Yield VM processing until next tick
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_VOL:
+                    byte volData = _bytecode[_pc++];
+                    _hwVolume = volData & 0x0F;
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_ENV:
+                    byte id = _bytecode[_pc++];
+                    if (id == 0xFF)
+                    {
+                        _envActive = false;
+                    }
+                    else
+                    {
+                        _envActive = true;
+                        _envId = id;
+                        _envPosOffset = 0;
+                    }
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_END:
+                    _isEnd = true;
+                    fetchNext = false;
+                    break;
+            }
         }
     }
 
     public int Read(float[] buffer, int offset, int count)
     {
         int samplesWritten = 0;
-        // 定数: 1フレーム(60Hz)あたりのサンプル数
-        long samplesPer60HzFrame = (long)(WaveFormat.SampleRate / 60.0);
 
         while (samplesWritten < count)
         {
-            if (_noteIndex >= _sequence.Count)
+            if (_isEnd)
             {
-                // 再生終了後は無音で埋める (Stopが呼ばれるまで)
                 buffer[offset + samplesWritten] = 0f;
                 samplesWritten++;
                 continue;
             }
 
-            var note = _sequence[_noteIndex];
-
-            // Gateタイム区間内なら音を鳴らし、超えたら休符にする
-            float sampleValue = 0f;
-            if (_currentSampleCount < _samplesCurrentNoteGate && note.Frequency > 0 && note.Volume > 0)
+            // Tick progress
+            if (_samplesCurrentFrameCount >= _samplesPerFrame)
             {
-                // ソフトウェアエンベロープの適用
-                double activeVol = note.Volume;
-                if (note.EnvelopeId >= 0 && _envelopes.TryGetValue(note.EnvelopeId, out var envData) && envData.Count > 0)
+                _samplesCurrentFrameCount -= _samplesPerFrame;
+
+                // Process envelope for this frame (applies to current hardware sound)
+                if (_envActive && _envelopes.TryGetValue(_envId, out var envData) && envData.Values.Count > 0)
                 {
-                    // 現在の経過フレームインデックス = _currentSampleCount / samplesPer60HzFrame
-                    int frameIndex = (int)(_currentSampleCount / samplesPer60HzFrame);
-                    if (frameIndex >= envData.Count) frameIndex = envData.Count - 1; // 0xFFの場合は末尾でループを止める簡易挙動相当
+                    int maxLen = envData.Values.Count;
+                    if (_envPosOffset >= maxLen)
+                    {
+                        if (envData.LoopIndex >= 0 && envData.LoopIndex < maxLen)
+                        {
+                            _envPosOffset = envData.LoopIndex;
+                        }
+                        else
+                        {
+                            _envPosOffset = maxLen - 1;
+                        }
+                    }
                     
-                    // エンベロープ配列は 0-15。0.15のスケーリングに合わせる (0-15 * 0.01)
-                    double evVolRaw = envData[frameIndex];
-                    if (evVolRaw == 255) { evVolRaw = envData[^1]; } // End marker -> keep last val (簡単な対処)
+                    int envVal = envData.Values[_envPosOffset];
+                    _hwVolume = 15 - envVal; 
+                    if (_hwVolume < 0) _hwVolume = 0;
+                    if (_hwVolume > 15) _hwVolume = 15;
                     
-                    activeVol = (evVolRaw / 15.0) * 0.15;
+                    _envPosOffset++;
                 }
-
-                // 矩形波生成
-                float rawWave = (float)((_phase < 0.5) ? activeVol : -activeVol);
                 
-                // ポップノイズ防止の簡易補間 (Attack: 50 , Release: 200 samples)
-                float envelopeFilter = 1.0f;
-                long samplesFromEnd = _samplesCurrentNoteGate - _currentSampleCount;
-                if (_currentSampleCount < 50) envelopeFilter = _currentSampleCount / 50.0f;
-                else if (samplesFromEnd < 200) envelopeFilter = samplesFromEnd / 200.0f;
+                // End of frame logic for wait counter
+                if (_waitFrames > 0)
+                {
+                    _waitFrames--;
+                }
+                else
+                {
+                    // Fetch new commands if wait is over
+                    ProcessVM();
+                }
+            }
 
-                sampleValue = rawWave * envelopeFilter;
+            // Render current sample
+            float activeVol = (15 - _hwVolume) / 15.0f * 0.15f; // Scale 0.0 ~ 0.15
+            float sampleValue = 0f;
+
+            if (_phaseIncrement > 0 && activeVol > 0)
+            {
+                sampleValue = (float)((_phase < 0.5) ? activeVol : -activeVol);
                 
                 _phase += _phaseIncrement;
                 if (_phase >= 1.0) _phase -= 1.0;
@@ -103,16 +200,9 @@ public class MmlSequenceProvider : ISampleProvider
 
             buffer[offset + samplesWritten] = sampleValue;
             samplesWritten++;
-            _currentSampleCount++;
-
-            // 次のノートへ移行
-            if (_currentSampleCount >= _samplesCurrentNoteTotal)
-            {
-                _noteIndex++;
-                LoadNextNote();
-            }
+            _samplesCurrentFrameCount++;
         }
 
-        return count; // 常に要求分を返す(無限あるいは親で止めるまで)
+        return count;
     }
 }

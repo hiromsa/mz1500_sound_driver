@@ -26,21 +26,36 @@ public class MultiTrackMmlParser
             var line = originalLine.Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
-            // エンベロープマクロの定義のパース (例: @v0 = {15,14,13} )
+            // エンベロープマクロの定義のパース (例: @v0 = {15,14,13} or @v0 = {15, 14, |, 13})
             var envMatch = Regex.Match(line, @"^@v(\d+)\s*=\s*\{(.*?)\}");
             if (envMatch.Success)
             {
                 int envId = int.Parse(envMatch.Groups[1].Value);
-                string[] valuesStr = envMatch.Groups[2].Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                var values = new List<int>();
-                foreach (var v in valuesStr)
+                // Instead of splitting by comma, we extract all digits and the pipe character directly,
+                // so that strings like '14|13' parse into three separate tokens: "14", "|", "13"
+                var matches = Regex.Matches(envMatch.Groups[2].Value, @"\d+|\|");
+                
+                var envData = new EnvelopeData();
+                foreach (Match m in matches)
                 {
-                    if (int.TryParse(v.Trim(), out int val))
+                    string v = m.Value;
+                    if (v == "|")
                     {
-                        values.Add(val);
+                        envData.LoopIndex = envData.Values.Count;
+                    }
+                    else if (int.TryParse(v, out int val))
+                    {
+                        envData.Values.Add(val);
                     }
                 }
-                result.VolumeEnvelopes[envId] = values;
+                
+                // If loop index is not specified, default to the last valid value.
+                if (envData.LoopIndex < 0 && envData.Values.Count > 0)
+                {
+                    envData.LoopIndex = envData.Values.Count - 1;
+                }
+                
+                result.VolumeEnvelopes[envId] = envData;
                 continue;
             }
 

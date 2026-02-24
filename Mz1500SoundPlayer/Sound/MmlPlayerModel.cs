@@ -26,8 +26,10 @@ public class MmlPlayerModel
             new NoteEvent(0, 50, 0, 0),
             new NoteEvent(329.63, 500, 0.2, 500)
         };
-        var dict = new Dictionary<string, List<NoteEvent>> { { "A", demo } };
-        await PlayEventDictAsync(dict, null!);
+        var compiler = new MmlToZ80Compiler();
+        var bin = compiler.CompileTrack(demo, 0);
+        var dict = new Dictionary<string, byte[]> { { "A", bin } };
+        await PlayBytecodeDictAsync(dict, null!);
     }
 
     public async Task<string> PlayMmlAsync(string mmlString)
@@ -37,26 +39,31 @@ public class MmlPlayerModel
         var tracks = mmlData.Tracks;
 
         var expander = new TrackEventExpander();
-        var trackEvents = new Dictionary<string, List<NoteEvent>>();
+        var compiler = new MmlToZ80Compiler();
+        var trackBinaries = new Dictionary<string, byte[]>();
 
         double maxMs = 0;
         var log = new System.Text.StringBuilder();
         log.AppendLine($"[Parser] Found {tracks.Count} tracks.");
         log.AppendLine($"[Parser] Found {mmlData.VolumeEnvelopes.Count} volume envelopes.");
 
+        int trackIndex = 0;
         foreach (var kvp in tracks)
         {
             var events = expander.Expand(kvp.Value);
-            trackEvents[kvp.Key] = events;
+            byte psgChannel = (byte)(trackIndex % 3);
+            byte[] seqBin = compiler.CompileTrack(events, psgChannel);
+            trackBinaries[kvp.Key] = seqBin;
 
             double totalMs = 0;
             foreach (var e in events) totalMs += e.DurationMs;
             if (totalMs > maxMs) maxMs = totalMs;
 
-            log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, duration {totalMs:F1}ms");
+            log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, compiled size {seqBin.Length} bytes, duration {totalMs:F1}ms");
+            trackIndex++;
         }
 
-        await PlayEventDictAsync(trackEvents, mmlData.VolumeEnvelopes, maxMs);
+        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, maxMs);
         return log.ToString();
     }
 
@@ -105,15 +112,15 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayEventDictAsync(Dictionary<string, List<NoteEvent>> trackEvents, Dictionary<int, List<int>> envelopes = null!, double totalMs = 3000)
+    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes = null!, double totalMs = 3000)
     {
         Stop(); // 前の再生を安全に停止
 
         _cancellationTokenSource = new System.Threading.CancellationTokenSource();
         var token = _cancellationTokenSource.Token;
 
-        if (envelopes == null) envelopes = new Dictionary<int, List<int>>();
-        _multiSequenceProvider = new MultiTrackSequenceProvider(trackEvents, envelopes);
+        if (envelopes == null) envelopes = new Dictionary<int, EnvelopeData>();
+        _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, envelopes);
         
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
         var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);
