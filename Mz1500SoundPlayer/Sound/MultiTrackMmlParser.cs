@@ -59,8 +59,8 @@ public class MultiTrackMmlParser
 
             // スペースはパースの邪魔なので消すが、すでにトークン化する際に見るなら残してもよい
             // ここでは1文字ずつ舐める単純な字句解析を行う
-            mmlData = mmlData.ToLowerInvariant().Replace(" ", "").Replace("\t", "");
-            mmlData = mmlData.Replace("ll", "l"); // LLのTypoをLとして扱う対応
+            mmlData = mmlData.Replace(" ", "").Replace("\t", "");
+            mmlData = mmlData.Replace("ll", "l").Replace("LL", "l").Replace("Ll", "l").Replace("lL", "l"); // LLのTypoをLとして扱う対応
             
             var commandsLine = ParseLine(mmlData);
 
@@ -114,7 +114,14 @@ public class MultiTrackMmlParser
         
         while (i < data.Length)
         {
-            char c = data[i++];
+            char originalC = data[i++];
+            if (originalC == 'D')
+            {
+                cmds.Add(new DetuneCommand { Detune = ReadSignedInt(data, ref i, 0) });
+                continue;
+            }
+
+            char c = char.ToLowerInvariant(originalC);
             switch (c)
             {
                 case '@':
@@ -279,6 +286,27 @@ public class MultiTrackMmlParser
         {
             return val;
         }
+        return defaultValue;
+    }
+
+    private int ReadSignedInt(string str, ref int i, int defaultValue)
+    {
+        int start = i;
+        if (i < str.Length && (str[i] == '-' || str[i] == '+'))
+        {
+            i++;
+        }
+        bool hasDigits = false;
+        while (i < str.Length && char.IsDigit(str[i])) 
+        {
+            hasDigits = true;
+            i++;
+        }
+        if (hasDigits && int.TryParse(str.Substring(start, i - start), out int val))
+        {
+            return val;
+        }
+        i = start; // Rollback
         return defaultValue;
     }
 }

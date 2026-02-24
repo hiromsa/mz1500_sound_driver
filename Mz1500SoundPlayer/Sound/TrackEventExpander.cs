@@ -27,6 +27,7 @@ public class TrackEventExpander
 
         int currentNoiseWaveMode = 1; // @wn1
         int currentIntegrateNoiseMode = 0; // @in0
+        int currentDetune = 0; // D (cents)
 
         // ループ処理用スタック等 (今回は簡易的にフラット展開する)
         var flatCommands = FlattenLoops(track.Commands);
@@ -61,6 +62,7 @@ public class TrackEventExpander
             else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; }
             else if (cmd is NoiseWaveCommand nwc) { currentNoiseWaveMode = nwc.WaveType; }
             else if (cmd is IntegrateNoiseCommand inc) { currentIntegrateNoiseMode = inc.IntegrateMode; }
+            else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
             else if (cmd is TieCommand tieCmd)
             {
                 if (events.Count > 0)
@@ -123,6 +125,10 @@ public class TrackEventExpander
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
+                    if (currentDetune != 0)
+                    {
+                        freq = freq * Math.Pow(2.0, currentDetune / 1200.0);
+                    }
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
                     events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint));

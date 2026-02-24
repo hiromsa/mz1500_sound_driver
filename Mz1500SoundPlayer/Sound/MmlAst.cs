@@ -58,6 +58,9 @@ public class FrameQuantizeCommand : MmlCommand { public int Frames { get; set; }
 
 public class VoiceCommand : MmlCommand { public int VoiceId { get; set; } }
 
+// ディチューンコマンド (D<num>) セント単位
+public class DetuneCommand : MmlCommand { public int Detune { get; set; } }
+
 // ノイズ関連
 public class NoiseWaveCommand : MmlCommand { public int WaveType { get; set; } }
 public class IntegrateNoiseCommand : MmlCommand { public int IntegrateMode { get; set; } }
