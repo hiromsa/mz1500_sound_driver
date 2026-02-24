@@ -28,16 +28,23 @@ public class MmlSequenceProvider : ISampleProvider
     private int _envPosOffset = 0;
     private readonly Dictionary<int, EnvelopeData> _envelopes;
 
+    // Pitch Envelope State
+    private bool _pEnvActive = false;
+    private int _pEnvId = -1;
+    private int _pEnvPosOffset = 0;
+    private readonly List<MmlToZ80Compiler.HwPitchEnvData> _hwPitchEnvelopes;
+
     // Constants
     private const double BaseClockFreq = 111860.0;
     private readonly double _samplesPerFrame;
     private double _samplesCurrentFrameCount = 0;
 
-    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, int sampleRate = 44100)
+    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _bytecode = bytecode;
         _envelopes = envelopes ?? new Dictionary<int, EnvelopeData>();
+        _hwPitchEnvelopes = hwPitchEnvelopes ?? new List<MmlToZ80Compiler.HwPitchEnvData>();
         _samplesPerFrame = WaveFormat.SampleRate / 60.0;
         
         Reset();
@@ -57,6 +64,11 @@ public class MmlSequenceProvider : ISampleProvider
         _envActive = false;
         _envId = -1;
         _envPosOffset = 0;
+
+        _pEnvActive = false;
+        _pEnvId = -1;
+        _pEnvPosOffset = 0;
+
         _samplesCurrentFrameCount = 0;
 
         // Boot VM for the very first frame
@@ -82,6 +94,7 @@ public class MmlSequenceProvider : ISampleProvider
                     
                     // Reset envelope
                     _envPosOffset = 0;
+                    _pEnvPosOffset = 0;
                     _isRest = false;
                     
                     // Update frequency
@@ -126,6 +139,20 @@ public class MmlSequenceProvider : ISampleProvider
                         _envActive = true;
                         _envId = id;
                         _envPosOffset = 0;
+                    }
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_PENV:
+                    byte pid = _bytecode[_pc++];
+                    if (pid == 0xFF)
+                    {
+                        _pEnvActive = false;
+                    }
+                    else
+                    {
+                        _pEnvActive = true;
+                        _pEnvId = pid;
+                        _pEnvPosOffset = 0;
                     }
                     break;
                     
@@ -177,6 +204,45 @@ public class MmlSequenceProvider : ISampleProvider
                     if (_hwVolume > 15) _hwVolume = 15;
                     
                     _envPosOffset++;
+                }
+                
+                // Process pitch envelope for this frame
+                if (!_isRest && _pEnvActive && _pEnvId >= 0 && _pEnvId < _hwPitchEnvelopes.Count)
+                {
+                    var pEnvData = _hwPitchEnvelopes[_pEnvId];
+                    if (pEnvData.AbsoluteRegisters.Count > 0)
+                    {
+                        int maxLen = pEnvData.AbsoluteRegisters.Count;
+                        if (_pEnvPosOffset >= maxLen)
+                        {
+                            if (pEnvData.LoopIndex >= 0 && pEnvData.LoopIndex < maxLen)
+                            {
+                                _pEnvPosOffset = pEnvData.LoopIndex;
+                            }
+                            else
+                            {
+                                _pEnvPosOffset = maxLen - 1;
+                            }
+                        }
+                        
+                        ushort hwCmd = pEnvData.AbsoluteRegisters[_pEnvPosOffset];
+                        byte cmd1 = (byte)(hwCmd & 0xFF);
+                        byte cmd2 = (byte)(hwCmd >> 8);
+                        
+                        ushort freqReg = (ushort)((cmd1 & 0x0F) | ((cmd2 & 0x3F) << 4));
+                        
+                        if (freqReg > 0)
+                        {
+                            double freqHz = BaseClockFreq / freqReg;
+                            _phaseIncrement = freqHz / WaveFormat.SampleRate;
+                        }
+                        else
+                        {
+                            _phaseIncrement = 0;
+                        }
+                        
+                        _pEnvPosOffset++;
+                    }
                 }
                 
                 // End of frame logic for wait counter

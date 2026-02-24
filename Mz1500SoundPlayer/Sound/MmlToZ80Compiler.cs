@@ -17,7 +17,19 @@ public class MmlToZ80Compiler
     public const byte CMD_REST = 0x02;
     public const byte CMD_VOL  = 0x03;
     public const byte CMD_ENV  = 0x04; // ソフトウェア音量エンベロープのセット
+    public const byte CMD_PENV = 0x05; // ピッチエンベロープ(HwPitchEnv)の切り替え
     public const byte CMD_END  = 0xFF; // 曲の終わり
+
+    public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
+    public List<HwPitchEnvData> HwPitchEnvelopes { get; } = new();
+    private Dictionary<string, int> _hwPitchEnvCache = new();
+
+    public class HwPitchEnvData
+    {
+        public int Id { get; set; }
+        public List<ushort> AbsoluteRegisters { get; set; } = new();
+        public int LoopIndex { get; set; } = -1;
+    }
 
     public byte[] CompileTrack(List<NoteEvent> events, byte psgChannel = 0)
     {
@@ -25,6 +37,7 @@ public class MmlToZ80Compiler
         
         int currentVol = -1; // -1 means uninitialized
         int currentEnvId = -1;
+        int currentPEnvId = -1;
         double currentTimeMs = 0;
         int currentFrame = 0;
 
@@ -92,6 +105,55 @@ public class MmlToZ80Compiler
                     byte volCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | (hwVol & 0x0F));
                     output.Add(volCmd);
                     currentVol = hwVol;
+                }
+
+                // ピッチエンベロープの処理 (周波数に依存するためTone出力前に動的生成)
+                if (ev.PitchEnvelopeId >= 0 && PitchEnvelopes.ContainsKey(ev.PitchEnvelopeId))
+                {
+                    string cacheKey = $"Freq_{ev.Frequency}_EP_{ev.PitchEnvelopeId}_Ch_{psgChannel}";
+                    if (!_hwPitchEnvCache.TryGetValue(cacheKey, out int hwId))
+                    {
+                        var pEnvData = PitchEnvelopes[ev.PitchEnvelopeId];
+                        var registers = new List<ushort>();
+                        double baseFreq = ev.Frequency;
+                        
+                        foreach (var cent in pEnvData.Values)
+                        {
+                            double freqCent = baseFreq * Math.Pow(2.0, cent / 1200.0);
+                            while (freqCent > 0 && BaseClockFreq / freqCent > 1023) freqCent *= 2.0;
+                            double regCent = BaseClockFreq / freqCent;
+                            if (regCent > 1023) regCent = 1023;
+                            if (regCent < 0) regCent = 0;
+                            ushort regUshortCent = (ushort)regCent;
+                            
+                            byte cmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshortCent & 0x0F));
+                            byte cmd2 = (byte)((regUshortCent >> 4) & 0x3F);
+                            
+                            registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                        }
+                        
+                        hwId = HwPitchEnvelopes.Count;
+                        HwPitchEnvelopes.Add(new HwPitchEnvData 
+                        { 
+                            Id = hwId, 
+                            AbsoluteRegisters = registers, 
+                            LoopIndex = pEnvData.LoopIndex 
+                        });
+                        _hwPitchEnvCache[cacheKey] = hwId;
+                    }
+                    
+                    if (hwId != currentPEnvId)
+                    {
+                        output.Add(CMD_PENV);
+                        output.Add((byte)hwId);
+                        currentPEnvId = hwId;
+                    }
+                }
+                else if (ev.PitchEnvelopeId < 0 && currentPEnvId >= 0)
+                {
+                    output.Add(CMD_PENV);
+                    output.Add(0xFF); // OFF
+                    currentPEnvId = -1;
                 }
 
                 // トーン出力 (Tone)

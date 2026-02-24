@@ -44,7 +44,7 @@ public class MmlPlayerModel
         var compiler = new MmlToZ80Compiler();
         var bin = compiler.CompileTrack(demo, 0);
         var dict = new Dictionary<string, byte[]> { { "A", bin } };
-        await PlayBytecodeDictAsync(dict, null!);
+        await PlayBytecodeDictAsync(dict, null!, null!);
     }
 
     public async Task<string> PlayMmlAsync(string mmlString)
@@ -55,18 +55,28 @@ public class MmlPlayerModel
 
         var expander = new TrackEventExpander();
         var compiler = new MmlToZ80Compiler();
+        compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         var trackBinaries = new Dictionary<string, byte[]>();
 
         double maxMs = 0;
         var log = new System.Text.StringBuilder();
         log.AppendLine($"[Parser] Found {tracks.Count} tracks.");
         log.AppendLine($"[Parser] Found {mmlData.VolumeEnvelopes.Count} volume envelopes.");
+        log.AppendLine($"[Parser] Found {mmlData.PitchEnvelopes.Count} pitch envelopes.");
 
-        int trackIndex = 0;
         foreach (var kvp in tracks)
         {
             var events = expander.Expand(kvp.Value);
-            byte psgChannel = (byte)(trackIndex % 3);
+            byte psgChannel = 0;
+            switch (kvp.Key.ToUpperInvariant())
+            {
+                case "A": case "E": psgChannel = 0; break;
+                case "B": case "F": psgChannel = 1; break;
+                case "C": case "G": psgChannel = 2; break;
+                case "D": case "H": psgChannel = 3; break; // Noise
+                case "P":           psgChannel = 0; break; // BEEP
+                default: psgChannel = 0; break;
+            }
             byte[] seqBin = compiler.CompileTrack(events, psgChannel);
             trackBinaries[kvp.Key] = seqBin;
 
@@ -75,10 +85,9 @@ public class MmlPlayerModel
             if (totalMs > maxMs) maxMs = totalMs;
 
             log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, compiled size {seqBin.Length} bytes, duration {totalMs:F1}ms");
-            trackIndex++;
         }
 
-        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, maxMs);
+        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, compiler.HwPitchEnvelopes, maxMs);
         return log.ToString();
     }
 
@@ -90,26 +99,40 @@ public class MmlPlayerModel
 
         var expander = new TrackEventExpander();
         var compiler = new MmlToZ80Compiler();
+        compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         
         var musicAssembler = new Z80.MZ1500MusicAssembler();
         musicAssembler.VolumeEnvelopes = mmlData.VolumeEnvelopes; // Z80ドライバにエンベロープ辞書を渡す
         
-        int trackIndex = 0;
         // 各トラックごとにMML展開 -> Z80コマンドコンパイル -> Channelオブジェクトとしてアセンブラに登録
         foreach (var kvp in tracks)
         {
             // トラック番号からPSGのIC(左右)とチャンネル(0〜2)を割り当てる
-            // 0,1,2 : 左(0xF2) の ch 0,1,2
-            // 3,4,5 : 右(0xF3) の ch 0,1,2
-            byte psgChannel = (byte)(trackIndex % 3);
-            byte ioPort = (byte)(trackIndex < 3 ? 0xF2 : 0xF3);
+            // 0,1,2 : 左(0xF2) の ch 0,1,2 (Track A, B, C)
+            // 3,4,5 : 右(0xF3) の ch 0,1,2 (Track E, F, G)
+            byte psgChannel = 0;
+            byte ioPort = 0xF2;
+            switch (kvp.Key.ToUpperInvariant())
+            {
+                case "A": psgChannel = 0; ioPort = 0xF2; break;
+                case "B": psgChannel = 1; ioPort = 0xF2; break;
+                case "C": psgChannel = 2; ioPort = 0xF2; break;
+                case "D": psgChannel = 3; ioPort = 0xF2; break; // PSG1 Noise
+                case "E": psgChannel = 0; ioPort = 0xF3; break;
+                case "F": psgChannel = 1; ioPort = 0xF3; break;
+                case "G": psgChannel = 2; ioPort = 0xF3; break;
+                case "H": psgChannel = 3; ioPort = 0xF3; break; // PSG2 Noise
+                case "P": psgChannel = 0; ioPort = 0xE0; break; // BEEP
+                default:  psgChannel = 0; ioPort = 0xF2; break;
+            }
 
             var events = expander.Expand(kvp.Value);
             byte[] seqBin = compiler.CompileTrack(events, psgChannel);
             
             musicAssembler.AppendChannel(new Z80.Channel("track_" + kvp.Key, ioPort, seqBin));
-            trackIndex++;
         }
+
+        musicAssembler.HwPitchEnvelopes = compiler.HwPitchEnvelopes; // Z80ドライバにハードウェアピッチエンベロープを渡す
 
         // Z80の再生ドライバ一式を含む完全なバイナリプログラムをビルド
         byte[] z80Bin = musicAssembler.Build();
@@ -127,15 +150,17 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes = null!, double totalMs = 3000)
+    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000)
     {
         Stop(); // 前の再生を安全に停止
 
         _cancellationTokenSource = new System.Threading.CancellationTokenSource();
         var token = _cancellationTokenSource.Token;
 
-        if (envelopes == null) envelopes = new Dictionary<int, EnvelopeData>();
-        _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, envelopes);
+        if (volumeEnvelopes == null) volumeEnvelopes = new Dictionary<int, EnvelopeData>();
+        if (hwPitchEnvelopes == null) hwPitchEnvelopes = new List<MmlToZ80Compiler.HwPitchEnvData>();
+        
+        _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, volumeEnvelopes, hwPitchEnvelopes);
         
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
         var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);

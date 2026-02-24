@@ -26,36 +26,24 @@ public class MultiTrackMmlParser
             var line = originalLine.Trim();
             if (string.IsNullOrEmpty(line)) continue;
 
-            // エンベロープマクロの定義のパース (例: @v0 = {15,14,13} or @v0 = {15, 14, |, 13})
+            // ボリュームエンベロープマクロの定義のパース (例: @v0 = {15,14,13} or @v0 = {15, 14, |, 13})
             var envMatch = Regex.Match(line, @"^@v(\d+)\s*=\s*\{(.*?)\}");
             if (envMatch.Success)
             {
                 int envId = int.Parse(envMatch.Groups[1].Value);
-                // Instead of splitting by comma, we extract all digits and the pipe character directly,
-                // so that strings like '14|13' parse into three separate tokens: "14", "|", "13"
-                var matches = Regex.Matches(envMatch.Groups[2].Value, @"\d+|\|");
-                
-                var envData = new EnvelopeData();
-                foreach (Match m in matches)
-                {
-                    string v = m.Value;
-                    if (v == "|")
-                    {
-                        envData.LoopIndex = envData.Values.Count;
-                    }
-                    else if (int.TryParse(v, out int val))
-                    {
-                        envData.Values.Add(val);
-                    }
-                }
-                
-                // If loop index is not specified, default to the last valid value.
-                if (envData.LoopIndex < 0 && envData.Values.Count > 0)
-                {
-                    envData.LoopIndex = envData.Values.Count - 1;
-                }
-                
+                var envData = ParseEnvelopeData(envMatch.Groups[2].Value);
                 result.VolumeEnvelopes[envId] = envData;
+                continue;
+            }
+
+            // ピッチエンベロープマクロの定義のパース (例: @EP1 = {0, 10, 20} または @p1 = {0, 10, 20})
+            var pEnvMatch = Regex.Match(line, @"^(?:@EP|@ep|EP|ep|@p)(\d+)\s*=\s*\{(.*?)\}");
+            if (pEnvMatch.Success)
+            {
+                int envId = int.Parse(pEnvMatch.Groups[1].Value);
+                // Pitch envelopes can have negative values, so Regex must include '-' sign
+                var envData = ParseEnvelopeData(pEnvMatch.Groups[2].Value, allowNegative: true);
+                result.PitchEnvelopes[envId] = envData;
                 continue;
             }
 
@@ -91,6 +79,34 @@ public class MultiTrackMmlParser
         return result;
     }
 
+    private EnvelopeData ParseEnvelopeData(string innerText, bool allowNegative = false)
+    {
+        // '-' を許容するかどうかで正規表現を切り替える
+        string pattern = allowNegative ? @"-?\d+|\|" : @"\d+|\|";
+        var matches = Regex.Matches(innerText, pattern);
+        
+        var envData = new EnvelopeData();
+        foreach (Match m in matches)
+        {
+            string v = m.Value;
+            if (v == "|")
+            {
+                envData.LoopIndex = envData.Values.Count;
+            }
+            else if (int.TryParse(v, out int val))
+            {
+                envData.Values.Add(val);
+            }
+        }
+        
+        // If loop index is not specified, default to the last valid value.
+        if (envData.LoopIndex < 0 && envData.Values.Count > 0)
+        {
+            envData.LoopIndex = envData.Values.Count - 1;
+        }
+        return envData;
+    }
+
     private List<MmlCommand> ParseLine(string data)
     {
         var cmds = new List<MmlCommand>();
@@ -103,6 +119,17 @@ public class MultiTrackMmlParser
             {
                 case '@':
                     ParseAtCommand(data, ref i, cmds);
+                    break;
+                case 'e':
+                    if (i < data.Length && data[i] == 'p')
+                    {
+                        i++;
+                        cmds.Add(new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
+                    }
+                    else
+                    {
+                        ParseNoteOrRest(c, data, ref i, cmds);
+                    }
                     break;
                 case 't':
                     cmds.Add(new TempoCommand { Tempo = ReadInt(data, ref i, 120) });
@@ -130,7 +157,7 @@ public class MultiTrackMmlParser
                 case '^':
                     ParseTie(data, ref i, cmds);
                     break;
-                case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+                case 'a': case 'b': case 'c': case 'd': case 'f': case 'g':
                 case 'r':
                     ParseNoteOrRest(c, data, ref i, cmds);
                     break;
@@ -154,6 +181,9 @@ public class MultiTrackMmlParser
                 break;
             case 'v': // @v<num> : ソフトウェアエンベロープ(現状はVolume扱いか無視)
                 cmds.Add(new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
+                break;
+            case 'p': // @p<num> : ピッチエンベロープ(EPと同等)
+                cmds.Add(new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
                 break;
             case 'q': // @q<num> : フレーム単位のクオンタイズ
                 cmds.Add(new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) });

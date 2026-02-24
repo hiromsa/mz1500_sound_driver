@@ -13,7 +13,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
     private readonly List<MmlSequenceProvider> _trackProviders;
     private float[]? _tempBuffer;
 
-    public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, int sampleRate = 44100)
+    public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<MmlSequenceProvider>();
@@ -25,7 +25,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
             if (kvp.Value.Length > 0)
             {
                 Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Length} bytes.");
-                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, sampleRate));
+                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate));
             }
         }
     }

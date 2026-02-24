@@ -21,6 +21,7 @@ public class TrackEventExpander
         int currentOctave = 4;
         int currentVolume = 15; // 0-15
         int currentEnvelopeId = -1; // -1 = off
+        int currentPitchEnvelopeId = -1; // -1 = off
         int currentQuantize = 7; // MCK/PPMCKに合わせデフォルトをやや短く(7/8など)して音の区切りをつける
         int frameQuantize = 0; // @q
 
@@ -46,6 +47,10 @@ public class TrackEventExpander
             else if (cmd is RelativeOctaveCommand rc) { currentOctave += rc.Offset; }
             else if (cmd is VolumeCommand vc) { currentVolume = vc.Volume; } // (0-15)
             else if (cmd is EnvelopeCommand evc) { currentEnvelopeId = evc.EnvelopeId; }
+            else if (cmd is PitchEnvelopeCommand pevc) 
+            { 
+                currentPitchEnvelopeId = pevc.EnvelopeId == 255 ? -1 : pevc.EnvelopeId; 
+            }
             else if (cmd is QuantizeCommand qc) { currentQuantize = qc.Quantize; }
             else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; }
             else if (cmd is TieCommand tieCmd)
@@ -105,14 +110,14 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId));
+                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId));
                 }
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId));
                 }
             }
         }

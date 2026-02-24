@@ -1,0 +1,14 @@
+; ZELDA OP (Converted from MZSoundDriverProject VB source)
+; Note: Noise commands (zt/zs) are currently unsupported and have been removed.
+
+@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}
+@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}
+@EP0 = {0,1,0,-1,0,1,0,-1,0,1,0,-1,0,1,0,-1,0,1,| 2,2,2,2,-2,-2,-2,-2}
+
+ABCDE t144
+
+A EP0 o3@@0@v0 >c+<ab-gafgeb-gafgefd c+defgab->c+ ec+<b->fc+<b- <ef>>
+B o3 @v1 l4 <b-> r r2 <a-> r r2 <g-> r r2 <f> r r2 r
+C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r
+D o3 @v1 l4 <r> f b-2 <r> e- a-2 <r> d- g-2 <r> c f2 r
+E v14 o2 l1 b- a- g- f r

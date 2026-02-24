@@ -23,6 +23,9 @@ public class MZ1500MusicAssembler
     
     // MmlPlayerModelから渡されるエンベロープ定義データ (EnvId -> ボリューム配列)
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
+    
+    // HwPitchEnvデータ
+    public List<MmlToZ80Compiler.HwPitchEnvData> HwPitchEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
 
@@ -37,15 +40,21 @@ public class MZ1500MusicAssembler
         StatEnvDataPtr,         // 2 bytes (Current Env Table Address)
         StatEnvPosOffset,       // 1 byte (Current offset in table)
         
+        StatPEnvActive,         // 1 byte
+        StatPEnvDataPtr,        // 2 bytes
+        StatPEnvPosOffset,      // 1 byte
+        
         // Routines
         OutputSoundByStatus,
         ReadSongDataOne,
         ReadToneData,
         ReadVolumeData,
         ReadEnvData,
+        ReadPEnvData,
         ReadKyufuData,
         DataSong,
-        DataEnvTableBase
+        DataEnvTableBase,
+        DataPEnvTableBase
     }
 
     public byte[] Build()
@@ -218,6 +227,11 @@ public class MZ1500MusicAssembler
         asm.CP(asm.B);
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadEnvData)));
 
+        // 0x05 (Pitch Envelope)
+        asm.LD(asm.A, 0x05);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadPEnvData)));
+
         asm.RET(); // Unknown commmand
 
         // -- Read Envelope Command --
@@ -273,6 +287,58 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, 0x00);
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
 
+        // -- Read Pitch Envelope Command --
+        asm.Label(prefix + "_" + nameof(Labels.ReadPEnvData));
+        asm.LD(asm.A, asm.DEref); // EnvId (or 0xFF for Off)
+        asm.INC(asm.DE);
+        
+        // Save pos
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        // Check if Off (0xFF)
+        asm.LD(asm.B, asm.A);
+        asm.LD(asm.A, 0xFF);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_off"));
+
+        // Set PEnv Active
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.LD(asm.HLref, 0x01);
+        
+        // Offset = 0
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+
+        // Compute BaseAddress = DataPEnvTableBase + (EnvId * 2)
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.DataPEnvTableBase)));
+        asm.LD(asm.A, asm.B); 
+        asm.ADD(asm.A, asm.A); // A = EnvId * 2
+        // Calculate HL + A
+        asm.LD(asm.C, asm.A);
+        asm.LD(asm.B, 0);
+        asm.ADD(asm.HL, asm.BC); // HL points to address containing the pointer for this Env
+        
+        // Fetch Env data pointer -> DE
+        asm.LD(asm.E, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.D, asm.HLref); // DE is now PEnvData Pointer
+
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvDataPtr)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
+        // PEnv Off
+        asm.Label(prefix + "_penv_off");
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.LD(asm.HLref, 0x00);
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
         // -- Read Tone -- 
         asm.Label(prefix + "_" + nameof(Labels.ReadToneData));
         // DE is now pointing to 6 bytes: Freq L, Freq H, Dur L, Dur H, Gate L, Gate H
@@ -284,6 +350,11 @@ public class MZ1500MusicAssembler
         
         // Reset Env Pos Offset for the new note
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+
+        // Reset PEnv Pos Offset for the new note
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
         asm.LD(asm.HLref, 0x00);
 
         // Note On flag (1)
@@ -405,7 +476,7 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // Env Off -> Do nothing
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_penv_check")); // Env Off -> skip to PEnv
 
         // Read Env Data pointer
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvDataPtr)));
@@ -460,6 +531,55 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.INC(asm.HLref);
 
+        asm.Label(prefix + "_output_penv_check");
+        // Check PEnv Active
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.LD(asm.A, asm.HLref);
+        asm.OR(asm.A);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // PEnv Off -> End
+
+        // Read PEnv Data pointer
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvDataPtr)));
+        asm.LD(asm.E, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.D, asm.HLref);
+
+        // Read PEnv Pos Offset
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.C, asm.HLref);
+        asm.LD(asm.B, 0);
+
+        // Calculate Data Address (DE + BC * 2) since items are 2 bytes (ushort)
+        asm.LD(asm.H, asm.D);
+        asm.LD(asm.L, asm.E);
+        asm.ADD(asm.HL, asm.BC);
+        asm.ADD(asm.HL, asm.BC);
+
+        // Read Byte 1 (Low byte = cmd1)
+        asm.LD(asm.A, asm.HLref);
+        
+        // is it Loop Endpoint? (0xFE)
+        asm.CP(asm.Value((byte)0xFE));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_loop_end"));
+
+        // it might be End marker (0xFF)
+        asm.CP(asm.Value((byte)0xFF));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_end"));
+
+        // Output Byte 1
+        asm.OUT(port);
+        
+        // Read Byte 2 (High byte = cmd2)
+        asm.INC(asm.HL);
+        asm.LD(asm.A, asm.HLref);
+        
+        // Output Byte 2
+        asm.OUT(port);
+
+        // Increment Offset
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.INC(asm.HLref);
+
         asm.Label(prefix + "_output_end");
         asm.RET();
 
@@ -479,6 +599,19 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.DEC(asm.HLref);
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+
+        // PEnv loop handlers
+        asm.Label(prefix + "_penv_loop_end");
+        asm.INC(asm.HL);
+        asm.LD(asm.A, asm.HLref);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, asm.A);
+        asm.JP(asm.LabelRef(prefix + "_output_penv_check"));
+        
+        asm.Label(prefix + "_penv_end");
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.DEC(asm.HLref);
+        asm.JP(asm.LabelRef(prefix + "_output_penv_check"));
 
 
         // -- Stat Variables --
@@ -504,6 +637,15 @@ public class MZ1500MusicAssembler
         asm.DB(new byte[] { 0, 0 });
 
         asm.Label(prefix + "_" + nameof(Labels.StatEnvPosOffset));
+        asm.DB(0);
+
+        asm.Label(prefix + "_" + nameof(Labels.StatPEnvActive));
+        asm.DB(0); 
+
+        asm.Label(prefix + "_" + nameof(Labels.StatPEnvDataPtr));
+        asm.DB(new byte[] { 0, 0 });
+
+        asm.Label(prefix + "_" + nameof(Labels.StatPEnvPosOffset));
         asm.DB(0);
 
         // -- Envelope Data Tables --
@@ -552,6 +694,53 @@ public class MZ1500MusicAssembler
             else
             {
                 asm.DB(0xFF); // Terminator (End marker)
+            }
+        }
+
+        // PEnv Array Definitions
+        asm.Label(prefix + "_" + nameof(Labels.DataPEnvTableBase));
+        
+        int maxPEnvId = -1;
+        if (HwPitchEnvelopes.Count > 0)
+        {
+            maxPEnvId = HwPitchEnvelopes.Count - 1;
+        }
+
+        for (int i = 0; i <= maxPEnvId; i++)
+        {
+            if (i < HwPitchEnvelopes.Count)
+            {
+                asm.DW(asm.LabelRef(prefix + "_penv_data_" + i));
+            }
+            else
+            {
+                asm.DW(asm.LabelRef(prefix + "_penv_data_empty"));
+            }
+        }
+
+        asm.Label(prefix + "_penv_data_empty");
+        asm.DB(0xFF);
+        asm.DB(0xFF); // Align 2 bytes
+
+        foreach (var penv in HwPitchEnvelopes)
+        {
+            asm.Label(prefix + "_penv_data_" + penv.Id);
+            
+            foreach (ushort hwVal in penv.AbsoluteRegisters)
+            {
+                asm.DB((byte)(hwVal & 0xFF));
+                asm.DB((byte)((hwVal >> 8) & 0xFF));
+            }
+            
+            if (penv.LoopIndex >= 0 && penv.LoopIndex < penv.AbsoluteRegisters.Count)
+            {
+                asm.DB(0xFE);
+                asm.DB((byte)(penv.LoopIndex & 0xFF));
+            }
+            else
+            {
+                asm.DB(0xFF);
+                asm.DB(0xFF);
             }
         }
     }

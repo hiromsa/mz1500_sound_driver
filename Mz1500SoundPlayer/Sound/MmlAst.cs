@@ -19,6 +19,7 @@ public class MmlData
 {
     public Dictionary<string, TrackData> Tracks { get; set; } = new();
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
+    public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
 }
 
 public abstract class MmlCommand { }
@@ -45,6 +46,9 @@ public class VolumeCommand : MmlCommand { public int Volume { get; set; } }
 
 // エンベロープマクロ呼び出し (@v1 等)
 public class EnvelopeCommand : MmlCommand { public int EnvelopeId { get; set; } }
+
+// ピッチエンベロープマクロ呼び出し (EP1, @p1 等)
+public class PitchEnvelopeCommand : MmlCommand { public int EnvelopeId { get; set; } }
 
 // 音長減算用パラメータ (タイ)
 public class TieCommand : MmlCommand { public int Length { get; set; } public int Dots { get; set; } }
