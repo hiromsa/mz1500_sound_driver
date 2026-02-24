@@ -20,6 +20,7 @@ public class MmlSequenceProvider : ISampleProvider
     // Engine State
     private int _waitFrames = 0;
     private bool _isEnd = false;
+    private bool _isRest = false;
     
     // Envelope State
     private bool _envActive = false;
@@ -51,6 +52,7 @@ public class MmlSequenceProvider : ISampleProvider
         _phaseIncrement = 0;
         _waitFrames = 0;
         _isEnd = false;
+        _isRest = false;
         
         _envActive = false;
         _envId = -1;
@@ -80,6 +82,7 @@ public class MmlSequenceProvider : ISampleProvider
                     
                     // Reset envelope
                     _envPosOffset = 0;
+                    _isRest = false;
                     
                     // Update frequency
                     if (_hwFreqRaw > 0)
@@ -101,6 +104,8 @@ public class MmlSequenceProvider : ISampleProvider
                     byte rlenL = _bytecode[_pc++];
                     byte rlenH = _bytecode[_pc++];
                     _waitFrames = rlenL | (rlenH << 8);
+                    _isRest = true;
+                    _hwVolume = 15;
                     
                     fetchNext = false; // Yield VM processing until next tick
                     break;
@@ -151,7 +156,7 @@ public class MmlSequenceProvider : ISampleProvider
                 _samplesCurrentFrameCount -= _samplesPerFrame;
 
                 // Process envelope for this frame (applies to current hardware sound)
-                if (_envActive && _envelopes.TryGetValue(_envId, out var envData) && envData.Values.Count > 0)
+                if (!_isRest && _envActive && _envelopes.TryGetValue(_envId, out var envData) && envData.Values.Count > 0)
                 {
                     int maxLen = envData.Values.Count;
                     if (_envPosOffset >= maxLen)

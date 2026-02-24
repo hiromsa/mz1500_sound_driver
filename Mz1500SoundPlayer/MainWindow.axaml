@@ -10,12 +10,14 @@
     <TextBlock Text="MMLを入力してPlayボタンを押してください:" Margin="0,10,0,0"/>
     <TextBox Name="MmlInput" Width="600" Height="300" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas"
              Text="ABC @t1,86&#x0d;&#x0a;&#x0d;&#x0a;A @1 @v0 o5 l8 q8&#x0d;&#x0a;B @1 v12 o3 l16 @q0&#x0d;&#x0a;C         o4 l8 @q2&#x0d;&#x0a;&#x0d;&#x0a;A o4v15&#x0d;&#x0a;A La+12r12a+12a+12a+12a+12a+12>c12d12c12r12&lt;a+12>&#x0d;&#x0a;A f2r4d+12f12g12&#x0d;&#x0a;A f12r6a+4r12a12a+12a12f12d12&#x0d;&#x0a;A c2.r4&#x0d;&#x0a;A &lt;b12r12b12b12b12b12b12>c+12d+12c+12&lt;r12b12>&#x0d;&#x0a;A f+2r4g+12f+12e12&#x0d;&#x0a;A f+12r6g+12f+12e12f+12r12 e12d+12&lt;b12g+12>&#x0d;&#x0a;A c+2&lt;b4>d12r12d12&#x0d;&#x0a;A e2r12d12e12g12f+12d12&#x0d;&#x0a;A g12f+12d12e4f12r12f12&#x0d;&#x0a;A g4r12f12g12a+12a12f12&#x0d;&#x0a;A a+12a12f12g2f4&#x0d;&#x0a;&#x0d;&#x0a;C o5v15&#x0d;&#x0a;C Ld12d12d12d+12r6 d12d12d12d+12r6&#x0d;&#x0a;C d12d12d12d+12r6 f12r6 a+4&#x0d;&#x0a;C a12r6 a+4a12r6 f12r6&#x0d;&#x0a;C d+12r6d+12r6f12r6f12r6&#x0d;&#x0a;C d+12d+12d+12e12r6 d+12d+12d+12e12r6&#x0d;&#x0a;C d+12d+12d+12e12r6 f+12r6b4&#x0d;&#x0a;C a+12r6b4a+12r6f+12r6&#x0d;&#x0a;C a+12r6a+12g+12a+12d+12r6r4&#x0d;&#x0a;C r4r4r4r4>d12d12&lt;b12>c+4r4&#x0d;&#x0a;C r4r4r4f12f12d12e2c12&lt;a12f12&#x0d;&#x0a;&#x0d;&#x0a;B o4v15&#x0d;&#x0a;B L&lt;a+12a+12a+12>c12r6 &lt;a+12a+12a+12>c12r6&#x0d;&#x0a;B &lt;a+12a+12a+12>c12r6 d12r6 g4&#x0d;&#x0a;B f12r6g4f12r6d12r6&#x0d;&#x0a;B c12r6&lt;g12r6a12g12a12g12r12f12>&#x0d;&#x0a;B &lt;b12b12b12>c+12r6 &lt;b12b12b12>c+12r6&#x0d;&#x0a;B &lt;b12b12b12>c+12r6 d+12r6g+4&#x0d;&#x0a;B f+12r6g+4f+12r6d+12r6&#x0d;&#x0a;B f+12r6&lt;f+12f+12f+12b12r6r4>&#x0d;&#x0a;B r4d12r12d12e12d12e12g12f+12d12b12a12g12a4r4&#x0d;&#x0a;B f12r12f12g12f12g12a+12a12f12>d6&lt;a+12>c2&lt;a12f12&lt;f12>&#x0d;&#x0a;"/>
-    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-        <Button Name="PlayMmlButton" Content="Play MML" Click="PlayMmlButton_Click"/>
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="Master Vol:" VerticalAlignment="Center"/>
+        <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="100" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
+        <Button Name="PlayMmlButton" Content="Play (Ctrl+Enter)" Click="PlayMmlButton_Click"/>
         <Button Name="StopButton" Content="Stop" Click="StopButton_Click"/>
         <Button Name="ExportQdcButton" Content="Export QDC" Click="ExportQdcButton_Click"/>
         <Button Name="ClearButton" Content="Clear Text" Click="ClearButton_Click"/>
-        <Button Name="PlayDemoButton" Content="Play Single Track Demo" Click="PlayDemoButton_Click"/>
+        <Button Name="PlayDemoButton" Content="Demo" Click="PlayDemoButton_Click"/>
     </StackPanel>
     <TextBlock Name="LogOutput" Foreground="Blue" TextWrapping="Wrap" MaxWidth="600" Margin="0,10,0,0"/>
   </StackPanel>

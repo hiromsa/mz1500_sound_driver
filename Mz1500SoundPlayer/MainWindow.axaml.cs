@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Mz1500SoundPlayer.Sound;
 using System.Threading.Tasks;
 
@@ -16,6 +17,9 @@ public partial class MainWindow : Window
         
         // アプリ終了時に確実に音を止めるための処理
         this.Closed += (s, e) => _player.Stop();
+
+        // テキストエリア等でイベントが消費される前にCaptureするため、Tunnel戦略でWindow全体にフックする
+        this.AddHandler(InputElement.KeyDownEvent, Window_KeyDown, RoutingStrategies.Tunnel);
     }
 
     private async void PlayDemoButton_Click(object? sender, RoutedEventArgs e)
@@ -59,6 +63,32 @@ public partial class MainWindow : Window
     {
         _player.Stop();
         LogOutput.Text = "Playback stopped.";
+    }
+
+    private void Window_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key == Avalonia.Input.Key.Enter && e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control))
+        {
+            e.Handled = true;
+            if (PlayMmlButton.IsEnabled)
+            {
+                // 再生開始
+                PlayMmlButton_Click(PlayMmlButton, new RoutedEventArgs());
+            }
+            else
+            {
+                // 再生中は停止
+                StopButton_Click(StopButton, new RoutedEventArgs());
+            }
+        }
+    }
+
+    private void MasterVolumeSlider_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_player != null)
+        {
+            _player.MasterVolume = (float)e.NewValue;
+        }
     }
 
     private void ExportQdcButton_Click(object? sender, RoutedEventArgs e)

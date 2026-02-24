@@ -11,6 +11,21 @@ public class MmlPlayerModel
     private MultiTrackSequenceProvider? _multiSequenceProvider;
     private TaskCompletionSource<bool>? _playbackCompletion;
     private System.Threading.CancellationTokenSource? _cancellationTokenSource;
+    private NAudio.Wave.SampleProviders.VolumeSampleProvider? _volumeProvider;
+
+    private float _masterVolume = 0.5f;
+    public float MasterVolume 
+    { 
+        get => _masterVolume; 
+        set 
+        {
+            _masterVolume = value;
+            if (_volumeProvider != null)
+            {
+                _volumeProvider.Volume = _masterVolume;
+            }
+        }
+    }
 
     public MmlPlayerModel()
     {
@@ -125,9 +140,15 @@ public class MmlPlayerModel
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
         var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);
 
+        // マスターボリュームの適用
+        _volumeProvider = new NAudio.Wave.SampleProviders.VolumeSampleProvider(stereoProvider)
+        {
+            Volume = MasterVolume
+        };
+
         // レガシーなWaveOutEventではなく、安定したWasapiOutを利用する
         _waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 50);
-        _waveOut.Init(stereoProvider);
+        _waveOut.Init(_volumeProvider);
 
         _playbackCompletion = new TaskCompletionSource<bool>();
         _waveOut.PlaybackStopped += (s, e) => 
