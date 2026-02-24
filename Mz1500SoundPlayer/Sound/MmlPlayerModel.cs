@@ -13,6 +13,20 @@ public class MmlPlayerModel
     private System.Threading.CancellationTokenSource? _cancellationTokenSource;
     private NAudio.Wave.SampleProviders.VolumeSampleProvider? _volumeProvider;
 
+    private HashSet<string> _activeChannels = new HashSet<string>(new[] { "A", "B", "C", "D", "E", "F", "G", "H", "P" });
+    public HashSet<string> ActiveChannels
+    {
+        get => _activeChannels;
+        set
+        {
+            _activeChannels = value;
+            if (_multiSequenceProvider != null)
+            {
+                _multiSequenceProvider.ActiveChannels = _activeChannels;
+            }
+        }
+    }
+
     private float _masterVolume = 0.5f;
     public float MasterVolume 
     { 
@@ -163,6 +177,7 @@ public class MmlPlayerModel
         if (hwPitchEnvelopes == null) hwPitchEnvelopes = new List<MmlToZ80Compiler.HwPitchEnvData>();
         
         _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, volumeEnvelopes, hwPitchEnvelopes);
+        _multiSequenceProvider.ActiveChannels = _activeChannels;
         
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
         var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);

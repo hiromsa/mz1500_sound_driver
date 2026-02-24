@@ -8,6 +8,8 @@ public class MmlSequenceProvider : ISampleProvider
 {
     public WaveFormat WaveFormat { get; }
 
+    public bool IsMuted { get; set; } = false;
+
     private readonly byte[] _bytecode;
     private int _pc; // Program Counter
     
@@ -279,7 +281,7 @@ public class MmlSequenceProvider : ISampleProvider
             float activeVol = (15 - _hwVolume) / 15.0f * 0.15f; // Scale 0.0 ~ 0.15
             float sampleValue = 0f;
 
-            if (_phaseIncrement > 0 && activeVol > 0)
+            if (_phaseIncrement > 0 && activeVol > 0 && !IsMuted)
             {
                 sampleValue = (float)((_phase < 0.5) ? activeVol : -activeVol);
                 

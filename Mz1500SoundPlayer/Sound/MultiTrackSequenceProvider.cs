@@ -8,15 +8,16 @@ namespace Mz1500SoundPlayer.Sound;
 public class MultiTrackSequenceProvider : ISampleProvider
 {
     public WaveFormat WaveFormat { get; }
+    public HashSet<string> ActiveChannels { get; set; } = new HashSet<string>(new[] { "A", "B", "C", "D", "E", "F", "G", "H", "P" });
 
     // トラック毎の独立したシーケンスプロバイダを保持
-    private readonly List<MmlSequenceProvider> _trackProviders;
+    private readonly List<(string TrackName, MmlSequenceProvider Provider)> _trackProviders;
     private float[]? _tempBuffer;
 
     public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
-        _trackProviders = new List<MmlSequenceProvider>();
+        _trackProviders = new List<(string TrackName, MmlSequenceProvider Provider)>();
 
         Console.WriteLine($"[MultiTrackSequenceProvider] Init with {trackBinaries.Count} tracks.");
 
@@ -26,7 +27,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
             {
                 bool isBeep = kvp.Key.ToUpperInvariant() == "P";
                 Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Length} bytes.");
-                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate, isBeep));
+                _trackProviders.Add((kvp.Key.ToUpperInvariant(), new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate, isBeep)));
             }
         }
     }
@@ -41,8 +42,11 @@ public class MultiTrackSequenceProvider : ISampleProvider
         // 最終出力バッファをゼロクリア
         Array.Clear(buffer, offset, count);
 
-        foreach (var provider in _trackProviders)
+        foreach (var item in _trackProviders)
         {
+            var provider = item.Provider;
+            provider.IsMuted = !ActiveChannels.Contains(item.TrackName);
+
             int read = provider.Read(_tempBuffer, 0, count);
             if (read > 0)
             {
