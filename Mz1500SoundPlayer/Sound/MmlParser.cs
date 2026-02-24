@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound;
 
-public record NoteEvent(double Frequency, double DurationMs, double Volume, double GateTimeMs, int EnvelopeId = -1, int PitchEnvelopeId = -1);
+public record NoteEvent(double Frequency, double DurationMs, double Volume, double GateTimeMs, int EnvelopeId = -1, int PitchEnvelopeId = -1, int NoiseWaveMode = 1, int IntegrateNoiseMode = 0, bool IsLoopPoint = false);
 
 public class MmlParser
 {

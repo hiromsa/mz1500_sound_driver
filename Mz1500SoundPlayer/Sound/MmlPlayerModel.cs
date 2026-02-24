@@ -73,6 +73,7 @@ public class MmlPlayerModel
         var trackBinaries = new Dictionary<string, byte[]>();
 
         double maxMs = 0;
+        bool hasInfiniteLoop = false;
         var log = new System.Text.StringBuilder();
         log.AppendLine($"[Parser] Found {tracks.Count} tracks.");
         log.AppendLine($"[Parser] Found {mmlData.VolumeEnvelopes.Count} volume envelopes.");
@@ -81,6 +82,8 @@ public class MmlPlayerModel
         foreach (var kvp in tracks)
         {
             var events = expander.Expand(kvp.Value);
+            if (System.Linq.Enumerable.Any(events, e => e.IsLoopPoint)) hasInfiniteLoop = true;
+            
             byte psgChannel = 0;
             switch (kvp.Key.ToUpperInvariant())
             {
@@ -102,7 +105,7 @@ public class MmlPlayerModel
             log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, compiled size {seqBin.Length} bytes, duration {totalMs:F1}ms");
         }
 
-        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, compiler.HwPitchEnvelopes, maxMs);
+        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, compiler.HwPitchEnvelopes, maxMs, hasInfiniteLoop);
         return log.ToString();
     }
 
@@ -166,7 +169,7 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000)
+    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000, bool hasInfiniteLoop = false)
     {
         Stop(); // 前の再生を安全に停止
 
@@ -203,7 +206,14 @@ public class MmlPlayerModel
         // 一番長いトラックに合わせて待機。キャンセル時は例外をキャッチして抜ける
         try
         {
-            await Task.Delay((int)totalMs + 100, token); 
+            if (hasInfiniteLoop)
+            {
+                await Task.Delay(System.Threading.Timeout.Infinite, token);
+            }
+            else
+            {
+                await Task.Delay((int)totalMs + 100, token); 
+            }
         }
         catch (TaskCanceledException)
         {

@@ -140,7 +140,15 @@ public class MultiTrackMmlParser
                 case '>': cmds.Add(new RelativeOctaveCommand { Offset = 1 }); break;
                 case '<': cmds.Add(new RelativeOctaveCommand { Offset = -1 }); break;
                 case 'l':
-                    cmds.Add(new DefaultLengthCommand { Length = ReadInt(data, ref i, 4) });
+                case 'L':
+                    if (i < data.Length && char.IsDigit(data[i]))
+                    {
+                        cmds.Add(new DefaultLengthCommand { Length = ReadInt(data, ref i, 4) });
+                    }
+                    else
+                    {
+                        cmds.Add(new InfiniteLoopPointCommand());
+                    }
                     break;
                 case 'v':
                     cmds.Add(new VolumeCommand { Volume = ReadInt(data, ref i, 15) });
@@ -187,6 +195,20 @@ public class MultiTrackMmlParser
                 break;
             case 'q': // @q<num> : フレーム単位のクオンタイズ
                 cmds.Add(new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) });
+                break;
+            case 'w': // @wn<num> : ノイズジェネレータ波形設定
+                if (i < data.Length && data[i] == 'n')
+                {
+                    i++;
+                    cmds.Add(new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1) });
+                }
+                break;
+            case 'i': // @in<num> : ノイズジェネレータ連携設定(0=Off, 1=Periodic, 2=White)
+                if (i < data.Length && data[i] == 'n')
+                {
+                    i++;
+                    cmds.Add(new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0) });
+                }
                 break;
             default:
                 if (char.IsDigit(c))

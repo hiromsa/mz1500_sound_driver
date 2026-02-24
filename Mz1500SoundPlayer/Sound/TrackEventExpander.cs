@@ -25,12 +25,18 @@ public class TrackEventExpander
         int currentQuantize = 7; // MCK/PPMCKに合わせデフォルトをやや短く(7/8など)して音の区切りをつける
         int frameQuantize = 0; // @q
 
+        int currentNoiseWaveMode = 1; // @wn1
+        int currentIntegrateNoiseMode = 0; // @in0
+
         // ループ処理用スタック等 (今回は簡易的にフラット展開する)
         var flatCommands = FlattenLoops(track.Commands);
 
+        bool nextIsLoopPoint = false;
+
         foreach (var cmd in flatCommands)
         {
-            if (cmd is TempoCommand tc) { currentTempo = tc.Tempo; }
+            if (cmd is InfiniteLoopPointCommand) { nextIsLoopPoint = true; }
+            else if (cmd is TempoCommand tc) { currentTempo = tc.Tempo; }
             else if (cmd is FrameTempoCommand ftc) 
             {
                 // @t <len>,<frames> 
@@ -53,6 +59,8 @@ public class TrackEventExpander
             }
             else if (cmd is QuantizeCommand qc) { currentQuantize = qc.Quantize; }
             else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; }
+            else if (cmd is NoiseWaveCommand nwc) { currentNoiseWaveMode = nwc.WaveType; }
+            else if (cmd is IntegrateNoiseCommand inc) { currentIntegrateNoiseMode = inc.IntegrateMode; }
             else if (cmd is TieCommand tieCmd)
             {
                 if (events.Count > 0)
@@ -110,16 +118,23 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId));
+                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint));
                 }
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint));
                 }
+                nextIsLoopPoint = false;
             }
+        }
+
+        // 行末などにLだけ置いて終わった場合、終端フラグを立たせるために長さ0のダミー休符を置く
+        if (nextIsLoopPoint)
+        {
+            events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true));
         }
 
         return events;

@@ -56,8 +56,11 @@ public class TieCommand : MmlCommand { public int Length { get; set; } public in
 public class QuantizeCommand : MmlCommand { public int Quantize { get; set; } }
 public class FrameQuantizeCommand : MmlCommand { public int Frames { get; set; } }
 
-// マクロ・音色関連（今回 @1 などはダミーで保持するか無視する）
 public class VoiceCommand : MmlCommand { public int VoiceId { get; set; } }
+
+// ノイズ関連
+public class NoiseWaveCommand : MmlCommand { public int WaveType { get; set; } }
+public class IntegrateNoiseCommand : MmlCommand { public int IntegrateMode { get; set; } }
 
 // 音長減算用パラメータ (ex: ~12, -2) ※今回は簡略化のため一旦無視か拡張枠として用意
 // ...

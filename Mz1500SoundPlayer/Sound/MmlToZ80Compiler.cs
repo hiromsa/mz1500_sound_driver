@@ -19,6 +19,9 @@ public class MmlToZ80Compiler
     public const byte CMD_VOL  = 0x03;
     public const byte CMD_ENV  = 0x04; // ソフトウェア音量エンベロープのセット
     public const byte CMD_PENV = 0x05; // ピッチエンベロープ(HwPitchEnv)の切り替え
+    public const byte CMD_NOISE= 0x06; // ノイズジェネレータ専用出力
+    public const byte CMD_SYNC_NOISE = 0x07; // Tone 3 連携モード専用出力
+    public const byte CMD_LOOP_MARKER = 0x08; // Lコマンドによる無限ループマーカー
     public const byte CMD_END  = 0xFF; // 曲の終わり
 
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
@@ -44,6 +47,11 @@ public class MmlToZ80Compiler
 
         foreach (var ev in events)
         {
+            if (ev.IsLoopPoint)
+            {
+                output.Add(CMD_LOOP_MARKER);
+            }
+
             double nextTimeMs = currentTimeMs + ev.DurationMs;
             int nextFrame = (int)Math.Round(nextTimeMs * 60.0 / 1000.0);
             int totalFrames = nextFrame - currentFrame;
@@ -186,28 +194,75 @@ public class MmlToZ80Compiler
                     ushort regUshort = (ushort)regVal;
                     toneCmd1 = (byte)(regUshort & 0xFF);
                     toneCmd2 = (byte)((regUshort >> 8) & 0xFF);
+
+                    output.Add(CMD_TONE);
+                    output.Add(toneCmd1);
+                    output.Add(toneCmd2);
+                }
+                else if (psgChannel == 3)
+                {
+                    // ノイズトラック判定 (D, H)
+                    // 仕様: freq値をShift Rateへマッピング (c < 300Hz -> Low(2), e < 350Hz -> Mid(1), g -> High(0))
+                    byte shiftRate = (freq < 300) ? (byte)2 : (freq < 350) ? (byte)1 : (byte)0;
+                    byte feedback = (byte)(ev.NoiseWaveMode & 0x01); // 0=Periodic, 1=White Noise
+                    
+                    // ノイズ制御レジスタ形式: 1110_0FBW
+                    byte noiseCmd = (byte)(0xE0 | (feedback << 2) | shiftRate);
+
+                    // TODO 骨格: Z80ドライバとVMに CMD_NOISE(0x06) を実装するまでの間、
+                    // 仮のコマンドとしてバイト列を出力するステートメント
+                    output.Add(CMD_NOISE);
+                    output.Add(noiseCmd);
                 }
                 else
                 {
-                    // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
-                    // 1023でクリップすると全部A2辺りに張り付いて音痴になるため、収まるまでオクターブを上げる
-                    while (freq > 0 && BaseClockFreq / freq > 1023)
+                    // トーンチャネル判定 (A, B, C, E, F, G)
+                    if (psgChannel == 2 && ev.IntegrateNoiseMode > 0)
                     {
-                        freq *= 2.0;
+                        // Tone 3 連動ノイズモード (@in)
+                        // Tone 3として周波数計算
+                        while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0;
+                        double regVal = BaseClockFreq / freq;
+                        if (regVal > 1023) regVal = 1023;
+                        ushort regUshort = (ushort)regVal;
+
+                        byte freqCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
+                        byte freqCmd2 = (byte)((regUshort >> 4) & 0x3F);
+
+                        byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
+                        
+                        byte feedback = (ev.IntegrateNoiseMode == 2) ? (byte)1 : (byte)0; // 2=White, 1=Periodic
+                        byte linkedNoiseCmd = (byte)(0xE0 | (feedback << 2) | 3); // W=3 (Tone 3 Linked)
+                        
+                        // Noise Channel = psgChannel + 1
+                        byte noiseVolCmd = (byte)(0x90 | (((psgChannel + 1) & 0x03) << 5) | ((byte)(currentVol >= 0 ? currentVol : 15) & 0x0F));
+
+                        // TODO 骨格: Z80ドライバとVMに CMD_SYNC_NOISE(0x07) を実装し、以下のパラメータを解釈させる
+                        output.Add(CMD_SYNC_NOISE);
+                        output.Add(freqCmd1);
+                        output.Add(freqCmd2);
+                        output.Add(muteVolCmd);
+                        output.Add(linkedNoiseCmd);
+                        output.Add(noiseVolCmd);
                     }
+                    else
+                    {
+                        // 通常トーンモード
+                        // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
+                        while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0;
 
-                    double regVal = BaseClockFreq / freq;
-                    if (regVal > 1023) regVal = 1023; // Safety (Should not hit normally)
-                    ushort regUshort = (ushort)regVal;
+                        double regVal = BaseClockFreq / freq;
+                        if (regVal > 1023) regVal = 1023; // Safety
+                        ushort regUshort = (ushort)regVal;
 
-                    // 周波数レジスタ: Base 10bit
-                    toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
-                    toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
+                        toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
+                        toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
+
+                        output.Add(CMD_TONE);
+                        output.Add(toneCmd1);
+                        output.Add(toneCmd2);
+                    }
                 }
-
-                output.Add(CMD_TONE);
-                output.Add(toneCmd1);
-                output.Add(toneCmd2);
 
                 // 長さ (2バイト)
                 ushort durationUnits = (ushort)(gateFrames - 1);

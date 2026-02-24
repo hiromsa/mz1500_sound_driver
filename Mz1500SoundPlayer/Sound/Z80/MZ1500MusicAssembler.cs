@@ -32,6 +32,7 @@ public class MZ1500MusicAssembler
     private enum Labels
     {
         StatSongDataPosition,   // 2 bytes
+        StatLoopPosition,       // 2 bytes 
         StatLengthRemain,       // 2 bytes
         StatGateRemain,         // 2 bytes
         StatNoteOn,             // 1 byte
@@ -157,6 +158,8 @@ public class MZ1500MusicAssembler
         {
             assembler.Label(ch.Name + "_" + nameof(Labels.DataSong));
             assembler.DB(ch.SequenceData);
+            assembler.Label(ch.Name + "_data_song_end");
+            assembler.DB(0xFF); // 安全用の終端マーカー (L省略時にここにジャンプして停止し続ける)
         }
 
         return assembler.Build();
@@ -232,7 +235,38 @@ public class MZ1500MusicAssembler
         asm.CP(asm.B);
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadPEnvData)));
 
+        // 0x06 (Noise)
+        asm.LD(asm.A, 0x06);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_noise"));
+
+        // 0x07 (Sync Noise)
+        asm.LD(asm.A, 0x07);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_sync_noise"));
+
+        // 0x08 (Loop Marker)
+        asm.LD(asm.A, 0x08);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_loop_marker"));
+
         asm.RET(); // Unknown commmand
+        
+        // -- Read Loop Marker
+        asm.Label(prefix + "_read_loop_marker");
+        // Save current DE (which points to the instruction AFTER 0x08) to StatLoopPosition
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLoopPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        // Also save DE to StatSongDataPosition so it won't read 0x08 forever
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
 
         // -- Read Envelope Command --
         asm.Label(prefix + "_" + nameof(Labels.ReadEnvData));
@@ -453,6 +487,88 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, asm.D);
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
+        // -- Read Noise --
+        asm.Label(prefix + "_read_noise");
+        // DE is pointing to 3 bytes: NoiseCmd, DurL, DurH.
+        // Similar to ReadTone, but only 1 byte for freq/ctrl instead of two.
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HLref, 0x01);
+
+        // Fetch NoiseCmd and OUT
+        asm.LD(asm.A, asm.DEref);
+        asm.INC(asm.DE);
+        if (port != 0xE0) { asm.OUT(port); }
+
+        // Fetch Duration -> StatLengthRemain
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.A, asm.DEref);
+        asm.LD(asm.HLref, asm.A);
+        asm.INC(asm.DE);
+        asm.INC(asm.HL);
+        asm.LD(asm.A, asm.DEref);
+        asm.LD(asm.HLref, asm.A);
+        asm.INC(asm.DE);
+
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+        
+        if (port != 0xE0) {
+            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.A, asm.HLref);
+            asm.OUT(port);
+        }
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+
+
+        // -- Read Sync Noise --
+        asm.Label(prefix + "_read_sync_noise");
+        // DE is pointing to 7 bytes: FreqCmd1, FreqCmd2, MuteVol, LinkedNoiseCmd, NoiseVol, DurL, DurH.
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HLref, 0x01);
+
+        if (port != 0xE0) {
+            // FreqCmd1
+            asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
+            // FreqCmd2
+            asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
+            // Mute Tone3 Vol
+            asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
+            // Linked Noise Cmd
+            asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
+            // Noise Vol (Save to StatHwVolume and Out)
+            asm.LD(asm.A, asm.DEref); asm.INC(asm.DE);
+            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HLref, asm.A);
+            asm.OUT(port);
+        }
+
+        // Fetch Duration -> StatLengthRemain
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.A, asm.DEref);
+        asm.LD(asm.HLref, asm.A);
+        asm.INC(asm.DE);
+        asm.INC(asm.HL);
+        asm.LD(asm.A, asm.DEref);
+        asm.LD(asm.HLref, asm.A);
+        asm.INC(asm.DE);
+
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+
         // -- Read Volume --
         asm.Label(prefix + "_" + nameof(Labels.ReadVolumeData));
         asm.LD(asm.A, asm.DEref); // raw volume hw byte (1 c c 1 v v v v)
@@ -475,15 +591,33 @@ public class MZ1500MusicAssembler
 
         // -- End Song (Looping) --
         asm.Label(prefix + "_end_song");
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLoopPosition)));
+        // Get Address from StatLoopPosition -> DE
+        asm.LD(asm.E, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.D, asm.HLref);
+        
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
-        // Get Address to DE directly
-        asm.LD(asm.DE, asm.LabelRef(prefix + "_" + nameof(Labels.DataSong)));
-        // And store DE to StatSongDataPosition (DE -> (HL))
+        // And store DE to StatSongDataPosition
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        // Fetch the next command to execute
+        asm.LD(asm.A, asm.DEref); // A = memory at DE
+        asm.LD(asm.B, 0xFF);      // B = 0xFF (End marker)
+        asm.CP(asm.B);            // Compare A with B
+        
+        // If not 0xFF, jump to parsing (valid loop target)
+        asm.JP(asm.NZ, asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
+        // If it is 0xFF, it means we are at a halt state (data_song_end) or an empty track.
+        // Set LengthRemain to 0x7FFF (about 9 minutes at 60Hz) to prevent infinite loop within a frame.
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HLref, 0xFF);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, 0x7F);
+        asm.RET();
 
 
         // -- Output By Status --
@@ -668,6 +802,9 @@ public class MZ1500MusicAssembler
         asm.Label(prefix + "_" + nameof(Labels.StatSongDataPosition));
         asm.DB(asm.LabelRef(prefix + "_" + nameof(Labels.DataSong))); // Initialize with Data Start Address
         
+        asm.Label(prefix + "_" + nameof(Labels.StatLoopPosition));
+        asm.DB(asm.LabelRef(prefix + "_data_song_end")); // Initialize loop point to End Address (No loop by default)
+
         asm.Label(prefix + "_" + nameof(Labels.StatLengthRemain));
         asm.DB(new byte[] { 0, 0 });
         

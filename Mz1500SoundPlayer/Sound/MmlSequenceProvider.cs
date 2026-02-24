@@ -19,10 +19,16 @@ public class MmlSequenceProvider : ISampleProvider
     private double _phase = 0;
     private double _phaseIncrement = 0;
     
+    // Noise LFSR variables
+    private bool _isNoiseMode = false;
+    private int _noiseFeedback = 0; // 0=Periodic, 1=White
+    private ushort _lfsr = 0x4000;
+    
     // Engine State
     private int _waitFrames = 0;
     private bool _isEnd = false;
     private bool _isRest = false;
+    private int _loopOffsetPc = -1;
     
     // Envelope State
     private bool _envActive = false;
@@ -61,9 +67,15 @@ public class MmlSequenceProvider : ISampleProvider
         _hwFreqRaw = 0;
         _phase = 0;
         _phaseIncrement = 0;
+        
+        _isNoiseMode = false;
+        _noiseFeedback = 0;
+        _lfsr = 0x4000;
+        
         _waitFrames = 0;
         _isEnd = false;
         _isRest = false;
+        _loopOffsetPc = -1;
         
         _envActive = false;
         _envId = -1;
@@ -108,6 +120,7 @@ public class MmlSequenceProvider : ISampleProvider
                     _envPosOffset = 0;
                     _pEnvPosOffset = 0;
                     _isRest = false;
+                    _isNoiseMode = false;
                     
                     // Update frequency
                     if (_hwFreqRaw > 0)
@@ -133,6 +146,57 @@ public class MmlSequenceProvider : ISampleProvider
                     _hwVolume = 15;
                     
                     fetchNext = false; // Yield VM processing until next tick
+                    break;
+                    
+                case MmlToZ80Compiler.CMD_NOISE:
+                    byte noiseCmd = _bytecode[_pc++];
+                    byte nlenL = _bytecode[_pc++];
+                    byte nlenH = _bytecode[_pc++];
+                    _waitFrames = nlenL | (nlenH << 8);
+
+                    _noiseFeedback = (noiseCmd >> 2) & 0x01;
+                    int shiftRate = noiseCmd & 0x03;
+                    
+                    double nFreqHz = 0;
+                    if (shiftRate == 0) nFreqHz = BaseClockFreq / 16.0;
+                    else if (shiftRate == 1) nFreqHz = BaseClockFreq / 32.0;
+                    else if (shiftRate == 2) nFreqHz = BaseClockFreq / 64.0;
+
+                    _phaseIncrement = nFreqHz / WaveFormat.SampleRate;
+                    _isNoiseMode = true;
+                    _lfsr = 0x4000;
+                    
+                    _envPosOffset = 0;
+                    _pEnvPosOffset = 0;
+                    _isRest = false;
+                    fetchNext = false;
+                    break;
+
+                case MmlToZ80Compiler.CMD_SYNC_NOISE:
+                    byte fCmd1 = _bytecode[_pc++];
+                    byte fCmd2 = _bytecode[_pc++];
+                    byte muteVol = _bytecode[_pc++];
+                    byte linkedNoiseCmd = _bytecode[_pc++];
+                    byte noiseVol = _bytecode[_pc++];
+                    
+                    byte synclenL = _bytecode[_pc++];
+                    byte synclenH = _bytecode[_pc++];
+                    _waitFrames = synclenL | (synclenH << 8);
+                    
+                    _noiseFeedback = (linkedNoiseCmd >> 2) & 0x01;
+                    // Extract frequency (Sync Noise implies Tone3 linked)
+                    ushort syncFreqRaw = (ushort)((fCmd1 & 0x0F) | ((fCmd2 & 0x3F) << 4));
+                    double syncFreqHz = (syncFreqRaw > 0) ? BaseClockFreq / syncFreqRaw : 0;
+                    
+                    _phaseIncrement = syncFreqHz / WaveFormat.SampleRate;
+                    _hwVolume = noiseVol & 0x0F;
+                    _isNoiseMode = true;
+                    _lfsr = 0x4000;
+
+                    _envPosOffset = 0;
+                    _pEnvPosOffset = 0;
+                    _isRest = false;
+                    fetchNext = false;
                     break;
                     
                 case MmlToZ80Compiler.CMD_VOL:
@@ -168,9 +232,22 @@ public class MmlSequenceProvider : ISampleProvider
                     }
                     break;
                     
+                case MmlToZ80Compiler.CMD_LOOP_MARKER:
+                    _loopOffsetPc = _pc;
+                    fetchNext = true;
+                    break;
+                    
                 case MmlToZ80Compiler.CMD_END:
-                    _isEnd = true;
-                    fetchNext = false;
+                    if (_loopOffsetPc >= 0)
+                    {
+                        _pc = _loopOffsetPc;
+                        fetchNext = true;
+                    }
+                    else
+                    {
+                        _isEnd = true;
+                        fetchNext = false;
+                    }
                     break;
             }
         }
@@ -283,10 +360,30 @@ public class MmlSequenceProvider : ISampleProvider
 
             if (_phaseIncrement > 0 && activeVol > 0 && !IsMuted)
             {
-                sampleValue = (float)((_phase < 0.5) ? activeVol : -activeVol);
-                
-                _phase += _phaseIncrement;
-                if (_phase >= 1.0) _phase -= 1.0;
+                if (_isNoiseMode)
+                {
+                    // LFSR Output
+                    int outputBit = _lfsr & 1;
+                    sampleValue = (outputBit == 1) ? activeVol : -activeVol;
+                    
+                    _phase += _phaseIncrement;
+                    while (_phase >= 1.0)
+                    {
+                        _phase -= 1.0;
+                        int tappedBit = (_noiseFeedback == 1)
+                                        ? ((_lfsr & 1) ^ ((_lfsr >> 1) & 1))
+                                        : (_lfsr & 1);
+                        _lfsr = (ushort)((_lfsr >> 1) | (tappedBit << 14));
+                    }
+                }
+                else
+                {
+                    // Square Wave Output
+                    sampleValue = (float)((_phase < 0.5) ? activeVol : -activeVol);
+                    
+                    _phase += _phaseIncrement;
+                    if (_phase >= 1.0) _phase -= 1.0;
+                }
             }
 
             buffer[offset + samplesWritten] = sampleValue;
