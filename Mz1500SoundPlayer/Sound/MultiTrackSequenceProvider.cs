@@ -24,8 +24,9 @@ public class MultiTrackSequenceProvider : ISampleProvider
         {
             if (kvp.Value.Length > 0)
             {
+                bool isBeep = kvp.Key.ToUpperInvariant() == "P";
                 Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Length} bytes.");
-                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate));
+                _trackProviders.Add(new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate, isBeep));
             }
         }
     }

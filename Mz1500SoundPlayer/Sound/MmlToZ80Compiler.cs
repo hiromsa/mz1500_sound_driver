@@ -10,7 +10,8 @@ public class MmlToZ80Compiler
 {
     // SN76489 の計算式: freq = 111860 / register
     // -> register = 111860 / freq (Hz)
-    private const double BaseClockFreq = 111860.0;
+    public const double BaseClockFreq = 111860.0;
+    public const double BeepClockFreq = 894886.0; // Intel 8253 Timer0 Base Clock
     
     // Command Types (VB版互換に近い形で定義)
     public const byte CMD_TONE = 0x01;
@@ -31,7 +32,7 @@ public class MmlToZ80Compiler
         public int LoopIndex { get; set; } = -1;
     }
 
-    public byte[] CompileTrack(List<NoteEvent> events, byte psgChannel = 0)
+    public byte[] CompileTrack(List<NoteEvent> events, byte psgChannel = 0, bool isBeep = false)
     {
         var output = new List<byte>();
         
@@ -117,19 +118,35 @@ public class MmlToZ80Compiler
                         var registers = new List<ushort>();
                         double baseFreq = ev.Frequency;
                         
+                        double baseClock = isBeep ? BeepClockFreq : BaseClockFreq;
                         foreach (var cent in pEnvData.Values)
                         {
                             double freqCent = baseFreq * Math.Pow(2.0, cent / 1200.0);
-                            while (freqCent > 0 && BaseClockFreq / freqCent > 1023) freqCent *= 2.0;
-                            double regCent = BaseClockFreq / freqCent;
-                            if (regCent > 1023) regCent = 1023;
-                            if (regCent < 0) regCent = 0;
-                            ushort regUshortCent = (ushort)regCent;
                             
-                            byte cmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshortCent & 0x0F));
-                            byte cmd2 = (byte)((regUshortCent >> 4) & 0x3F);
-                            
-                            registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                            if (isBeep)
+                            {
+                                double regCent = baseClock / freqCent;
+                                if (regCent > 65535) regCent = 65535;
+                                if (regCent < 1) regCent = 1;
+                                ushort regUshortCent = (ushort)regCent;
+                                
+                                byte cmd1 = (byte)(regUshortCent & 0xFF);
+                                byte cmd2 = (byte)((regUshortCent >> 8) & 0xFF);
+                                registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                            }
+                            else
+                            {
+                                while (freqCent > 0 && baseClock / freqCent > 1023) freqCent *= 2.0;
+                                double regCent = baseClock / freqCent;
+                                if (regCent > 1023) regCent = 1023;
+                                if (regCent < 0) regCent = 0;
+                                ushort regUshortCent = (ushort)regCent;
+                                
+                                byte cmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshortCent & 0x0F));
+                                byte cmd2 = (byte)((regUshortCent >> 4) & 0x3F);
+                                
+                                registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                            }
                         }
                         
                         hwId = HwPitchEnvelopes.Count;
@@ -158,23 +175,37 @@ public class MmlToZ80Compiler
 
                 // トーン出力 (Tone)
                 double freq = ev.Frequency;
-                // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
-                // 1023でクリップすると全部A2辺りに張り付いて音痴になるため、収まるまでオクターブを上げる
-                while (freq > 0 && BaseClockFreq / freq > 1023)
+                byte toneCmd1 = 0;
+                byte toneCmd2 = 0;
+
+                if (isBeep)
                 {
-                    freq *= 2.0;
+                    double regVal = BeepClockFreq / freq;
+                    if (regVal > 65535) regVal = 65535;
+                    if (regVal < 1) regVal = 1;
+                    ushort regUshort = (ushort)regVal;
+                    toneCmd1 = (byte)(regUshort & 0xFF);
+                    toneCmd2 = (byte)((regUshort >> 8) & 0xFF);
+                }
+                else
+                {
+                    // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
+                    // 1023でクリップすると全部A2辺りに張り付いて音痴になるため、収まるまでオクターブを上げる
+                    while (freq > 0 && BaseClockFreq / freq > 1023)
+                    {
+                        freq *= 2.0;
+                    }
+
+                    double regVal = BaseClockFreq / freq;
+                    if (regVal > 1023) regVal = 1023; // Safety (Should not hit normally)
+                    ushort regUshort = (ushort)regVal;
+
+                    // 周波数レジスタ: Base 10bit
+                    toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
+                    toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
                 }
 
-                double regVal = BaseClockFreq / freq;
-                if (regVal > 1023) regVal = 1023; // Safety (Should not hit normally)
-                ushort regUshort = (ushort)regVal;
-
                 output.Add(CMD_TONE);
-                
-                // 周波数レジスタ: Base 10bit
-                byte toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
-                byte toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
-
                 output.Add(toneCmd1);
                 output.Add(toneCmd2);
 

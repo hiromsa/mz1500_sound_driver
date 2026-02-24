@@ -38,14 +38,16 @@ public class MmlSequenceProvider : ISampleProvider
     private const double BaseClockFreq = 111860.0;
     private readonly double _samplesPerFrame;
     private double _samplesCurrentFrameCount = 0;
+    private readonly bool _isBeep;
 
-    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
+    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _bytecode = bytecode;
         _envelopes = envelopes ?? new Dictionary<int, EnvelopeData>();
         _hwPitchEnvelopes = hwPitchEnvelopes ?? new List<MmlToZ80Compiler.HwPitchEnvData>();
         _samplesPerFrame = WaveFormat.SampleRate / 60.0;
+        _isBeep = isBeep;
         
         Reset();
     }
@@ -89,7 +91,15 @@ public class MmlSequenceProvider : ISampleProvider
                     byte lenL = _bytecode[_pc++];
                     byte lenH = _bytecode[_pc++];
                     
-                    _hwFreqRaw = (ushort)((t1 & 0x0F) | ((t2 & 0x3F) << 4));
+                    if (_isBeep)
+                    {
+                        _hwFreqRaw = (ushort)(t1 | (t2 << 8));
+                    }
+                    else
+                    {
+                        _hwFreqRaw = (ushort)((t1 & 0x0F) | ((t2 & 0x3F) << 4));
+                    }
+                    
                     _waitFrames = lenL | (lenH << 8);
                     
                     // Reset envelope
@@ -101,8 +111,8 @@ public class MmlSequenceProvider : ISampleProvider
                     if (_hwFreqRaw > 0)
                     {
                         // SN76489 Formula: freq_hz = (MasterClock/32) / reg_value
-                        // Here BaseClockFreq is already MasterClock/32 (111860)
-                        double freqHz = BaseClockFreq / _hwFreqRaw;
+                        // Intel 8253 Formula: freq_hz = 894886 / reg_value
+                        double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
                         _phaseIncrement = freqHz / WaveFormat.SampleRate;
                     }
                     else
@@ -229,11 +239,19 @@ public class MmlSequenceProvider : ISampleProvider
                         byte cmd1 = (byte)(hwCmd & 0xFF);
                         byte cmd2 = (byte)(hwCmd >> 8);
                         
-                        ushort freqReg = (ushort)((cmd1 & 0x0F) | ((cmd2 & 0x3F) << 4));
+                        ushort freqReg = 0;
+                        if (_isBeep)
+                        {
+                            freqReg = (ushort)(cmd1 | (cmd2 << 8));
+                        }
+                        else
+                        {
+                            freqReg = (ushort)((cmd1 & 0x0F) | ((cmd2 & 0x3F) << 4));
+                        }
                         
                         if (freqReg > 0)
                         {
-                            double freqHz = BaseClockFreq / freqReg;
+                            double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
                             _phaseIncrement = freqHz / WaveFormat.SampleRate;
                         }
                         else

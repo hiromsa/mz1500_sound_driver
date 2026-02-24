@@ -361,14 +361,24 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
         asm.LD(asm.HLref, 0x01);
 
-        // Read Freq (L, H) -> Hardware (using port for SN76489)
+        // Read Freq (L, H) -> Hardware (using port for SN76489 or E004 for BEEP)
         asm.LD(asm.A, asm.DEref);
         asm.INC(asm.DE);
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.LD(asm.HL, (ushort)0xE004);
+            asm.LD(asm.HLref, asm.A);
+        } else {
+            asm.OUT(port);
+        }
 
         asm.LD(asm.A, asm.DEref);
         asm.INC(asm.DE);
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.LD(asm.HL, (ushort)0xE004);
+            asm.LD(asm.HLref, asm.A);
+        } else {
+            asm.OUT(port);
+        }
 
         // Fetch Duration (2 bytes) -> StatLengthRemain
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
@@ -395,9 +405,14 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, asm.D);
 
         // Apply Volume
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
-        asm.LD(asm.A, asm.HLref);
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.LD(asm.HL, (ushort)0xE008);
+            asm.LD(asm.HLref, 0x01); // BEEP ON
+        } else {
+            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.A, asm.HLref);
+            asm.OUT(port);
+        }
 
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
@@ -418,12 +433,17 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HLref, 0x00);
 
         // Send Volume=0 (0x0F) to mute
-        // Extract channel bits from existing StatHwVolume, append 0x0F to mute
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
-        asm.LD(asm.A, asm.HLref);
-        asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
-        asm.OR((byte)0x9F);  // Base Vol command + 15 (Mute): 1001 1111
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.LD(asm.HL, (ushort)0xE008);
+            asm.LD(asm.HLref, 0x00); // BEEP OFF
+        } else {
+            // Extract channel bits from existing StatHwVolume, append 0x0F to mute
+            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.A, asm.HLref);
+            asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
+            asm.OR((byte)0x9F);  // Base Vol command + 15 (Mute): 1001 1111
+            asm.OUT(port);
+        }
         // Note: we do not save this mute volume to StatHwVolume so it remembers original channel base
 
         // Save pos
@@ -441,8 +461,10 @@ public class MZ1500MusicAssembler
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
         asm.LD(asm.HLref, asm.A); // save
 
-        // SN76489に即時ボリューム/ミュートを反映
-        asm.OUT(port);
+        if (port != 0xE0) {
+            // SN76489に即時ボリューム/ミュートを反映
+            asm.OUT(port);
+        }
 
         // Save pos & Read Next
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
@@ -518,14 +540,30 @@ public class MZ1500MusicAssembler
 
         // Envelope Vol is in B (0-15) where 0=silent, 15=max in MML.
         // HW requires 15=silent, 0=max.
-        asm.LD(asm.A, (byte)15);
-        asm.SUB(asm.B); // A = 15 - B
-        asm.OR(asm.C);  // Combine with channel bits: 1001 c c X X
+        if (port == 0xE0) {
+            // Envelope applies to BEEP ON/OFF
+            asm.LD(asm.A, asm.B);
+            asm.CP(asm.Value(0)); // If 0 (silent)
+            asm.JP(asm.Z, asm.LabelRef(prefix + "_env_vol_mute"));
+            asm.LD(asm.A, (byte)1);
+            asm.JP(asm.LabelRef(prefix + "_env_vol_apply"));
+            
+            asm.Label(prefix + "_env_vol_mute");
+            asm.LD(asm.A, (byte)0);
+            
+            asm.Label(prefix + "_env_vol_apply");
+            asm.LD(asm.HL, (ushort)0xE008);
+            asm.LD(asm.HLref, asm.A);
+        } else {
+            asm.LD(asm.A, (byte)15);
+            asm.SUB(asm.B); // A = 15 - B
+            asm.OR(asm.C);  // Combine with channel bits: 1001 c c X X
 
-        // Save back for consistency and OUT
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
-        asm.LD(asm.HLref, asm.A);
-        asm.OUT(port);
+            // Save back for consistency and OUT
+            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HLref, asm.A);
+            asm.OUT(port);
+        }
 
         // Increment Offset
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
@@ -567,14 +605,26 @@ public class MZ1500MusicAssembler
         asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_end"));
 
         // Output Byte 1
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.PUSH(asm.HL); // Save HL (pointer to PEnvData)
+            asm.LD(asm.HL, (ushort)0xE004);
+            asm.LD(asm.HLref, asm.A);
+            asm.POP(asm.HL);  // Restore HL
+        } else {
+            asm.OUT(port);
+        }
         
         // Read Byte 2 (High byte = cmd2)
         asm.INC(asm.HL);
         asm.LD(asm.A, asm.HLref);
         
         // Output Byte 2
-        asm.OUT(port);
+        if (port == 0xE0) {
+            asm.LD(asm.HL, (ushort)0xE004);
+            asm.LD(asm.HLref, asm.A);
+        } else {
+            asm.OUT(port);
+        }
 
         // Increment Offset
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
