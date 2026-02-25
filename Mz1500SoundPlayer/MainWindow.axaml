@@ -4,13 +4,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Mz1500SoundPlayer.MainWindow"
+        xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         Title="Mz1500SoundPlayer">
-  <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Spacing="10" Margin="20">
-    <TextBlock Text="MZ-1500 Sound Player MML Preview" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-    <TextBlock Text="MMLを入力してPlayボタンを押してください:" Margin="0,10,0,0"/>
-    <TextBox Name="MmlInput" Height="300" HorizontalAlignment="Stretch" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas"
+  <!-- Use a Grid to allow the TextEditor to fill remaining vertical space -->
+  <Grid Margin="20" RowDefinitions="Auto, Auto, *, Auto, Auto, Auto">
+    <TextBlock Grid.Row="0" Text="MZ-1500 Sound Player MML Preview" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+    <TextBlock Grid.Row="1" Text="MMLを入力してPlayボタンを押してください:" Margin="0,0,0,5"/>
+    
+    <AvaloniaEdit:TextEditor Grid.Row="2" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Margin="0,0,0,10"
              Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r"/>
-    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,0,0,10">
         <TextBlock Text="Ch Mask:" VerticalAlignment="Center" FontWeight="Bold"/>
         <CheckBox Name="ChkAll" Content="ALL" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed"/>
         <CheckBox Name="ChkA" Content="A" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed"/>
@@ -23,16 +26,18 @@
         <CheckBox Name="ChkH" Content="H" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed"/>
         <CheckBox Name="ChkP" Content="P (BEEP)" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed"/>
     </StackPanel>
-    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Text="Master Vol:" VerticalAlignment="Center"/>
         <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="100" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
         <Button Name="LoadMidiButton" Content="Load MIDI" Click="LoadMidiButton_Click"/>
+        <Button Name="LoadMmlButton" Content="Load MML" Click="LoadMmlButton_Click"/>
+        <Button Name="SaveMmlButton" Content="Save MML" Click="SaveMmlButton_Click"/>
         <Button Name="PlayMmlButton" Content="Play (Ctrl+Enter)" Click="PlayMmlButton_Click"/>
         <Button Name="StopButton" Content="Stop" Click="StopButton_Click"/>
         <Button Name="ExportQdcButton" Content="Export QDC" Click="ExportQdcButton_Click"/>
         <Button Name="ClearButton" Content="Clear Text" Click="ClearButton_Click"/>
         <Button Name="PlayDemoButton" Content="Demo" Click="PlayDemoButton_Click"/>
     </StackPanel>
-    <TextBlock Name="LogOutput" Foreground="Blue" TextWrapping="Wrap" HorizontalAlignment="Stretch" Margin="0,10,0,0"/>
-  </StackPanel>
+    <TextBlock Grid.Row="5" Name="LogOutput" Foreground="Blue" TextWrapping="Wrap" HorizontalAlignment="Stretch" Margin="0,10,0,0"/>
+  </Grid>
 </Window>

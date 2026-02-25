@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<SyntaxDefinition name="MML" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+    <Color name="Comment" foreground="Green" />
+    <Color name="Track" foreground="Cyan" fontWeight="bold" />
+    <Color name="Macro" foreground="Orange" />
+    <Color name="Note" foreground="LightGreen" />
+    <Color name="Parameter" foreground="Magenta" />
+    <Color name="Looping" foreground="Red" fontWeight="bold" />
+    <Color name="Number" foreground="Yellow" />
+
+    <RuleSet>
+        <Span color="Comment" begin=";" />
+        <Span color="Comment" begin="/" />
+
+        <!-- Macro definitions and calls -->
+        <Rule color="Macro">
+            @v\d*|@p\d*|@EP\d*|EP\d*|@t|@q|@in\d*|@wn\d*
+        </Rule>
+
+        <!-- Main track letters -->
+        <Rule color="Track">
+            ^[A-Ha-hP\s]+
+        </Rule>
+
+        <!-- Musical notes (c d e f g a b r and + - #) -->
+        <Rule color="Note">
+            [a-gA-GrR][+\-#]*
+        </Rule>
+
+        <!-- Command letters like o, l, q, v, t, D followed by numbers -->
+        <Rule color="Parameter">
+            [olqvtwD][\s]*[0-9]*
+        </Rule>
+
+        <!-- Loop and structural characters -->
+        <Rule color="Looping">
+            \[|\]|\||L
+        </Rule>
+        
+        <!-- Numbers for anything else -->
+        <Rule color="Number">
+            \b\d+\b
+        </Rule>
+    </RuleSet>
+</SyntaxDefinition>

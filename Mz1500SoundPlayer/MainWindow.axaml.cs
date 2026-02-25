@@ -1,9 +1,14 @@
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Mz1500SoundPlayer.Sound;
 using System.Threading.Tasks;
+using AvaloniaEdit.Highlighting;
+using AvaloniaEdit.Highlighting.Xshd;
+using System.Xml;
+using System.Reflection;
 
 namespace Mz1500SoundPlayer;
 
@@ -21,6 +26,19 @@ public partial class MainWindow : Window
 
         // テキストエリア等でイベントが消費される前にCaptureするため、Tunnel戦略でWindow全体にフックする
         this.AddHandler(InputElement.KeyDownEvent, Window_KeyDown, RoutingStrategies.Tunnel);
+
+        // Load custom MML syntax highlighting
+        var assembly = Assembly.GetExecutingAssembly();
+        using (var stream = assembly.GetManifestResourceStream("Mz1500SoundPlayer.MmlSyntax.xshd"))
+        {
+            if (stream != null)
+            {
+                using (var reader = new XmlTextReader(stream))
+                {
+                    MmlInput.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+                }
+            }
+        }
     }
 
     private async void PlayDemoButton_Click(object? sender, RoutedEventArgs e)
@@ -63,6 +81,88 @@ public partial class MainWindow : Window
             catch (System.Exception ex)
             {
                 LogOutput.Text = $"MIDI Load Error: {ex.Message}";
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
+        }
+    }
+
+    private async void LoadMmlButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            btn.IsEnabled = false;
+            try
+            {
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel != null)
+                {
+                    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                    {
+                        Title = "Open MML File",
+                        AllowMultiple = false,
+                        FileTypeFilter = new[] 
+                        { 
+                            new FilePickerFileType("MML Files") { Patterns = new[] { "*.mml" } },
+                            new FilePickerFileType("Text Files") { Patterns = new[] { "*.txt" } },
+                            new FilePickerFileType("All Files") { Patterns = new[] { "*.*" } }
+                        }
+                    });
+
+                    if (files.Count >= 1)
+                    {
+                        string filePath = files[0].Path.LocalPath;
+                        string mml = await File.ReadAllTextAsync(filePath);
+                        MmlInput.Text = mml;
+                        LogOutput.Text = $"Loaded MML: {files[0].Name}";
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogOutput.Text = $"MML Load Error: {ex.Message}";
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
+        }
+    }
+
+    private async void SaveMmlButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            btn.IsEnabled = false;
+            try
+            {
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel != null)
+                {
+                    var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                    {
+                        Title = "Save MML File",
+                        DefaultExtension = ".mml",
+                        FileTypeChoices = new[] 
+                        { 
+                            new FilePickerFileType("MML Files") { Patterns = new[] { "*.mml" } },
+                            new FilePickerFileType("Text Files") { Patterns = new[] { "*.txt" } }
+                        }
+                    });
+
+                    if (file != null)
+                    {
+                        string filePath = file.Path.LocalPath;
+                        await File.WriteAllTextAsync(filePath, MmlInput.Text ?? "");
+                        LogOutput.Text = $"Saved MML to: {file.Name}";
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogOutput.Text = $"MML Save Error: {ex.Message}";
             }
             finally
             {
