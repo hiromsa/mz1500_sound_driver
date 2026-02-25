@@ -12,9 +12,10 @@ public class TrackEventExpander
         _sampleRate = sampleRate;
     }
 
-    public List<NoteEvent> Expand(TrackData track)
+    public List<NoteEvent> Expand(TrackData track, int selectionStart = -1, int selectionLength = -1)
     {
         var events = new List<NoteEvent>();
+        int selectionEnd = selectionStart >= 0 ? selectionStart + selectionLength : -1;
         
         int currentTempo = 120; // 4分音符=120
         int defaultLength = 4;
@@ -65,6 +66,15 @@ public class TrackEventExpander
             else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
             else if (cmd is TieCommand tieCmd)
             {
+                if (selectionStart >= 0)
+                {
+                    bool isAfterSelection = cmd.TextStartIndex >= selectionEnd;
+                    bool isBeforeSelection = (cmd.TextStartIndex + cmd.TextLength) <= selectionStart;
+                    
+                    if (isAfterSelection) break;
+                    if (isBeforeSelection) continue;
+                }
+
                 if (events.Count > 0)
                 {
                     // 直前の音符の長さを延長する
@@ -91,6 +101,15 @@ public class TrackEventExpander
             }
             else if (cmd is NoteCommand nc)
             {
+                if (selectionStart >= 0)
+                {
+                    bool isAfterSelection = cmd.TextStartIndex >= selectionEnd;
+                    bool isBeforeSelection = (cmd.TextStartIndex + cmd.TextLength) <= selectionStart;
+                    
+                    if (isAfterSelection) break;
+                    if (isBeforeSelection) continue;
+                }
+
                 int len = nc.Length == 0 ? defaultLength : nc.Length;
                 
                 // 長さを ms で計算 ( tempo = 四分音符/min )

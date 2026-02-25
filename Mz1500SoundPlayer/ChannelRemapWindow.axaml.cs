@@ -11,25 +11,37 @@ public partial class ChannelRemapWindow : Window
     // Key: Original Channel (A-H, P)
     // Value: Target Channel (A-H, P)
     public Dictionary<string, string> ChannelMap { get; private set; }
+    private HashSet<string> _usedChannels;
 
-    public ChannelRemapWindow()
+    public ChannelRemapWindow() : this(new HashSet<string>())
+    {
+    }
+
+    public ChannelRemapWindow(HashSet<string> usedChannels)
     {
         InitializeComponent();
         ChannelMap = new Dictionary<string, string>();
+        _usedChannels = usedChannels ?? new HashSet<string>();
         
-        // Initialize the ComboBoxes with options
         string[] channels = { "A", "B", "C", "D", "E", "F", "G", "H", "P" };
-        
         ComboBox[] combos = { CmbA, CmbB, CmbC, CmbD, CmbE, CmbF, CmbG, CmbH, CmbP };
         
         for (int i = 0; i < combos.Length; i++)
         {
             var combo = combos[i];
+            string chName = channels[i];
+
             foreach (var ch in channels)
             {
                 combo.Items.Add(ch);
             }
             combo.SelectedIndex = i; // Default to self
+
+            if (!_usedChannels.Contains(chName))
+            {
+                combo.IsEnabled = false;
+                combo.Opacity = 0.5;
+            }
         }
     }
 
@@ -49,10 +61,13 @@ public partial class ChannelRemapWindow : Window
             string target = combos[i].SelectedItem as string ?? original;
             ChannelMap[original] = target;
 
-            // Check for duplicates
-            if (!targetSet.Add(target))
+            // Only consider duplicates for channels that actually have data
+            if (_usedChannels.Contains(original))
             {
-                duplicates.Add(target);
+                if (!targetSet.Add(target))
+                {
+                    duplicates.Add(target);
+                }
             }
         }
 

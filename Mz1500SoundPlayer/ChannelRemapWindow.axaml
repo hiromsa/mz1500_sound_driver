@@ -10,7 +10,7 @@
     <TextBlock Text="※変更後もエディタ上でCtrl+Z (Undo) が可能です。" Foreground="Gray" FontSize="12" HorizontalAlignment="Center" Margin="0,-5,0,5"/>
 
     <!-- Grid for mapping rows -->
-    <Grid ColumnDefinitions="Auto, Auto, *" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
+    <Grid ColumnDefinitions="Auto, Auto, *" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
       <!-- Headers -->
       <TextBlock Grid.Row="0" Grid.Column="0" Text="Current" FontWeight="Bold" Margin="0,0,10,5" HorizontalAlignment="Center"/>
       <TextBlock Grid.Row="0" Grid.Column="2" Text="New Channel" FontWeight="Bold" Margin="10,0,0,5" HorizontalAlignment="Center"/>

@@ -12,59 +12,59 @@ public class MultiTrackMmlParser
     {
         var result = new MmlData();
         var tracks = result.Tracks;
-        
-        // ; または / 以降の行末までをコメントとして削除
-        var lines = mmlText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                           .Select(line => Regex.Replace(line, @"[;/].*$", ""))
-                           .Where(line => !string.IsNullOrWhiteSpace(line))
-                           .ToList();
 
-        string currentTrackNames = "A"; // デフォルトの操作対象トラック
+        int absoluteIndex = 0;
+        string currentTrackNames = "A";
 
-        foreach (var originalLine in lines)
+        while (absoluteIndex < mmlText.Length)
         {
-            var line = originalLine.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
+            int nextNewline = mmlText.IndexOf('\n', absoluteIndex);
+            if (nextNewline == -1) nextNewline = mmlText.Length;
 
-            // ボリュームエンベロープマクロの定義のパース (例: @v0 = {15,14,13} or @v0 = {15, 14, |, 13})
-            var envMatch = Regex.Match(line, @"^@v(\d+)\s*=\s*\{(.*?)\}");
+            int lineLength = nextNewline - absoluteIndex;
+            string rawLine = mmlText.Substring(absoluteIndex, lineLength);
+            int lineStartIndex = absoluteIndex;
+            
+            absoluteIndex = nextNewline + 1; // Advance loop to next line
+
+            int commentIdx = rawLine.IndexOfAny(new[] { ';', '/' });
+            string logicalLine = commentIdx >= 0 ? rawLine.Substring(0, commentIdx) : rawLine;
+            
+            if (string.IsNullOrWhiteSpace(logicalLine)) continue;
+
+            string trimmed = logicalLine.Trim();
+
+            // Check Envelope Definitions
+            var envMatch = Regex.Match(trimmed, @"^@v(\d+)\s*=\s*\{(.*?)\}");
             if (envMatch.Success)
             {
                 int envId = int.Parse(envMatch.Groups[1].Value);
-                var envData = ParseEnvelopeData(envMatch.Groups[2].Value);
-                result.VolumeEnvelopes[envId] = envData;
+                result.VolumeEnvelopes[envId] = ParseEnvelopeData(envMatch.Groups[2].Value);
                 continue;
             }
 
-            // ピッチエンベロープマクロの定義のパース (例: @EP1 = {0, 10, 20} または @p1 = {0, 10, 20})
-            var pEnvMatch = Regex.Match(line, @"^(?:@EP|@ep|EP|ep|@p)(\d+)\s*=\s*\{(.*?)\}");
+            var pEnvMatch = Regex.Match(trimmed, @"^(?:@EP|@ep|EP|ep|@p)(\d+)\s*=\s*\{(.*?)\}");
             if (pEnvMatch.Success)
             {
                 int envId = int.Parse(pEnvMatch.Groups[1].Value);
-                // Pitch envelopes can have negative values, so Regex must include '-' sign
-                var envData = ParseEnvelopeData(pEnvMatch.Groups[2].Value, allowNegative: true);
-                result.PitchEnvelopes[envId] = envData;
+                result.PitchEnvelopes[envId] = ParseEnvelopeData(pEnvMatch.Groups[2].Value, allowNegative: true);
                 continue;
             }
 
-            // 行頭がアルファベットの連続で始まり、その後に空白が続く場合はトラックヘッダとみなす (ex: "ABC @t1,86")
-            var match = Regex.Match(line, @"^([A-Za-z]+)\s+(.*)");
-            string mmlData = line;
+            // Check Track Definition (e.g. "ABC o4cde")
+            var trackMatch = Regex.Match(logicalLine, @"^\s*([A-Za-z]+)\s+(.*)");
+            string mmlData = logicalLine;
+            int dataOffsetInLine = 0;
 
-            if (match.Success)
+            if (trackMatch.Success)
             {
-                currentTrackNames = match.Groups[1].Value.ToUpperInvariant();
-                mmlData = match.Groups[2].Value;
+                currentTrackNames = trackMatch.Groups[1].Value.ToUpperInvariant();
+                mmlData = trackMatch.Groups[2].Value;
+                dataOffsetInLine = trackMatch.Groups[2].Index;
             }
 
-            // スペースはパースの邪魔なので消すが、すでにトークン化する際に見るなら残してもよい
-            // ここでは1文字ずつ舐める単純な字句解析を行う
-            mmlData = mmlData.Replace(" ", "").Replace("\t", "");
-            mmlData = mmlData.Replace("ll", "l").Replace("LL", "l").Replace("Ll", "l").Replace("lL", "l"); // LLのTypoをLとして扱う対応
-            
-            var commandsLine = ParseLine(mmlData);
+            var commandsLine = ParseLine(mmlData, lineStartIndex + dataOffsetInLine);
 
-            // 宣言された全トラックへ追記する
             foreach (char tName in currentTrackNames)
             {
                 string tKey = tName.ToString();
@@ -72,6 +72,10 @@ public class MultiTrackMmlParser
                 {
                     tracks[tKey] = new TrackData { Name = tKey };
                 }
+                
+                // Since MmlCommands are read-only state changes (or Note commands),
+                // appending the same instance multiple times is fine.
+                // If they mutate per track later, they should be cloned.
                 tracks[tKey].Commands.AddRange(commandsLine);
             }
         }
@@ -81,7 +85,6 @@ public class MultiTrackMmlParser
 
     private EnvelopeData ParseEnvelopeData(string innerText, bool allowNegative = false)
     {
-        // '-' を許容するかどうかで正規表現を切り替える
         string pattern = allowNegative ? @"-?\d+|\|" : @"\d+|\|";
         var matches = Regex.Matches(innerText, pattern);
         
@@ -90,16 +93,11 @@ public class MultiTrackMmlParser
         {
             string v = m.Value;
             if (v == "|")
-            {
                 envData.LoopIndex = envData.Values.Count;
-            }
             else if (int.TryParse(v, out int val))
-            {
                 envData.Values.Add(val);
-            }
         }
         
-        // If loop index is not specified, default to the last valid value.
         if (envData.LoopIndex < 0 && envData.Values.Count > 0)
         {
             envData.LoopIndex = envData.Values.Count - 1;
@@ -107,128 +105,138 @@ public class MultiTrackMmlParser
         return envData;
     }
 
-    private List<MmlCommand> ParseLine(string data)
+    private List<MmlCommand> ParseLine(string data, int absoluteDataOffset)
     {
         var cmds = new List<MmlCommand>();
         int i = 0;
         
         while (i < data.Length)
         {
-            char originalC = data[i++];
-            if (originalC == 'D')
+            if (char.IsWhiteSpace(data[i]))
             {
-                cmds.Add(new DetuneCommand { Detune = ReadSignedInt(data, ref i, 0) });
+                i++;
                 continue;
             }
 
-            char c = char.ToLowerInvariant(originalC);
-            switch (c)
+            int cmdStartIdx = i;
+            char originalC = data[i++];
+            
+            if ((originalC == 'l' || originalC == 'L') && i < data.Length && (data[i] == 'l' || data[i] == 'L'))
             {
-                case '@':
-                    ParseAtCommand(data, ref i, cmds);
-                    break;
-                case 'e':
-                    if (i < data.Length && data[i] == 'p')
-                    {
-                        i++;
-                        cmds.Add(new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
-                    }
-                    else
-                    {
-                        ParseNoteOrRest(c, data, ref i, cmds);
-                    }
-                    break;
-                case 't':
-                    cmds.Add(new TempoCommand { Tempo = ReadInt(data, ref i, 120) });
-                    break;
-                case 'o':
-                    cmds.Add(new OctaveCommand { Octave = ReadInt(data, ref i, 4) });
-                    break;
-                case '>': cmds.Add(new RelativeOctaveCommand { Offset = 1 }); break;
-                case '<': cmds.Add(new RelativeOctaveCommand { Offset = -1 }); break;
-                case 'l':
-                case 'L':
-                    if (i < data.Length && char.IsDigit(data[i]))
-                    {
-                        cmds.Add(new DefaultLengthCommand { Length = ReadInt(data, ref i, 4) });
-                    }
-                    else
-                    {
-                        cmds.Add(new InfiniteLoopPointCommand());
-                    }
-                    break;
-                case 'v':
-                    cmds.Add(new VolumeCommand { Volume = ReadInt(data, ref i, 15) });
-                    break;
-                case 'q':
-                    cmds.Add(new QuantizeCommand { Quantize = ReadInt(data, ref i, 8) });
-                    break;
-                case '[':
-                    cmds.Add(new LoopBeginCommand());
-                    break;
-                case ']':
-                    cmds.Add(new LoopEndCommand { Count = ReadInt(data, ref i, 2) });
-                    break;
-                case '^':
-                    ParseTie(data, ref i, cmds);
-                    break;
-                case 'a': case 'b': case 'c': case 'd': case 'f': case 'g':
-                case 'r':
-                    ParseNoteOrRest(c, data, ref i, cmds);
-                    break;
+                i++; // Handle typo LL -> L
+            }
+
+            MmlCommand createdCmd = null;
+
+            if (originalC == 'D')
+            {
+                createdCmd = new DetuneCommand { Detune = ReadSignedInt(data, ref i, 0) };
+            }
+            else
+            {
+                char c = char.ToLowerInvariant(originalC);
+                switch (c)
+                {
+                    case '@':
+                        createdCmd = ParseAtCommand(data, ref i);
+                        break;
+                    case 'e':
+                        if (i < data.Length && data[i] == 'p')
+                        {
+                            i++;
+                            createdCmd = new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+                        }
+                        else
+                        {
+                            createdCmd = ParseNoteOrRest(c, data, ref i);
+                        }
+                        break;
+                    case 't':
+                        createdCmd = new TempoCommand { Tempo = ReadInt(data, ref i, 120) };
+                        break;
+                    case 'o':
+                        createdCmd = new OctaveCommand { Octave = ReadInt(data, ref i, 4) };
+                        break;
+                    case '>': createdCmd = new RelativeOctaveCommand { Offset = 1 }; break;
+                    case '<': createdCmd = new RelativeOctaveCommand { Offset = -1 }; break;
+                    case 'l':
+                    case 'L': 
+                        if (i < data.Length && char.IsDigit(data[i]))
+                            createdCmd = new DefaultLengthCommand { Length = ReadInt(data, ref i, 4) };
+                        else
+                            createdCmd = new InfiniteLoopPointCommand();
+                        break;
+                    case 'v':
+                        createdCmd = new VolumeCommand { Volume = ReadInt(data, ref i, 15) };
+                        break;
+                    case 'q':
+                        createdCmd = new QuantizeCommand { Quantize = ReadInt(data, ref i, 8) };
+                        break;
+                    case '[':
+                        createdCmd = new LoopBeginCommand(); break;
+                    case ']':
+                        createdCmd = new LoopEndCommand { Count = ReadInt(data, ref i, 2) }; break;
+                    case '^':
+                        createdCmd = ParseTie(data, ref i); break;
+                    case 'a': case 'b': case 'c': case 'd': case 'f': case 'g': case 'r':
+                        createdCmd = ParseNoteOrRest(c, data, ref i); break;
+                }
+            }
+
+            if (createdCmd != null)
+            {
+                createdCmd.TextStartIndex = absoluteDataOffset + cmdStartIdx;
+                createdCmd.TextLength = i - cmdStartIdx;
+                cmds.Add(createdCmd);
             }
         }
         return cmds;
     }
 
-    private void ParseAtCommand(string data, ref int i, List<MmlCommand> cmds)
+    private MmlCommand ParseAtCommand(string data, ref int i)
     {
-        if (i >= data.Length) return;
+        if (i >= data.Length) return null;
         char c = data[i++];
         
         switch (c)
         {
-            case 't': // @t<len>,<num> : 指定音符が<num>フレームになるテンポ
+            case 't': 
                 int len = ReadInt(data, ref i, 4);
                 if (i < data.Length && data[i] == ',') i++;
                 int frames = ReadInt(data, ref i, 30);
-                cmds.Add(new FrameTempoCommand { Length = len, FrameCount = frames });
-                break;
-            case 'v': // @v<num> : ソフトウェアエンベロープ(現状はVolume扱いか無視)
-                cmds.Add(new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
-                break;
-            case 'p': // @p<num> : ピッチエンベロープ(EPと同等)
-                cmds.Add(new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) });
-                break;
-            case 'q': // @q<num> : フレーム単位のクオンタイズ
-                cmds.Add(new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) });
-                break;
-            case 'w': // @wn<num> : ノイズジェネレータ波形設定
+                return new FrameTempoCommand { Length = len, FrameCount = frames };
+            case 'v': 
+                return new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+            case 'p': 
+                return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+            case 'q': 
+                return new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) };
+            case 'w': 
                 if (i < data.Length && data[i] == 'n')
                 {
                     i++;
-                    cmds.Add(new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1) });
+                    return new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1) };
                 }
                 break;
-            case 'i': // @in<num> : ノイズジェネレータ連携設定(0=Off, 1=Periodic, 2=White)
+            case 'i': 
                 if (i < data.Length && data[i] == 'n')
                 {
                     i++;
-                    cmds.Add(new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0) });
+                    return new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0) };
                 }
                 break;
             default:
                 if (char.IsDigit(c))
                 {
-                    // @1 などの音色指定。iを戻して数値を読む
                     i--;
-                    cmds.Add(new VoiceCommand { VoiceId = ReadInt(data, ref i, 0) });
+                    return new VoiceCommand { VoiceId = ReadInt(data, ref i, 0) };
                 }
                 break;
         }
+        return null;
     }
 
-    private void ParseNoteOrRest(char noteChar, string data, ref int i, List<MmlCommand> cmds)
+    private MmlCommand ParseNoteOrRest(char noteChar, string data, ref int i)
     {
         int offset = 0;
         if (i < data.Length && (data[i] == '+' || data[i] == '#'))
@@ -240,7 +248,7 @@ public class MultiTrackMmlParser
             offset = -1; i++;
         }
 
-        int length = 0; // 0 == use default length
+        int length = 0; 
         if (i < data.Length && char.IsDigit(data[i]))
         {
             length = ReadInt(data, ref i, 0);
@@ -252,18 +260,12 @@ public class MultiTrackMmlParser
             dots++; i++;
         }
 
-        cmds.Add(new NoteCommand 
-        { 
-            Note = noteChar, 
-            SemiToneOffset = offset, 
-            Length = length, 
-            Dots = dots 
-        });
+        return new NoteCommand { Note = noteChar, SemiToneOffset = offset, Length = length, Dots = dots };
     }
 
-    private void ParseTie(string data, ref int i, List<MmlCommand> cmds)
+    private MmlCommand ParseTie(string data, ref int i)
     {
-        int length = 0; // 0 == use default length
+        int length = 0;
         if (i < data.Length && char.IsDigit(data[i]))
         {
             length = ReadInt(data, ref i, 0);
@@ -275,7 +277,7 @@ public class MultiTrackMmlParser
             dots++; i++;
         }
 
-        cmds.Add(new TieCommand { Length = length, Dots = dots });
+        return new TieCommand { Length = length, Dots = dots };
     }
 
     private int ReadInt(string str, ref int i, int defaultValue)

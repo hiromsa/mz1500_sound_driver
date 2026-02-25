@@ -175,7 +175,32 @@ public partial class MainWindow : Window
 
     private async void RemapButton_Click(object? sender, RoutedEventArgs e)
     {
-        var remapWindow = new ChannelRemapWindow();
+        string text = MmlInput.Text ?? "";
+        
+        // Find which channels actually have data
+        var usedChannels = new HashSet<string>();
+        var linesForScan = text.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None);
+        foreach (var line in linesForScan)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith(";") || line.TrimStart().StartsWith("/"))
+                continue;
+
+            for(int c=0; c<line.Length; c++)
+            {
+                char ch = line[c];
+                if (char.IsWhiteSpace(ch)) continue;
+                if ((ch >= 'A' && ch <= 'H') || ch == 'P' || (ch >= 'a' && ch <= 'h'))
+                {
+                    usedChannels.Add(char.ToUpper(ch).ToString());
+                }
+                else 
+                {
+                    break; // End of track header
+                }
+            }
+        }
+
+        var remapWindow = new ChannelRemapWindow(usedChannels);
         
         // Show dialog and wait for the returned Dictionary map
         var result = await remapWindow.ShowDialog<Dictionary<string, string>>(this);
@@ -184,7 +209,6 @@ public partial class MainWindow : Window
         {
             try
             {
-                string text = MmlInput.Text ?? "";
                 
                 // Step 1: Replace original target channel specifiers (A-H, P) with temporary tags
                 // We use Regex to match ONLY track definitions at the start of a line or block
@@ -295,7 +319,10 @@ public partial class MainWindow : Window
             try
             {
                 string mml = MmlInput.Text ?? "";
-                string log = await _player.PlayMmlAsync(mml);
+                int selStart = MmlInput.SelectionLength > 0 ? MmlInput.SelectionStart : -1;
+                int selLen = MmlInput.SelectionLength > 0 ? MmlInput.SelectionLength : -1;
+                
+                string log = await _player.PlayMmlAsync(mml, selStart, selLen);
                 LogOutput.Text = log;
             }
             catch (System.Exception ex)

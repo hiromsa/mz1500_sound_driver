@@ -61,7 +61,7 @@ public class MmlPlayerModel
         await PlayBytecodeDictAsync(dict, null!, null!);
     }
 
-    public async Task<string> PlayMmlAsync(string mmlString)
+    public async Task<string> PlayMmlAsync(string mmlString, int selectionStart = -1, int selectionLength = -1)
     {
         var parser = new MultiTrackMmlParser();
         var mmlData = parser.Parse(mmlString);
@@ -81,7 +81,7 @@ public class MmlPlayerModel
 
         foreach (var kvp in tracks)
         {
-            var events = expander.Expand(kvp.Value);
+            var events = expander.Expand(kvp.Value, selectionStart, selectionLength);
             if (System.Linq.Enumerable.Any(events, e => e.IsLoopPoint)) hasInfiniteLoop = true;
             
             byte psgChannel = 0;

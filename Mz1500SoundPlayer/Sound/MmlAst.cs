@@ -22,7 +22,11 @@ public class MmlData
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
 }
 
-public abstract class MmlCommand { }
+public abstract class MmlCommand 
+{ 
+    public int TextStartIndex { get; set; } = -1;
+    public int TextLength { get; set; } = 0;
+}
 
 // 休符・音符など時間経過を伴うイベント
 public class NoteCommand : MmlCommand
