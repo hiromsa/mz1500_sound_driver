@@ -165,12 +165,12 @@ public class MultiTrackMmlParser
                         createdCmd = ParseAtCommand(data, ref i);
                         break;
                     case 'e':
-                        if (i < data.Length && data[i] == 'p')
+                        if (i < data.Length && char.ToLowerInvariant(data[i]) == 'p')
                         {
                             i++;
                             createdCmd = new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
                         }
-                        else
+                        else if (originalC == 'e')
                         {
                             createdCmd = ParseNoteOrRest(c, data, ref i);
                         }
@@ -203,7 +203,11 @@ public class MultiTrackMmlParser
                     case '^':
                         createdCmd = ParseTie(data, ref i); break;
                     case 'a': case 'b': case 'c': case 'd': case 'f': case 'g': case 'r':
-                        createdCmd = ParseNoteOrRest(c, data, ref i); break;
+                        if (originalC == c)
+                        {
+                            createdCmd = ParseNoteOrRest(c, data, ref i);
+                        }
+                        break;
                 }
             }
 
@@ -220,7 +224,7 @@ public class MultiTrackMmlParser
     private MmlCommand ParseAtCommand(string data, ref int i)
     {
         if (i >= data.Length) return null;
-        char c = data[i++];
+        char c = char.ToLowerInvariant(data[i++]);
         
         switch (c)
         {
@@ -233,17 +237,24 @@ public class MultiTrackMmlParser
                 return new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
             case 'p': 
                 return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+            case 'e':
+                if (i < data.Length && char.ToLowerInvariant(data[i]) == 'p')
+                {
+                    i++;
+                    return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+                }
+                break;
             case 'q': 
                 return new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) };
             case 'w': 
-                if (i < data.Length && data[i] == 'n')
+                if (i < data.Length && char.ToLowerInvariant(data[i]) == 'n')
                 {
                     i++;
                     return new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1) };
                 }
                 break;
             case 'i': 
-                if (i < data.Length && data[i] == 'n')
+                if (i < data.Length && char.ToLowerInvariant(data[i]) == 'n')
                 {
                     i++;
                     return new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0) };
