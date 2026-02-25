@@ -43,7 +43,7 @@ public class MultiTrackMmlParser
                 continue;
             }
 
-            var pEnvMatch = Regex.Match(trimmed, @"^(?:@EP|@ep|EP|ep|@p)(\d+)\s*=\s*\{(.*?)\}");
+            var pEnvMatch = Regex.Match(trimmed, @"^(?:@EP|@ep|@p)(\d+)\s*=\s*\{(.*?)\}");
             if (pEnvMatch.Success)
             {
                 int envId = int.Parse(pEnvMatch.Groups[1].Value);
