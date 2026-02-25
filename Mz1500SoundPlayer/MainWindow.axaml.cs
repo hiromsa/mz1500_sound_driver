@@ -11,17 +11,32 @@ using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
 using System.Xml;
 using System.Reflection;
+using Avalonia.Threading;
+using System.Linq;
 
 namespace Mz1500SoundPlayer;
 
 public partial class MainWindow : Window
 {
     private readonly MmlPlayerModel _player;
+    private readonly PlaybackHighlightRenderer _highlightRenderer;
+    private readonly DispatcherTimer _playbackTimer;
 
     public MainWindow()
     {
         InitializeComponent();
         _player = new MmlPlayerModel();
+        
+        // Setup Highlight Renderer
+        _highlightRenderer = new PlaybackHighlightRenderer();
+        MmlInput.TextArea.TextView.BackgroundRenderers.Add(_highlightRenderer);
+
+        // Setup Playback Timer for UI updates (~30fps)
+        _playbackTimer = new DispatcherTimer
+        {
+            Interval = System.TimeSpan.FromMilliseconds(33)
+        };
+        _playbackTimer.Tick += PlaybackTimer_Tick;
         
         // アプリ終了時に確実に音を止めるための処理
         this.Closed += (s, e) => _player.Stop();
@@ -322,6 +337,7 @@ public partial class MainWindow : Window
                 int selStart = MmlInput.SelectionLength > 0 ? MmlInput.SelectionStart : -1;
                 int selLen = MmlInput.SelectionLength > 0 ? MmlInput.SelectionLength : -1;
                 
+                _playbackTimer.Start();
                 string log = await _player.PlayMmlAsync(mml, selStart, selLen);
                 LogOutput.Text = log;
             }
@@ -331,14 +347,78 @@ public partial class MainWindow : Window
             }
             finally
             {
+                _playbackTimer.Stop();
+                ClearHighlight();
                 btn.IsEnabled = true;
             }
+        }
+    }
+
+    private void PlaybackTimer_Tick(object? sender, System.EventArgs e)
+    {
+        double currentMs = _player.CurrentPlaybackTimeMs;
+        
+        // Find the active text highlight events
+        var activeEvents = _player.HighlightTimeline
+            .Where(evt => currentMs >= evt.StartMs && currentMs < evt.EndMs)
+            .ToList();
+
+        // System.Diagnostics.Debug.WriteLine($"[Highlight] Time: {currentMs:F1}ms, ActiveCount: {activeEvents.Count}, TotalTimeline: {_player.HighlightTimeline.Count}");
+        // Log to UI momentarily for testing
+        if (activeEvents.Count > 0) 
+        {
+            // Try to avoid excessive UI lag, only update if needed or limit rate
+        }
+
+        if (activeEvents.Any())
+        {
+            var newSegments = activeEvents.Select(e => (e.TextStartIndex, e.TextLength)).ToList();
+            
+            // Basic equality check to avoid over-invalidating
+            bool changed = false;
+            if (_highlightRenderer.ActiveSegments.Count != newSegments.Count)
+            {
+                changed = true;
+            }
+            else
+            {
+                for (int i = 0; i < newSegments.Count; i++)
+                {
+                    if (_highlightRenderer.ActiveSegments[i].Offset != newSegments[i].TextStartIndex ||
+                        _highlightRenderer.ActiveSegments[i].Length != newSegments[i].TextLength)
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                _highlightRenderer.ActiveSegments = newSegments;
+                MmlInput.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Selection);
+            }
+        }
+        else if (_highlightRenderer.ActiveSegments.Count > 0)
+        {
+            ClearHighlight();
+        }
+    }
+
+    private void ClearHighlight()
+    {
+        if (_highlightRenderer.ActiveSegments.Count > 0)
+        {
+            _highlightRenderer.ActiveSegments.Clear();
+            MmlInput.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Selection);
         }
     }
 
     private void StopButton_Click(object? sender, RoutedEventArgs e)
     {
         _player.Stop();
+        _playbackTimer.Stop();
+        ClearHighlight();
         LogOutput.Text = "Playback stopped.";
     }
 

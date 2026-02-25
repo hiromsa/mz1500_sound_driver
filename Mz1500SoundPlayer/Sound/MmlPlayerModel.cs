@@ -7,11 +7,27 @@ namespace Mz1500SoundPlayer.Sound;
 
 public class MmlPlayerModel
 {
-    private IWavePlayer? _waveOut;
-    private MultiTrackSequenceProvider? _multiSequenceProvider;
+    private WasapiOut? _waveOut;
     private TaskCompletionSource<bool>? _playbackCompletion;
-    private System.Threading.CancellationTokenSource? _cancellationTokenSource;
+    private MultiTrackSequenceProvider? _multiSequenceProvider;
     private NAudio.Wave.SampleProviders.VolumeSampleProvider? _volumeProvider;
+    private System.Threading.CancellationTokenSource? _cancellationTokenSource;
+    private readonly System.Diagnostics.Stopwatch _playbackStopwatch = new();
+
+    public record TextHighlightEvent(double StartMs, double EndMs, int TextStartIndex, int TextLength);
+    public List<TextHighlightEvent> HighlightTimeline { get; private set; } = new();
+    
+    public double CurrentPlaybackTimeMs 
+    {
+        get 
+        {
+            if (_waveOut != null && _waveOut.PlaybackState == NAudio.Wave.PlaybackState.Playing)
+            {
+                return _playbackStopwatch.Elapsed.TotalMilliseconds;
+            }
+            return 0;
+        }
+    }
 
     private HashSet<string> _activeChannels = new HashSet<string>(new[] { "A", "B", "C", "D", "E", "F", "G", "H", "P" });
     public HashSet<string> ActiveChannels
@@ -79,9 +95,37 @@ public class MmlPlayerModel
         log.AppendLine($"[Parser] Found {mmlData.VolumeEnvelopes.Count} volume envelopes.");
         log.AppendLine($"[Parser] Found {mmlData.PitchEnvelopes.Count} pitch envelopes.");
 
+        var trackEventsMap = new Dictionary<string, List<NoteEvent>>();
+
         foreach (var kvp in tracks)
         {
             var events = expander.Expand(kvp.Value, selectionStart, selectionLength);
+            trackEventsMap[kvp.Key] = events;
+        }
+
+        // タイムラインの構築
+        HighlightTimeline.Clear();
+        foreach (var trackName in trackEventsMap.Keys)
+        {
+            if (_activeChannels.Contains(trackName) || trackName.ToUpperInvariant() == "A") // Usually A is the master track for length
+            {
+                double currentMs = 0;
+                foreach (var ev in trackEventsMap[trackName])
+                {
+                    if (ev.TextStartIndex >= 0 && ev.TextLength > 0 && ev.DurationMs > 0)
+                    {
+                        HighlightTimeline.Add(new TextHighlightEvent(currentMs, currentMs + ev.DurationMs, ev.TextStartIndex, ev.TextLength));
+                    }
+                    currentMs += ev.DurationMs;
+                }
+            }
+        }
+
+        foreach (var kvp in trackEventsMap)
+        {
+            var events = kvp.Value;
+            double ms = 0;
+            foreach (var e in events) ms += e.DurationMs;
             if (System.Linq.Enumerable.Any(events, e => e.IsLoopPoint)) hasInfiniteLoop = true;
             
             byte psgChannel = 0;
@@ -119,6 +163,7 @@ public class MmlPlayerModel
         var compiler = new MmlToZ80Compiler();
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         
+        // 5. Build Z80 Execution Binary (QDC) for hardware/emulator
         var musicAssembler = new Z80.MZ1500MusicAssembler();
         musicAssembler.VolumeEnvelopes = mmlData.VolumeEnvelopes; // Z80ドライバにエンベロープ辞書を渡す
         
@@ -198,9 +243,11 @@ public class MmlPlayerModel
         _playbackCompletion = new TaskCompletionSource<bool>();
         _waveOut.PlaybackStopped += (s, e) => 
         {
+            _playbackStopwatch.Stop();
             _playbackCompletion?.TrySetResult(true);
         };
 
+        _playbackStopwatch.Restart();
         _waveOut.Play();
 
         // 一番長いトラックに合わせて待機。キャンセル時は例外をキャッチして抜ける
@@ -237,6 +284,7 @@ public class MmlPlayerModel
 
         if (_waveOut != null)
         {
+            _playbackStopwatch.Stop();
             _waveOut.Stop();
             _waveOut.Dispose();
             _waveOut = null;

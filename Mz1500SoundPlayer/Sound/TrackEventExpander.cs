@@ -95,7 +95,8 @@ public class TrackEventExpander
                     events[^1] = lastEvent with 
                     { 
                         DurationMs = lastEvent.DurationMs + durationMs,
-                        GateTimeMs = newGateMs
+                        GateTimeMs = newGateMs,
+                        TextLength = cmd.TextStartIndex + cmd.TextLength - lastEvent.TextStartIndex // Extend highlight over the tie
                     };
                 }
             }
@@ -139,7 +140,7 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint));
+                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength));
                 }
                 else
                 {
@@ -150,7 +151,7 @@ public class TrackEventExpander
                     }
                     // 音量を 0.0 - 0.2 くらいにスケーリング
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength));
                 }
                 nextIsLoopPoint = false;
             }
@@ -159,7 +160,7 @@ public class TrackEventExpander
         // 行末などにLだけ置いて終わった場合、終端フラグを立たせるために長さ0のダミー休符を置く
         if (nextIsLoopPoint)
         {
-            events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true));
+            events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true, -1, 0));
         }
 
         return events;
