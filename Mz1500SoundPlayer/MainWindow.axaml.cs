@@ -5,6 +5,8 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Mz1500SoundPlayer.Sound;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
 using System.Xml;
@@ -167,6 +169,115 @@ public partial class MainWindow : Window
             finally
             {
                 btn.IsEnabled = true;
+            }
+        }
+    }
+
+    private async void RemapButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var remapWindow = new ChannelRemapWindow();
+        
+        // Show dialog and wait for the returned Dictionary map
+        var result = await remapWindow.ShowDialog<Dictionary<string, string>>(this);
+        
+        if (result != null && result.Count > 0)
+        {
+            try
+            {
+                string text = MmlInput.Text ?? "";
+                
+                // Step 1: Replace original target channel specifiers (A-H, P) with temporary tags
+                // We use Regex to match ONLY track definitions at the start of a line or block
+                // Specifically matching characters A-H, P that stand alone or are followed by spaces/other track names.
+                // We avoid replacing notes (a-g).
+                // MML syntax uses upper case for tracks.
+                
+                string tagPrefix = "_{TMP_REMAP_CH_";
+                string tagSuffix = "}_";
+
+                // To ensure safe replacement, we iterate character by character for the track headers,
+                // or we use a multi-pass regex. A simple approach for the whole document is risky because
+                // upper case A-H, P might appear elsewhere (like comments or EP commands).
+                
+                // Track commands appear at the beginning of a line, or after spaces.
+                // It's safest to find lines that start with A-H, P (with possible spaces)
+                // and just replace the characters inside the track header block.
+                
+                // Split by line
+                var lines = text.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string line = lines[i];
+                    
+                    // Skip comments
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith(";") || line.TrimStart().StartsWith("/"))
+                        continue;
+
+                    // Match track prefix (e.g., "ABCDE ", "A ", "P t144")
+                    var match = Regex.Match(line, @"^([A-Ha-hP\s]+)(?:[^\+\-\#\s]|$)");
+                    
+                    // But wait, the regex above is tricky. The simplest robust way is to just replace 
+                    // isolated uppercase letters A-H, P at the very beginning of the line up to the first lower case / symbol command.
+                    
+                    int headerEnd = -1;
+                    for(int c=0; c<line.Length; c++)
+                    {
+                        char ch = line[c];
+                        if (char.IsWhiteSpace(ch)) continue;
+                        if ((ch >= 'A' && ch <= 'H') || ch == 'P' || (ch >= 'a' && ch <= 'h'))
+                        {
+                            // It's a track letter
+                        }
+                        else 
+                        {
+                            headerEnd = c;
+                            break;
+                        }
+                    }
+
+                    if (headerEnd > 0)
+                    {
+                        string header = line.Substring(0, headerEnd);
+                        string remainder = line.Substring(headerEnd);
+
+                        // Build the new header character by character to avoid nested replacements
+                        var newHeader = new System.Text.StringBuilder();
+
+                        foreach (char ch in header)
+                        {
+                            string chStr = ch.ToString();
+                            string upperCh = chStr.ToUpper();
+                            
+                            // If this character is one of the channels to be remapped
+                            if (result.TryGetValue(upperCh, out string newCh))
+                            {
+                                // Keep original casing if it was lower case
+                                if (char.IsLower(ch))
+                                {
+                                    newHeader.Append(newCh.ToLower());
+                                }
+                                else
+                                {
+                                    newHeader.Append(newCh);
+                                }
+                            }
+                            else
+                            {
+                                // Pass through spaces and unmodified channels unaffected
+                                newHeader.Append(ch);
+                            }
+                        }
+
+                        lines[i] = newHeader.ToString() + remainder;
+                    }
+                }
+                
+                MmlInput.Text = string.Join(System.Environment.NewLine, lines);
+                LogOutput.Text = "Channels remapped successfully.";
+            }
+            catch (System.Exception ex)
+            {
+                LogOutput.Text = $"Remap Error: {ex.Message}";
             }
         }
     }

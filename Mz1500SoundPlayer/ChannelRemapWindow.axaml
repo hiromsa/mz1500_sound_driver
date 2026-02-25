@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" Width="400" SizeToContent="Height"
+        x:Class="Mz1500SoundPlayer.ChannelRemapWindow"
+        Title="Remap Channels" WindowStartupLocation="CenterOwner" CanResize="False">
+  <StackPanel Margin="20" Spacing="15">
+    <TextBlock Text="チャンネル割り当て変更" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+    <TextBlock Text="※変更後もエディタ上でCtrl+Z (Undo) が可能です。" Foreground="Gray" FontSize="12" HorizontalAlignment="Center" Margin="0,-5,0,5"/>
+
+    <!-- Grid for mapping rows -->
+    <Grid ColumnDefinitions="Auto, Auto, *" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
+      <!-- Headers -->
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="Current" FontWeight="Bold" Margin="0,0,10,5" HorizontalAlignment="Center"/>
+      <TextBlock Grid.Row="0" Grid.Column="2" Text="New Channel" FontWeight="Bold" Margin="10,0,0,5" HorizontalAlignment="Center"/>
+
+      <!-- Rows -->
+      <TextBlock Grid.Row="1" Grid.Column="0" Text="A" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="1" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="1" Grid.Column="2" Name="CmbA" SelectedIndex="0" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="2" Grid.Column="0" Text="B" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="2" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="2" Grid.Column="2" Name="CmbB" SelectedIndex="1" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="3" Grid.Column="0" Text="C" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="3" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="3" Grid.Column="2" Name="CmbC" SelectedIndex="2" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="4" Grid.Column="0" Text="D" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="4" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="4" Grid.Column="2" Name="CmbD" SelectedIndex="3" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="5" Grid.Column="0" Text="E" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="5" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="5" Grid.Column="2" Name="CmbE" SelectedIndex="4" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="6" Grid.Column="0" Text="F" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="6" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="6" Grid.Column="2" Name="CmbF" SelectedIndex="5" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="7" Grid.Column="0" Text="G" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="7" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="7" Grid.Column="2" Name="CmbG" SelectedIndex="6" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="8" Grid.Column="0" Text="H" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="8" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="8" Grid.Column="2" Name="CmbH" SelectedIndex="7" Width="120" Margin="0,2"/>
+
+      <TextBlock Grid.Row="9" Grid.Column="0" Text="P" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+      <TextBlock Grid.Row="9" Grid.Column="1" Text="→" VerticalAlignment="Center" Margin="10,0"/>
+      <ComboBox Grid.Row="9" Grid.Column="2" Name="CmbP" SelectedIndex="8" Width="120" Margin="0,2"/>
+    </Grid>
+
+    <!-- Error Message -->
+    <TextBlock Name="ErrorMessage" Foreground="Red" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,5" Height="40"/>
+
+    <!-- Buttons -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,0,0,10">
+      <Button Name="ApplyButton" Content="Apply" Width="80" HorizontalContentAlignment="Center" Click="ApplyButton_Click"/>
+      <Button Name="CancelButton" Content="Cancel" Width="80" HorizontalContentAlignment="Center" Click="CancelButton_Click"/>
+    </StackPanel>
+  </StackPanel>
+</Window>
