@@ -63,7 +63,8 @@ public class MultiTrackMmlParser
                 dataOffsetInLine = trackMatch.Groups[2].Index;
             }
 
-            var commandsLine = ParseLine(mmlData, lineStartIndex + dataOffsetInLine, result);
+            var commandsLine = new List<MmlCommand>();
+            ParseLineChunk(mmlData, lineStartIndex + dataOffsetInLine, result, commandsLine);
 
             foreach (char tName in currentTrackNames)
             {
@@ -131,9 +132,8 @@ public class MultiTrackMmlParser
         return envData;
     }
 
-    private List<MmlCommand> ParseLine(string data, int absoluteDataOffset, MmlData mmlData)
+    private void ParseLineChunk(string data, int absoluteDataOffset, MmlData mmlData, List<MmlCommand> cmds)
     {
-        var cmds = new List<MmlCommand>();
         int i = 0;
         
         while (i < data.Length)
@@ -172,6 +172,17 @@ public class MultiTrackMmlParser
                 char c = char.ToLowerInvariant(originalC);
                 switch (c)
                 {
+                    case 'k':
+                        if (originalC == 'K')
+                        {
+                            createdCmd = new TransposeCommand { Transpose = ReadSignedInt(data, ref i, 0, out parseError) };
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なトランスポーズ値です。"));
+                        }
+                        else
+                        {
+                            mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"大文字の 'K' を使用してください。小文字の 'k' は使用できません。"));
+                        }
+                        break;
                     case '@':
                         createdCmd = ParseAtCommand(data, ref i, mmlData, absoluteDataOffset);
                         break;
@@ -215,6 +226,38 @@ public class MultiTrackMmlParser
                         createdCmd = new QuantizeCommand { Quantize = ReadInt(data, ref i, 8, out parseError) };
                         if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なクオンタイズ値です。"));
                         break;
+                    case '{':
+                        int blockEnd = data.IndexOf('}', i);
+                        if (blockEnd == -1)
+                        {
+                            mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, data.Length - cmdStartIdx, $"連符の閉じカッコ '}}' が見つかりません。"));
+                            i = data.Length; // Skip to end
+                        }
+                        else
+                        {
+                            string innerMml = data.Substring(i, blockEnd - i);
+                            i = blockEnd + 1; // Move past '}'
+                            
+                            var tupletCmd = new TupletCommand();
+                            int innerOffset = absoluteDataOffset + cmdStartIdx + 1;
+                            
+                            var tempInnerCmds = new List<MmlCommand>();
+                            ParseLineChunk(innerMml, innerOffset, mmlData, tempInnerCmds);
+                            tupletCmd.InnerCommands = tempInnerCmds;
+
+                            tupletCmd.Length = ReadInt(data, ref i, 0, out parseError); // Default to 0 (uses track default) if none specified
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効な連符音長です。"));
+                            
+                            tupletCmd.Dots = 0;
+                            while (i < data.Length && data[i] == '.')
+                            {
+                                tupletCmd.Dots++;
+                                i++;
+                            }
+
+                            createdCmd = tupletCmd;
+                        }
+                        break;
                     case '[':
                         createdCmd = new LoopBeginCommand(); break;
                     case ']':
@@ -252,7 +295,6 @@ public class MultiTrackMmlParser
                 mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"未知の文字またはコマンド '{originalC}' です。"));
             }
         }
-        return cmds;
     }
 
     private MmlCommand ParseAtCommand(string data, ref int i, MmlData mmlData, int absoluteDataOffset)

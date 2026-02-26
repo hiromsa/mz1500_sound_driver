@@ -30,6 +30,7 @@ public class TrackEventExpander
         int currentNoiseWaveMode = 1; // @wn1
         int currentIntegrateNoiseMode = 0; // @in0
         int currentDetune = 0; // D (cents)
+        int currentTranspose = 0; // Transpose (semitones)
 
         // ループ処理用スタック等 (今回は簡易的にフラット展開する)
         var flatCommands = FlattenLoops(track.Commands);
@@ -65,6 +66,7 @@ public class TrackEventExpander
             else if (cmd is NoiseWaveCommand nwc) { currentNoiseWaveMode = nwc.WaveType; }
             else if (cmd is IntegrateNoiseCommand inc) { currentIntegrateNoiseMode = inc.IntegrateMode; }
             else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
+            else if (cmd is TransposeCommand tr) { currentTranspose = tr.Transpose; }
             else if (cmd is TieCommand tieCmd)
             {
                 if (selectionStart >= 0)
@@ -99,6 +101,99 @@ public class TrackEventExpander
                         GateTimeMs = newGateMs,
                         TextLength = cmd.TextStartIndex + cmd.TextLength - lastEvent.TextStartIndex // Extend highlight over the tie
                     };
+                }
+            }
+            else if (cmd is TupletCommand tupletCmd)
+            {
+                if (selectionStart >= 0)
+                {
+                    bool isAfterSelection = cmd.TextStartIndex >= selectionEnd;
+                    bool isBeforeSelection = (cmd.TextStartIndex + cmd.TextLength) <= selectionStart;
+                    if (isAfterSelection) break;
+                    if (isBeforeSelection) continue;
+                }
+
+                int len = tupletCmd.Length == 0 ? defaultLength : tupletCmd.Length;
+                
+                // Calculate absolute total duration (ms) for the entire tuplet
+                double quarterNoteMs = 60000.0 / currentTempo;
+                double totalDurationMs = (quarterNoteMs * 4.0) / len;
+                if (tupletCmd.Dots > 0)
+                {
+                    double add = totalDurationMs / 2.0;
+                    for (int i=0; i<tupletCmd.Dots; i++) { totalDurationMs += add; add /= 2.0; }
+                }
+
+                // Compute exact frame lengths so we can partition them properly across notes
+                int totalFrames = (int)Math.Round(totalDurationMs * 60.0 / 1000.0);
+                
+                // First pass: locate actual sound-generating commands to divide into
+                int noteCount = 0;
+                foreach (var inner in tupletCmd.InnerCommands)
+                {
+                    if (inner is NoteCommand) noteCount++;
+                }
+
+                if (noteCount > 0 && totalFrames > 0)
+                {
+                    int baseFrames = totalFrames / noteCount;
+                    int remainder = totalFrames % noteCount; // We distribute 1 extra frame to the first 'remainder' notes
+
+                    int noteIndex = 0;
+                    foreach (var inner in tupletCmd.InnerCommands)
+                    {
+                        // Some commands inside tuplet might change state
+                        if (inner is OctaveCommand oi) { currentOctave = oi.Octave; }
+                        else if (inner is RelativeOctaveCommand roi) { currentOctave += roi.Offset; }
+                        else if (inner is VolumeCommand vi) { currentVolume = vi.Volume; }
+                        else if (inner is EnvelopeCommand evi) { currentEnvelopeId = evi.EnvelopeId; }
+                        else if (inner is PitchEnvelopeCommand pei) { currentPitchEnvelopeId = pei.EnvelopeId == 255 ? -1 : pei.EnvelopeId; }
+                        else if (inner is QuantizeCommand qi) { currentQuantize = qi.Quantize; useFrameQuantize = false; }
+                        else if (inner is FrameQuantizeCommand fqi) { frameQuantize = fqi.Frames; useFrameQuantize = true; }
+                        else if (inner is NoiseWaveCommand nwi) { currentNoiseWaveMode = nwi.WaveType; }
+                        else if (inner is IntegrateNoiseCommand ini) { currentIntegrateNoiseMode = ini.IntegrateMode; }
+                        else if (inner is DetuneCommand rdi) { currentDetune = rdi.Detune; }
+                        else if (inner is TransposeCommand trci) { currentTranspose = trci.Transpose; }
+                        else if (inner is TieCommand)
+                        {
+                            // Tying inside a tuplet isn't typical MML standard but conceptually straightforward: add duration to the last appended tuplet note
+                            // However, calculating the tied note's frame count within a tuplet is complex. 
+                            // Skip complexity for ties inside tuplets for now or implement if requested.
+                        }
+                        else if (inner is NoteCommand nc)
+                        {
+                            int specificFrames = baseFrames + (noteIndex < remainder ? 1 : 0);
+                            double specificDurationMs = specificFrames * 1000.0 / 60.0;
+
+                            double gateMs = specificDurationMs;
+                            if (useFrameQuantize)
+                            {
+                                gateMs -= frameQuantize * (1000.0 / 60.0);
+                            }
+                            else
+                            {
+                                gateMs = specificDurationMs * (currentQuantize / 8.0);
+                            }
+                            if (gateMs < 0) gateMs = 0;
+
+                            if (nc.Note == 'r')
+                            {
+                                events.Add(new NoteEvent(0, specificDurationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength));
+                            }
+                            else
+                            {
+                                double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
+                                if (currentDetune != 0)
+                                {
+                                    freq = freq * Math.Pow(2.0, currentDetune / 1200.0);
+                                }
+                                double vol = (currentVolume / 15.0) * 0.15;
+                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength));
+                            }
+                            nextIsLoopPoint = false;
+                            noteIndex++;
+                        }
+                    }
                 }
             }
             else if (cmd is NoteCommand nc)
@@ -145,7 +240,7 @@ public class TrackEventExpander
                 }
                 else
                 {
-                    double freq = GetFrequency(nc.Note, nc.SemiToneOffset, currentOctave);
+                    double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
                     if (currentDetune != 0)
                     {
                         freq = freq * Math.Pow(2.0, currentDetune / 1200.0);

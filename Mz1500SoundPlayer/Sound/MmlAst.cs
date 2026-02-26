@@ -43,6 +43,14 @@ public abstract class MmlCommand
     public int TextLength { get; set; } = 0;
 }
 
+// 連符 (Tuplet) コマンド
+public class TupletCommand : MmlCommand
+{
+    public List<MmlCommand> InnerCommands { get; set; } = new();
+    public int Length { get; set; } // 全体の長さ
+    public int Dots { get; set; }   // 全体の付点
+}
+
 // 休符・音符など時間経過を伴うイベント
 public class NoteCommand : MmlCommand
 {
@@ -79,6 +87,9 @@ public class VoiceCommand : MmlCommand { public int VoiceId { get; set; } }
 
 // ディチューンコマンド (D<num>) セント単位
 public class DetuneCommand : MmlCommand { public int Detune { get; set; } }
+
+// トランスポーズコマンド (K<num>) 半音単位
+public class TransposeCommand : MmlCommand { public int Transpose { get; set; } }
 
 // ノイズ関連
 public class NoiseWaveCommand : MmlCommand { public int WaveType { get; set; } }
