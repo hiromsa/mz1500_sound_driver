@@ -315,4 +315,108 @@ public class TrackEventExpander
         int semitonesFromA4 = noteIndex - 9 + (octave - 4) * 12;
         return 440.0 * Math.Pow(2.0, semitonesFromA4 / 12.0);
     }
+
+    public List<double> ExtractBeatTimings(TrackData track)
+    {
+        var beats = new List<double>();
+        var flatCommands = FlattenLoops(track.Commands);
+
+        int currentTempo = 120;
+        int defaultLength = 4;
+        double currentMs = 0;
+        double nextBeatTargetMs = 0;
+
+        foreach (var cmd in flatCommands)
+        {
+            if (cmd is TempoCommand tc) 
+            { 
+                currentTempo = tc.Tempo; 
+            }
+            else if (cmd is FrameTempoCommand ftc)
+            {
+                if (ftc.FrameCount > 0 && ftc.Length > 0)
+                {
+                    currentTempo = 14400 / ftc.FrameCount / ftc.Length; 
+                }
+            }
+            else if (cmd is DefaultLengthCommand dlc) 
+            { 
+                defaultLength = dlc.Length; 
+            }
+            else if (cmd is NoteCommand nc)
+            {
+                int len = nc.Length == 0 ? defaultLength : nc.Length;
+                double quarterNoteMs = 60000.0 / currentTempo;
+                double durationMs = (quarterNoteMs * 4.0) / len;
+
+                if (nc.Dots > 0)
+                {
+                    double add = durationMs / 2.0;
+                    for (int i = 0; i < nc.Dots; i++) { durationMs += add; add /= 2.0; }
+                }
+
+                while (currentMs >= nextBeatTargetMs)
+                {
+                    beats.Add(nextBeatTargetMs);
+                    nextBeatTargetMs += quarterNoteMs;
+                }
+
+                currentMs += durationMs;
+                
+                while (currentMs > nextBeatTargetMs + 0.1)
+                {
+                    beats.Add(nextBeatTargetMs);
+                    nextBeatTargetMs += quarterNoteMs;
+                }
+            }
+            else if (cmd is TupletCommand tupletCmd)
+            {
+                int len = tupletCmd.Length == 0 ? defaultLength : tupletCmd.Length;
+                double quarterNoteMs = 60000.0 / currentTempo;
+                double totalMs = (quarterNoteMs * 4.0) / len;
+
+                if (tupletCmd.Dots > 0)
+                {
+                    double add = totalMs / 2.0;
+                    for (int i = 0; i < tupletCmd.Dots; i++) { totalMs += add; add /= 2.0; }
+                }
+
+                while (currentMs >= nextBeatTargetMs)
+                {
+                    beats.Add(nextBeatTargetMs);
+                    nextBeatTargetMs += quarterNoteMs;
+                }
+
+                currentMs += totalMs;
+
+                while (currentMs > nextBeatTargetMs + 0.1)
+                {
+                    beats.Add(nextBeatTargetMs);
+                    nextBeatTargetMs += quarterNoteMs;
+                }
+            }
+            else if (cmd is TieCommand tieCmd)
+            {
+                int len = tieCmd.Length == 0 ? defaultLength : tieCmd.Length;
+                double quarterNoteMs = 60000.0 / currentTempo;
+                double durationMs = (quarterNoteMs * 4.0) / len;
+
+                if (tieCmd.Dots > 0)
+                {
+                    double add = durationMs / 2.0;
+                    for (int i = 0; i < tieCmd.Dots; i++) { durationMs += add; add /= 2.0; }
+                }
+
+                currentMs += durationMs;
+
+                while (currentMs > nextBeatTargetMs + 0.1)
+                {
+                    beats.Add(nextBeatTargetMs);
+                    nextBeatTargetMs += quarterNoteMs;
+                }
+            }
+        }
+
+        return beats;
+    }
 }

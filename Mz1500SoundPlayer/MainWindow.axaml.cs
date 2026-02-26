@@ -626,4 +626,12 @@ public partial class MainWindow : Window
         
         _player.ActiveChannels = activeChannels;
     }
+
+    private void ChkMetronome_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_player != null && ChkMetronome != null)
+        {
+            _player.IsMetronomeActive = ChkMetronome.IsChecked ?? false;
+        }
+    }
 }

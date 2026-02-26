@@ -57,6 +57,8 @@ public class MmlPlayerModel
         }
     }
 
+    public bool IsMetronomeActive { get; set; } = false;
+
     public MmlPlayerModel()
     {
     }
@@ -101,6 +103,13 @@ public class MmlPlayerModel
         {
             var events = expander.Expand(kvp.Value, selectionStart, selectionLength);
             trackEventsMap[kvp.Key] = events;
+        }
+
+        // Extract Metronome Beat Timings purely from Track A if it exists
+        var metronomeTimings = new List<double>();
+        if (tracks.ContainsKey("A") || tracks.ContainsKey("a"))
+        {
+            metronomeTimings = expander.ExtractBeatTimings(tracks.ContainsKey("A") ? tracks["A"] : tracks["a"]);
         }
 
         // タイムラインの構築
@@ -149,7 +158,7 @@ public class MmlPlayerModel
             log.AppendLine($"- Track '{kvp.Key}': {events.Count} events, compiled size {seqBin.Length} bytes, duration {totalMs:F1}ms");
         }
 
-        await PlayBytecodeDictAsync(trackBinaries, mmlData.VolumeEnvelopes, compiler.HwPitchEnvelopes, maxMs, hasInfiniteLoop);
+        await PlayBytecodeDictAsync(trackBinaries, metronomeTimings, mmlData.VolumeEnvelopes, compiler.HwPitchEnvelopes, maxMs, hasInfiniteLoop);
         return log.ToString();
     }
 
@@ -214,7 +223,7 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000, bool hasInfiniteLoop = false)
+    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, List<double> metronomeTimings = null!, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000, bool hasInfiniteLoop = false)
     {
         Stop(); // 前の再生を安全に停止
 
@@ -224,11 +233,24 @@ public class MmlPlayerModel
         if (volumeEnvelopes == null) volumeEnvelopes = new Dictionary<int, EnvelopeData>();
         if (hwPitchEnvelopes == null) hwPitchEnvelopes = new List<MmlToZ80Compiler.HwPitchEnvData>();
         
-        _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, volumeEnvelopes, hwPitchEnvelopes);
+        _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, envelopes: volumeEnvelopes, hwPitchEnvelopes: hwPitchEnvelopes);
         _multiSequenceProvider.ActiveChannels = _activeChannels;
         
+        // Setup Metronome Track if timings are available
+        MetronomeSampleProvider metronome = null!;
+        ISampleProvider mixedOutput = _multiSequenceProvider;
+        
+        if (metronomeTimings != null && metronomeTimings.Count > 0)
+        {
+            metronome = new MetronomeSampleProvider(metronomeTimings);
+            metronome.IsActive = IsMetronomeActive;
+            
+            mixedOutput = new NAudio.Wave.SampleProviders.MixingSampleProvider(
+                new ISampleProvider[] { _multiSequenceProvider, metronome });
+        }
+
         // Windows環境でMONO 1chのままストリーミングするとドライバによってループ(スタッターエコー)するバグを防ぐため、常にStereoに拡張する
-        var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(_multiSequenceProvider);
+        var stereoProvider = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(mixedOutput);
 
         // マスターボリュームの適用
         _volumeProvider = new NAudio.Wave.SampleProviders.VolumeSampleProvider(stereoProvider)
