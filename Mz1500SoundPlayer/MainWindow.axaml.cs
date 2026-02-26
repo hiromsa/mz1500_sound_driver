@@ -106,6 +106,52 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void LoadFmsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            btn.IsEnabled = false;
+            try
+            {
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel != null)
+                {
+                    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                    {
+                        Title = "Open FamiStudio Project",
+                        AllowMultiple = false,
+                        FileTypeFilter = new[] { new FilePickerFileType("FamiStudio Files") { Patterns = new[] { "*.fms" } } }
+                    });
+
+                    if (files.Count >= 1)
+                    {
+                        string filePath = files[0].Path.LocalPath;
+                        var fmsLoader = new FamiStudio.ProjectFile();
+                        var project = fmsLoader.Load(filePath);
+                        if (project != null)
+                        {
+                            string mml = FamiStudioToMmlConverter.Convert(project, 0);
+                            MmlInput.Text = string.IsNullOrEmpty(mml) ? "; No MML output" : mml;
+                            LogOutput.Text = $"Loaded {files[0].Name} successfully.";
+                        }
+                        else
+                        {
+                            LogOutput.Text = $"Failed to parse {files[0].Name}. Error loading .fms";
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogOutput.Text = $"FMS Load Error: {ex.Message}";
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
+        }
+    }
+
     private async void LoadMmlButton_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is Button btn)

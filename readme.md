@@ -35,7 +35,9 @@ MZ-1500のサウンド仕様は以下の通り：
    * コンパイルされたデータをWindows上で即座に再生する。
    * 波形合成によりDCSGおよびBEEPの挙動をエミュレートする。
    * 再生中にリアルタイムで各チャンネル (`A`-`H`, `P`) のON/OFFを切り替えられる**チャンネルマスク（ミュート）機能**を搭載。
-   * **MIDIインポート機能**: `.mid` ファイルを読み込み、MML文字列データへ自動変換（モノフォニック間引き処理、テンポ自動抽出、`100`文字ごとの改行）を行うユーティリティを内包。
+   * **外部ファイルインポート機能**: 以下の形式のファイルを読み込み、最適なMML文字列データへ自動変換（モノフォニック間引き処理、テンポ自動抽出、長大行の折り返し等）を行うユーティリティを内包。
+     * MIDIファイル (`.mid`)
+     * FamiStudioプロジェクトファイル (`.fms`)
 3. **qdcエクスポータ (Windows / C# .NET 9.0)**
    * MZ-1500エミュレータ/実機で読み込み可能なqdc (Quick Disk) イメージ等へ書き出す。
 4. **サウンドドライバ (MZ-1500 / Z80 Assembly)**
@@ -117,12 +119,13 @@ A o4 l8 @v0 c d e @v1 f g @v a b >c
 #### 内部実装（ハードウェア向け最適化）
 Z80上でセントからHzへの浮動小数点演算は負荷が高すぎるため、**C#のプレビュー/コンパイル時点ですべて「Z80用 10ビット絶対レジスタ値」への変換** (HwPitchEnv) を済ませておき、Z80側は音量エンベロープと同様に配列を毎フレームポインタ参照して出力するだけの軽量設計となっている。
 
-### 4.4 MIDI インポートと MML 自動フォーマット
-外部シーケンサで作成されたMIDIファイル (`.mid`) を読み込み、本ドライバ仕様のMMLへ自動変換する機能を備える。
-- **チャンネル自動割り当て**: 読み込んだMIDIトラック順に `A`, `B`, `C`... `H`, `P` へ割り当てる。
+### 4.4 外部シーケンスデータのインポートと MML 自動フォーマット
+外部シーケンサ等のデータを読み込み、本ドライバ仕様のMMLへ自動変換する機能を備える。
+- **対応フォーマット**: スタンダードMIDIファイル (`.mid`)、FamiStudioプロジェクトファイル (`.fms`)
+- **チャンネル自動割り当て**: FamiStudioの各チャンネル種類やMIDIトラック順に合わせ、内部で自動的に `A`, `B`, `C`... へ割り当てる。
 - **モノフォニック化**: MML仕様に合わせて和音は間引き（最高音優先）される。
-- **テンポ指定**: MIDI内の `TempoEvent` を抽出し、全マッピング済みチャンネルをプレフィックスとして `ABC t120` 形式で出力する。
-- **改行フォーマット**: トラックごとのMML行は可読性確保のため約100文字で改行（インデント）される。改行された次行の先頭には、該当するチャンネル文字（例: `A `）が自動補完される。
+- **テンポ指定**: データ内のテンポ情報(`BPM`)を抽出し、全マッピング済みチャンネルをプレフィックスとして `ABC t120` 形式で出力する。
+- **改行フォーマット**: トラックごとのMML行は可読性確保のため約100文字で改行（インデント）される。改行された次行の先頭には、該当するチャンネル文字（例: `A `）が自動補完され、余分なオクターブや音色マクロ（`o`, `@v`）は最大限に削減・最適化される。
 
 ### 4.5 UIおよびエディタ機能の拡張
 本システムはWindows上のGUI (Avalonia UI) を通して、IDE(統合開発環境)ライクな使い勝手を提供します。
@@ -139,3 +142,32 @@ Z80上でセントからHzへの浮動小数点演算は負荷が高すぎるた
 
 ## 6. 将来の拡張
 * CLIベースでのコンパイル・プレビュー再生からのスタートとし、コアをライブラリ化（DLL化）しておくことで、その上位レイヤーにGUIフロントエンド(WPF, WinForms, Avalonia等)を被せられるアーキテクチャ設計とする。
+
+## 7. 利用しているサードパーティ製ライブラリ / ライセンス表記
+
+本ソフトウェアの実装には、以下のサードパーティ製オープンソースソフトウェアが利用されています。各ソフトウェアの開発者に感謝いたします。
+
+### FamiStudio
+FamiStudioプロジェクトファイル（`.fms`）の読み込み機能の一部として、[FamiStudio](https://famistudio.org/) のソースコードおよびライブラリを使用しています。FamiStudio は MIT License の元で公開されています。
+
+```text
+Copyright (c) 2019 BleuBleu
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

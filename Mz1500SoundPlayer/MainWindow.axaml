@@ -77,6 +77,7 @@
           <StackPanel Spacing="5">
             <TextBlock Text="💾 Import / Export" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
             <Button Name="LoadMidiButton" Content="Load MIDI" Click="LoadMidiButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
+            <Button Name="LoadFmsButton" Content="Load FMS" Click="LoadFmsButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
             <Button Name="ExportQdcButton" Content="Export QDC (.qdc)" Click="ExportQdcButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
           </StackPanel>
         </Border>
