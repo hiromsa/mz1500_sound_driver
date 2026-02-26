@@ -63,7 +63,7 @@ public class MultiTrackMmlParser
                 dataOffsetInLine = trackMatch.Groups[2].Index;
             }
 
-            var commandsLine = ParseLine(mmlData, lineStartIndex + dataOffsetInLine);
+            var commandsLine = ParseLine(mmlData, lineStartIndex + dataOffsetInLine, result);
 
             foreach (char tName in currentTrackNames)
             {
@@ -106,12 +106,14 @@ public class MultiTrackMmlParser
                 {
                     valStr = v.Substring(0, xIdx).Trim();
                     string countStr = v.Substring(xIdx + 1).Trim();
+                    bool countParseError;
                     if (int.TryParse(countStr, out int parsedCount))
                     {
                         repeatCount = Math.Max(1, parsedCount);
                     }
                 }
 
+                bool valParseError;
                 if (int.TryParse(valStr, out int val))
                 {
                     for (int n = 0; n < repeatCount; n++)
@@ -129,7 +131,7 @@ public class MultiTrackMmlParser
         return envData;
     }
 
-    private List<MmlCommand> ParseLine(string data, int absoluteDataOffset)
+    private List<MmlCommand> ParseLine(string data, int absoluteDataOffset, MmlData mmlData)
     {
         var cmds = new List<MmlCommand>();
         int i = 0;
@@ -145,16 +147,25 @@ public class MultiTrackMmlParser
             int cmdStartIdx = i;
             char originalC = data[i++];
             
+            // Skip comments internally here? Usually comments are stripped before ParseLine, but just in case:
+            if (originalC == ';' || originalC == '/')
+            {
+                // Line comment
+                break;
+            }
+            
             if ((originalC == 'l' || originalC == 'L') && i < data.Length && (data[i] == 'l' || data[i] == 'L'))
             {
                 i++; // Handle typo LL -> L
             }
 
             MmlCommand createdCmd = null;
+            bool parseError = false;
 
             if (originalC == 'D')
             {
-                createdCmd = new DetuneCommand { Detune = ReadSignedInt(data, ref i, 0) };
+                createdCmd = new DetuneCommand { Detune = ReadSignedInt(data, ref i, 0, out parseError) };
+                if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なデチューン値です。"));
             }
             else
             {
@@ -162,51 +173,68 @@ public class MultiTrackMmlParser
                 switch (c)
                 {
                     case '@':
-                        createdCmd = ParseAtCommand(data, ref i);
+                        createdCmd = ParseAtCommand(data, ref i, mmlData, absoluteDataOffset);
                         break;
                     case 'e':
                         if (i < data.Length && char.ToLowerInvariant(data[i]) == 'p')
                         {
                             i++;
-                            createdCmd = new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+                            createdCmd = new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0, out parseError) };
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なピッチエンベロープIDです。"));
                         }
                         else if (originalC == 'e')
                         {
-                            createdCmd = ParseNoteOrRest(c, data, ref i);
+                            createdCmd = ParseNoteOrRest(c, data, ref i, mmlData, absoluteDataOffset);
                         }
                         break;
                     case 't':
-                        createdCmd = new TempoCommand { Tempo = ReadInt(data, ref i, 120) };
+                        createdCmd = new TempoCommand { Tempo = ReadInt(data, ref i, 120, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なテンポ値です。"));
                         break;
                     case 'o':
-                        createdCmd = new OctaveCommand { Octave = ReadInt(data, ref i, 4) };
+                        createdCmd = new OctaveCommand { Octave = ReadInt(data, ref i, 4, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なオクターブ値です。"));
                         break;
                     case '>': createdCmd = new RelativeOctaveCommand { Offset = 1 }; break;
                     case '<': createdCmd = new RelativeOctaveCommand { Offset = -1 }; break;
                     case 'l':
                     case 'L': 
                         if (i < data.Length && char.IsDigit(data[i]))
-                            createdCmd = new DefaultLengthCommand { Length = ReadInt(data, ref i, 4) };
+                        {
+                            createdCmd = new DefaultLengthCommand { Length = ReadInt(data, ref i, 4, out parseError) };
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効な音長値です。"));
+                        }
                         else
                             createdCmd = new InfiniteLoopPointCommand();
                         break;
                     case 'v':
-                        createdCmd = new VolumeCommand { Volume = ReadInt(data, ref i, 15) };
+                        createdCmd = new VolumeCommand { Volume = ReadInt(data, ref i, 15, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なボリューム値です。"));
                         break;
                     case 'q':
-                        createdCmd = new QuantizeCommand { Quantize = ReadInt(data, ref i, 8) };
+                        createdCmd = new QuantizeCommand { Quantize = ReadInt(data, ref i, 8, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なクオンタイズ値です。"));
                         break;
                     case '[':
                         createdCmd = new LoopBeginCommand(); break;
                     case ']':
-                        createdCmd = new LoopEndCommand { Count = ReadInt(data, ref i, 2) }; break;
+                        createdCmd = new LoopEndCommand { Count = ReadInt(data, ref i, 2, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なループ回数です。"));
+                        break;
                     case '^':
-                        createdCmd = ParseTie(data, ref i); break;
+                        createdCmd = ParseTie(data, ref i, mmlData, absoluteDataOffset); break;
                     case 'a': case 'b': case 'c': case 'd': case 'f': case 'g': case 'r':
                         if (originalC == c)
                         {
-                            createdCmd = ParseNoteOrRest(c, data, ref i);
+                            createdCmd = ParseNoteOrRest(c, data, ref i, mmlData, absoluteDataOffset);
                         }
+                        else
+                        {
+                            mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"大文字の '{originalC}' は使用できません。音符は小文字を使用してください。"));
+                        }
+                        break;
+                    default:
+                        mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"未知の文字またはコマンド '{originalC}' です。"));
                         break;
                 }
             }
@@ -217,76 +245,96 @@ public class MultiTrackMmlParser
                 createdCmd.TextLength = i - cmdStartIdx;
                 cmds.Add(createdCmd);
             }
+            else if (!parseError && originalC != ';' && originalC != '/' && (mmlData.Errors.Count == 0 || mmlData.Errors[^1].TextStartIndex != absoluteDataOffset + cmdStartIdx))
+            {
+                // In case a command function returns null because of syntax error, log an error if not already handled
+                // This catch-all is for cases where a specific error wasn't added by the parsing function itself.
+                mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"未知の文字またはコマンド '{originalC}' です。"));
+            }
         }
         return cmds;
     }
 
-    private MmlCommand ParseAtCommand(string data, ref int i)
+    private MmlCommand ParseAtCommand(string data, ref int i, MmlData mmlData, int absoluteDataOffset)
     {
-        if (i >= data.Length) return null;
+        int cmdStartIdx = i - 1;
+        if (i >= data.Length) 
+        {
+            mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, "'@' の後にコマンドがありません。"));
+            return null;
+        }
         char c = char.ToLowerInvariant(data[i++]);
+        bool parseError = false;
         
         switch (c)
         {
             case 't': 
-                int len = ReadInt(data, ref i, 4);
+                int len = ReadInt(data, ref i, 4, out parseError);
+                if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効な音長値です。"));
                 if (i < data.Length && data[i] == ',') i++;
-                int frames = ReadInt(data, ref i, 30);
+                int frames = ReadInt(data, ref i, 30, out parseError);
+                if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なフレーム数です。"));
                 return new FrameTempoCommand { Length = len, FrameCount = frames };
             case 'v': 
-                return new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
+                return new EnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0, out parseError) };
             case 'p': 
-                return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
-            case 'e':
-                if (i < data.Length && char.ToLowerInvariant(data[i]) == 'p')
-                {
-                    i++;
-                    return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0) };
-                }
-                break;
+                return new PitchEnvelopeCommand { EnvelopeId = ReadInt(data, ref i, 0, out parseError) };
+            // 'p' or 'e' both handled above if they map to envelope/pitch, 
+            // but if there was a duplicate case 'e': here, it's removed.
             case 'q': 
-                return new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0) };
+                return new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0, out parseError) };
             case 'w': 
                 if (i < data.Length && char.ToLowerInvariant(data[i]) == 'n')
                 {
                     i++;
-                    return new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1) };
+                    return new NoiseWaveCommand { WaveType = ReadInt(data, ref i, 1, out parseError) };
                 }
-                break;
-            case 'i': 
+                else
+                {
+                    mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 2, $"未知の @ コマンド '@{c}' です。'@wn' が期待されます。"));
+                    return null;
+                }
+            case 'i':
                 if (i < data.Length && char.ToLowerInvariant(data[i]) == 'n')
                 {
                     i++;
-                    return new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0) };
+                    return new IntegrateNoiseCommand { IntegrateMode = ReadInt(data, ref i, 0, out parseError) };
                 }
-                break;
+                else
+                {
+                    mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 2, $"未知の @ コマンド '@{c}' です。'@in' が期待されます。"));
+                    return null;
+                }
             default:
                 if (char.IsDigit(c))
                 {
                     i--;
-                    return new VoiceCommand { VoiceId = ReadInt(data, ref i, 0) };
+                    return new VoiceCommand { VoiceId = ReadInt(data, ref i, 0, out parseError) };
                 }
                 break;
         }
         return null;
     }
 
-    private MmlCommand ParseNoteOrRest(char noteChar, string data, ref int i)
+    private MmlCommand ParseNoteOrRest(char note, string data, ref int i, MmlData mmlData, int absoluteDataOffset)
     {
-        int offset = 0;
-        if (i < data.Length && (data[i] == '+' || data[i] == '#'))
+        int cmdStartIdx = i - 1;
+        int semiToneOffset = 0;
+        bool parseError = false;
+
+        // '+', '#', '-' での半音調整
+        while (i < data.Length)
         {
-            offset = 1; i++;
-        }
-        else if (i < data.Length && data[i] == '-')
-        {
-            offset = -1; i++;
+            if (data[i] == '+' || data[i] == '#') { semiToneOffset++; i++; }
+            else if (data[i] == '-') { semiToneOffset--; i++; }
+            else break;
         }
 
-        int length = 0; 
+        int len = 0;
         if (i < data.Length && char.IsDigit(data[i]))
         {
-            length = ReadInt(data, ref i, 0);
+            len = ReadInt(data, ref i, 0, out parseError);
+            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効な音符の長さです。"));
         }
 
         int dots = 0;
@@ -295,15 +343,25 @@ public class MultiTrackMmlParser
             dots++; i++;
         }
 
-        return new NoteCommand { Note = noteChar, SemiToneOffset = offset, Length = length, Dots = dots };
+        return new NoteCommand
+        {
+            Note = note,
+            SemiToneOffset = semiToneOffset,
+            Length = len,
+            Dots = dots
+        };
     }
 
-    private MmlCommand ParseTie(string data, ref int i)
+    private MmlCommand ParseTie(string data, ref int i, MmlData mmlData, int absoluteDataOffset)
     {
-        int length = 0;
+        int cmdStartIdx = i - 1;
+        int len = 0;
+        bool parseError = false;
+
         if (i < data.Length && char.IsDigit(data[i]))
         {
-            length = ReadInt(data, ref i, 0);
+            len = ReadInt(data, ref i, 0, out parseError);
+            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なタイの長さです。"));
         }
 
         int dots = 0;
@@ -312,38 +370,49 @@ public class MultiTrackMmlParser
             dots++; i++;
         }
 
-        return new TieCommand { Length = length, Dots = dots };
+        return new TieCommand { Length = len, Dots = dots };
     }
 
-    private int ReadInt(string str, ref int i, int defaultValue)
+    private int ReadInt(string data, ref int i, int defaultValue, out bool hasError)
     {
+        hasError = false;
         int start = i;
-        while (i < str.Length && char.IsDigit(str[i])) i++;
-        if (start < i && int.TryParse(str.Substring(start, i - start), out int val))
+        while (i < data.Length && char.IsDigit(data[i]))
         {
-            return val;
+            i++;
         }
+        if (start == i) return defaultValue;
+        if (int.TryParse(data.Substring(start, i - start), out int result))
+        {
+            return result;
+        }
+        hasError = true;
         return defaultValue;
     }
 
-    private int ReadSignedInt(string str, ref int i, int defaultValue)
+    private int ReadSignedInt(string data, ref int i, int defaultValue, out bool hasError)
     {
+        hasError = false;
         int start = i;
-        if (i < str.Length && (str[i] == '-' || str[i] == '+'))
+        if (i < data.Length && (data[i] == '+' || data[i] == '-'))
         {
             i++;
         }
-        bool hasDigits = false;
-        while (i < str.Length && char.IsDigit(str[i])) 
+        while (i < data.Length && char.IsDigit(data[i]))
         {
-            hasDigits = true;
             i++;
         }
-        if (hasDigits && int.TryParse(str.Substring(start, i - start), out int val))
+        if (start == i || (i - start == 1 && (data[start] == '+' || data[start] == '-'))) 
         {
-            return val;
+            hasError = true;
+            return defaultValue;
         }
-        i = start; // Rollback
+
+        if (int.TryParse(data.Substring(start, i - start), out int result))
+        {
+            return result;
+        }
+        hasError = true;
         return defaultValue;
     }
 }

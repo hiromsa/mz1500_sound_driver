@@ -47,6 +47,15 @@ public class MmlSequenceProvider : ISampleProvider
     private readonly double _samplesPerFrame;
     private double _samplesCurrentFrameCount = 0;
     private readonly bool _isBeep;
+    
+    // SN76489 Volume translation table (2dB per step)
+    private static readonly float[] VolumeTable = new float[16]
+    {
+        1.0000f, 0.7943f, 0.6310f, 0.5012f,
+        0.3981f, 0.3162f, 0.2512f, 0.1995f,
+        0.1585f, 0.1259f, 0.1000f, 0.0794f,
+        0.0631f, 0.0501f, 0.0398f, 0.0000f
+    };
 
     public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false)
     {
@@ -122,8 +131,41 @@ public class MmlSequenceProvider : ISampleProvider
                     _isRest = false;
                     _isNoiseMode = false;
                     
+                    // Immediately initialize envelope for the new tone so no delay occurs on first frame
+                    if (_envActive && _envelopes.TryGetValue(_envId, out var envInitData) && envInitData.Values.Count > 0)
+                    {
+                        int envVal = envInitData.Values[0];
+                        _hwVolume = 15 - envVal; 
+                        if (_hwVolume < 0) _hwVolume = 0;
+                        if (_hwVolume > 15) _hwVolume = 15;
+                        _envPosOffset = 1; // Already consumed first step
+                    }
+                    
+                    // Immediately initialize pitch envelope
+                    if (_pEnvActive && _pEnvId >= 0 && _pEnvId < _hwPitchEnvelopes.Count)
+                    {
+                        var pEnvInitData = _hwPitchEnvelopes[_pEnvId];
+                        if (pEnvInitData.AbsoluteRegisters.Count > 0)
+                        {
+                             ushort hwCmd = pEnvInitData.AbsoluteRegisters[0];
+                             byte initCmd1 = (byte)(hwCmd & 0xFF);
+                             byte initCmd2 = (byte)(hwCmd >> 8);
+                             ushort freqReg = _isBeep ? (ushort)(initCmd1 | (initCmd2 << 8)) : (ushort)((initCmd1 & 0x0F) | ((initCmd2 & 0x3F) << 4));
+                             if (freqReg > 0)
+                             {
+                                 double pFreqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
+                                 _phaseIncrement = pFreqHz / WaveFormat.SampleRate;
+                             }
+                             else
+                             {
+                                 _phaseIncrement = 0;
+                             }
+                             _pEnvPosOffset = 1;
+                        }
+                    }
+                    
                     // Update frequency
-                    if (_hwFreqRaw > 0)
+                    if (_pEnvPosOffset == 0 && _hwFreqRaw > 0)
                     {
                         // SN76489 Formula: freq_hz = (MasterClock/32) / reg_value
                         // Intel 8253 Formula: freq_hz = 894886 / reg_value
@@ -355,7 +397,7 @@ public class MmlSequenceProvider : ISampleProvider
             }
 
             // Render current sample
-            float activeVol = (15 - _hwVolume) / 15.0f * 0.15f; // Scale 0.0 ~ 0.15
+            float activeVol = VolumeTable[_hwVolume] * 0.15f; // Scale 0.0 ~ 0.15
             float sampleValue = 0f;
 
             if (_phaseIncrement > 0 && activeVol > 0 && !IsMuted)

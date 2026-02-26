@@ -3,6 +3,20 @@ using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound;
 
+public class MmlError
+{
+    public int TextStartIndex { get; set; }
+    public int Length { get; set; }
+    public string Message { get; set; } = "";
+
+    public MmlError(int startIndex, int length, string message)
+    {
+        TextStartIndex = startIndex;
+        Length = length;
+        Message = message;
+    }
+}
+
 public class TrackData
 {
     public string Name { get; set; } = "";
@@ -20,6 +34,7 @@ public class MmlData
     public Dictionary<string, TrackData> Tracks { get; set; } = new();
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
+    public List<MmlError> Errors { get; set; } = new();
 }
 
 public abstract class MmlCommand 

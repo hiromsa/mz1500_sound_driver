@@ -20,7 +20,9 @@ public partial class MainWindow : Window
 {
     private readonly MmlPlayerModel _player;
     private readonly PlaybackHighlightRenderer _highlightRenderer;
+    private readonly ErrorHighlightRenderer _errorRenderer;
     private readonly DispatcherTimer _playbackTimer;
+    private readonly DispatcherTimer _validationTimer;
 
     public MainWindow()
     {
@@ -31,12 +33,29 @@ public partial class MainWindow : Window
         _highlightRenderer = new PlaybackHighlightRenderer();
         MmlInput.TextArea.TextView.BackgroundRenderers.Add(_highlightRenderer);
 
+        _errorRenderer = new ErrorHighlightRenderer();
+        MmlInput.TextArea.TextView.BackgroundRenderers.Add(_errorRenderer);
+
         // Setup Playback Timer for UI updates (~30fps)
         _playbackTimer = new DispatcherTimer
         {
             Interval = System.TimeSpan.FromMilliseconds(33)
         };
         _playbackTimer.Tick += PlaybackTimer_Tick;
+
+        _validationTimer = new DispatcherTimer
+        {
+            Interval = System.TimeSpan.FromMilliseconds(500)
+        };
+        _validationTimer.Tick += (s, e) => { _validationTimer.Stop(); ValidateMml(); };
+
+        MmlInput.TextChanged += (s, e) =>
+        {
+            _validationTimer.Stop();
+            _validationTimer.Start();
+        };
+
+        MmlInput.TextArea.Caret.PositionChanged += TextArea_Caret_PositionChanged;
         
         // アプリ終了時に確実に音を止めるための処理
         this.Closed += (s, e) => _player.Stop();
@@ -376,6 +395,13 @@ public partial class MainWindow : Window
     {
         if (sender is Button btn)
         {
+            ValidateMml();
+            if (_errorRenderer.ActiveErrors.Count > 0)
+            {
+                LogOutput.Text = "エラーがあるため再生できません。修正してください。";
+                return;
+            }
+
             btn.IsEnabled = false;
             try
             {
@@ -448,6 +474,47 @@ public partial class MainWindow : Window
         else if (_highlightRenderer.ActiveSegments.Count > 0)
         {
             ClearHighlight();
+        }
+    }
+
+    private void ValidateMml()
+    {
+        string text = MmlInput.Text ?? "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _errorRenderer.ActiveErrors.Clear();
+            MmlInput.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Selection);
+            return;
+        }
+
+        var parser = new MultiTrackMmlParser();
+        var data = parser.Parse(text);
+        
+        _errorRenderer.ActiveErrors = data.Errors;
+        MmlInput.TextArea.TextView.InvalidateLayer(AvaloniaEdit.Rendering.KnownLayer.Selection);
+
+        // Update error message if caret is already on an error
+        UpdateErrorMessageFromCaret();
+    }
+
+    private void TextArea_Caret_PositionChanged(object? sender, System.EventArgs e)
+    {
+        UpdateErrorMessageFromCaret();
+    }
+
+    private void UpdateErrorMessageFromCaret()
+    {
+        int offset = MmlInput.CaretOffset;
+        var error = _errorRenderer.ActiveErrors.FirstOrDefault(err => 
+            offset >= err.TextStartIndex && offset <= err.TextStartIndex + err.Length);
+
+        if (error != null)
+        {
+            LogOutput.Text = $"文法エラー: {error.Message}";
+        }
+        else if (LogOutput.Text?.StartsWith("文法エラー:") == true)
+        {
+            LogOutput.Text = "Ready";
         }
     }
 
