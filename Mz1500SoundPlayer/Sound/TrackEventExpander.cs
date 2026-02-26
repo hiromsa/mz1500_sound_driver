@@ -24,6 +24,7 @@ public class TrackEventExpander
         int currentEnvelopeId = -1; // -1 = off
         int currentPitchEnvelopeId = -1; // -1 = off
         int currentQuantize = 7; // MCK/PPMCKに合わせデフォルトをやや短く(7/8など)して音の区切りをつける
+        bool useFrameQuantize = false;
         int frameQuantize = 0; // @q
 
         int currentNoiseWaveMode = 1; // @wn1
@@ -59,8 +60,8 @@ public class TrackEventExpander
             { 
                 currentPitchEnvelopeId = pevc.EnvelopeId == 255 ? -1 : pevc.EnvelopeId; 
             }
-            else if (cmd is QuantizeCommand qc) { currentQuantize = qc.Quantize; }
-            else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; }
+            else if (cmd is QuantizeCommand qc) { currentQuantize = qc.Quantize; useFrameQuantize = false; }
+            else if (cmd is FrameQuantizeCommand fqc) { frameQuantize = fqc.Frames; useFrameQuantize = true; }
             else if (cmd is NoiseWaveCommand nwc) { currentNoiseWaveMode = nwc.WaveType; }
             else if (cmd is IntegrateNoiseCommand inc) { currentIntegrateNoiseMode = inc.IntegrateMode; }
             else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
@@ -126,7 +127,7 @@ public class TrackEventExpander
 
                 // ゲートタイム (発音時間) の計算
                 double gateMs = durationMs;
-                if (frameQuantize > 0)
+                if (useFrameQuantize)
                 {
                     // @q (フレーム数分短く)
                     gateMs -= frameQuantize * (1000.0 / 60.0);

@@ -62,12 +62,9 @@ public class MmlToZ80Compiler
             int gateEndFrame = (int)Math.Round(gateEndTimeMs * 60.0 / 1000.0);
             int gateFrames = gateEndFrame - currentFrame;
             
-            // 連続音を分離するため、Gateは必ずTotalより最低でも1フレーム短くする
-            if (gateFrames >= totalFrames) gateFrames = totalFrames - 1;
+            // Allow gateFrames to equal totalFrames for full legato (q8 or @q0)
+            if (gateFrames > totalFrames) gateFrames = totalFrames;
             if (gateFrames < 1 && ev.Frequency > 0) gateFrames = 1; // 少なくとも1フレームは鳴らす（非常に短い音の場合）
-
-            // 万が一 totalFrames が1フレームしかなく、音が鳴る場合、gateFrames=1、restFrames=0になる可能性がある。
-            // テンポが極端に早い場合を除き、休符が優先か発音が優先かのトレードオフ。
 
             // エンベロープの状態変化があればまず出力する
             if (ev.EnvelopeId >= 0 && ev.EnvelopeId != currentEnvId)

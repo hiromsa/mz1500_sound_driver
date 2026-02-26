@@ -250,7 +250,7 @@ public partial class MainWindow : Window
             {
                 char ch = line[c];
                 if (char.IsWhiteSpace(ch)) continue;
-                if ((ch >= 'A' && ch <= 'H') || ch == 'P' || (ch >= 'a' && ch <= 'h'))
+                if ((ch >= 'A' && ch <= 'H') || ch == 'P')
                 {
                     usedChannels.Add(char.ToUpper(ch).ToString());
                 }
@@ -309,7 +309,7 @@ public partial class MainWindow : Window
                     {
                         char ch = line[c];
                         if (char.IsWhiteSpace(ch)) continue;
-                        if ((ch >= 'A' && ch <= 'H') || ch == 'P' || (ch >= 'a' && ch <= 'h'))
+                        if ((ch >= 'A' && ch <= 'H') || ch == 'P')
                         {
                             // It's a track letter
                         }
