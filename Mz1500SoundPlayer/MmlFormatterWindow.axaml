@@ -18,7 +18,8 @@
       <TextBlock Text="折り返し小節数:" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
       <NumericUpDown x:Name="NumBars" Minimum="1" Maximum="32" Value="4" Width="70" ShowButtonSpinner="False"/>
 
-      <CheckBox x:Name="ChkSpace" Content="スペースを挿入" IsChecked="True" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
+      <CheckBox x:Name="ChkSpace" Content="スペース" IsChecked="True" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
+      <CheckBox x:Name="ChkMeasureSpace" Content="小節区切りでスペース" IsChecked="True" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="#cccccc"/>
     </StackPanel>
 
     <Grid Grid.Row="1" ColumnDefinitions="*,10,*">

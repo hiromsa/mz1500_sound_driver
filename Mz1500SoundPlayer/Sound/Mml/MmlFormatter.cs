@@ -11,16 +11,23 @@ namespace Mz1500SoundPlayer.Sound.Mml
         private const int TicksPerQuarterNote = 48;
         private const int TicksPerWholeNote = TicksPerQuarterNote * 4;
 
-        public static string Format(string inputMml, int timeSigNumerator, int timeSigDenominator, double upbeatDurationInWholeNotes, int barsPerLine, bool insertSpace)
+        public static string Format(string text, int timeSignatureNumerator, int timeSignatureDenominator, double upbeatDurationInWholeNotes, int barsPerLine, bool insertSpace, bool insertMeasureSpace = true)
         {
-            if (string.IsNullOrWhiteSpace(inputMml)) return inputMml;
+            if (string.IsNullOrWhiteSpace(text)) return text;
+            
+            // Ticks defined as: 192 = Whole note (l1)
+            int TicksPerWholeNote = 192;
+            int TicksPerQuarterNote = 48; // 192 / 4
 
             var sb = new StringBuilder();
-            var lines = inputMml.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
-            int barLengthInTicks = (TicksPerWholeNote * timeSigNumerator) / timeSigDenominator;
+            int barLengthInTicks = (TicksPerWholeNote * timeSignatureNumerator) / timeSignatureDenominator;
             int wrapLengthInTicks = barLengthInTicks * barsPerLine;
             bool pendingWrap = false;
+            
+            // For inserting measure spaces, we need to track cumulative ticks since the last measure boundary.
+            int cumulativeMeasureTicks = 0;
 
             string lastTrackPrefix = null;
             int currentTime = 0;
@@ -103,23 +110,24 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     }
                     
                     lastTrackPrefix = trackPrefix;
-                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
-                    defaultLengthTicks = TicksPerQuarterNote;
-                    
-                    sb.Append(trackPrefix);
+                    sb.Append(lastTrackPrefix);
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
                     pendingWrap = false;
+                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
+                    cumulativeMeasureTicks = currentTime % barLengthInTicks;
+                    defaultLengthTicks = TicksPerQuarterNote;
                 }
-                else if (trackPrefix == "" && lastTrackPrefix == null)
+                else if (string.IsNullOrWhiteSpace(lastTrackPrefix)) // This condition covers both trackPrefix == "" and lastTrackPrefix == null
                 {
-                    // No prefix, no previous state
-                    lastTrackPrefix = "";
-                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
-                    defaultLengthTicks = TicksPerQuarterNote;
+                    lastTrackPrefix = trackPrefix; // If trackPrefix is also "", it becomes ""
+                    sb.Append(lastTrackPrefix);
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
                     pendingWrap = false;
+                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
+                    cumulativeMeasureTicks = currentTime % barLengthInTicks;
+                    defaultLengthTicks = TicksPerQuarterNote;
                 }
 
                 var matches = regex.Matches(trimmed);
@@ -159,6 +167,16 @@ namespace Mz1500SoundPlayer.Sound.Mml
                         isFirstTokenOnLine = true;
                         spaceBeforeNext = false;
                         pendingWrap = false;
+                        cumulativeMeasureTicks = 0;
+                    }
+
+                    // Insert measure space if a measure boundary was hit by the PREVIOUS note
+                    if (insertMeasureSpace && !isFirstTokenOnLine && cumulativeMeasureTicks == 0 && barLengthInTicks > 0)
+                    {
+                        if (!isTie) 
+                        {
+                            sb.Append(" ");
+                        }
                     }
 
                     if (insertSpace && !isFirstTokenOnLine)
@@ -175,6 +193,8 @@ namespace Mz1500SoundPlayer.Sound.Mml
 
                     if (durationToAdd > 0)
                     {
+                        cumulativeMeasureTicks = (cumulativeMeasureTicks + durationToAdd) % barLengthInTicks;
+
                         if (currentTime < wrapLengthInTicks && currentTime + durationToAdd >= wrapLengthInTicks)
                         {
                             currentTime = (currentTime + durationToAdd) - wrapLengthInTicks;

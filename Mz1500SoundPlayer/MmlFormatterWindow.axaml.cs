@@ -21,6 +21,10 @@ namespace Mz1500SoundPlayer
             {
                 if (e.Property.Name == "IsChecked") UpdateFormat();
             };
+            ChkMeasureSpace.PropertyChanged += (s, e) => 
+            {
+                if (e.Property.Name == "IsChecked") UpdateFormat();
+            };
 
             BtnApply.Click += (s, e) => 
             {
@@ -54,8 +58,9 @@ namespace Mz1500SoundPlayer
 
                 int bars = (int)(NumBars.Value ?? 4);
                 bool insertSpace = ChkSpace.IsChecked ?? true;
+                bool insertMeasureSpace = ChkMeasureSpace.IsChecked ?? true;
 
-                TxtOutput.Text = MmlFormatter.Format(TxtInput.Text, num, den, upbeatDurationInWholeNotes, bars, insertSpace);
+                TxtOutput.Text = MmlFormatter.Format(TxtInput.Text, num, den, upbeatDurationInWholeNotes, bars, insertSpace, insertMeasureSpace);
             }
             catch (Exception ex)
             {
