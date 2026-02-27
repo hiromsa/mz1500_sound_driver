@@ -780,6 +780,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         await OpenEditorWindowAsync();
     }
 
+    private async void FormatMmlSelection_Click(object? sender, RoutedEventArgs e)
+    {
+        if (MmlInput.SelectionLength == 0) return;
+
+        int start = MmlInput.SelectionStart;
+        int length = MmlInput.SelectionLength;
+        string selectedText = MmlInput.SelectedText;
+
+        var formatterWindow = new MmlFormatterWindow(selectedText);
+        var result = await formatterWindow.ShowDialog<string>(this);
+
+        if (result != null)
+        {
+            MmlInput.Document.Replace(start, length, result);
+            MmlInput.Select(start, result.Length);
+        }
+    }
+
     private void MmlInput_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.E)

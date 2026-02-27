@@ -45,6 +45,7 @@
             <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
             <Separator/>
             <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
+            <MenuItem Header="選択範囲のMMLを整形 (フォーマッタ)..." Click="FormatMmlSelection_Click"/>
           </ContextMenu>
         </AvaloniaEdit:TextEditor.ContextMenu>
       </AvaloniaEdit:TextEditor>

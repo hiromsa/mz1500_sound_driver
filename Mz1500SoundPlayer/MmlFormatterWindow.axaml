@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mz1500SoundPlayer.MmlFormatterWindow"
+        Title="MMLフォーマッタ" Width="800" Height="600"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e" Foreground="#d4d4d4">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+    <StackPanel Orientation="Horizontal" Spacing="10" Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock Text="拍子:" VerticalAlignment="Center" Foreground="#cccccc"/>
+      <NumericUpDown x:Name="NumTimeSig" Minimum="1" Maximum="32" Value="4" Width="70" ShowButtonSpinner="False"/>
+      <TextBlock Text="/" VerticalAlignment="Center" Foreground="#cccccc"/>
+      <NumericUpDown x:Name="DenTimeSig" Minimum="1" Maximum="32" Value="4" Width="70" ShowButtonSpinner="False"/>
+      
+      <TextBlock Text="開始拍オフセット:" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
+      <NumericUpDown x:Name="NumUpbeat" Minimum="0" Maximum="16" Value="0" Width="70" Increment="0.5" ShowButtonSpinner="False"/>
+      <TextBlock Text="拍" VerticalAlignment="Center" Foreground="#cccccc"/>
+
+      <TextBlock Text="折り返し小節数:" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
+      <NumericUpDown x:Name="NumBars" Minimum="1" Maximum="32" Value="4" Width="70" ShowButtonSpinner="False"/>
+
+      <CheckBox x:Name="ChkSpace" Content="スペースを挿入" IsChecked="True" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#cccccc"/>
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
+      <TextBox x:Name="TxtInput" Grid.Column="0" AcceptsReturn="True" TextWrapping="Wrap" Watermark="ここにMMLを入力..." Background="#252526" Foreground="#9cdcfe"/>
+      <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
+      <TextBox x:Name="TxtOutput" Grid.Column="2" AcceptsReturn="True" TextWrapping="Wrap" IsReadOnly="True" Watermark="整形されたMMLがここに表示されます" Background="#1e1e1e" Foreground="#ce9178"/>
+    </Grid>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
+      <Button x:Name="BtnCancel" Content="キャンセル" Width="100" HorizontalContentAlignment="Center"/>
+      <Button x:Name="BtnApply" Content="適用" Width="100" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="White" FontWeight="Bold"/>
+    </StackPanel>
+  </Grid>
+</Window>
