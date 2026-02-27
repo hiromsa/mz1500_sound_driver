@@ -1,0 +1,79 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mz1500SoundPlayer.EnvelopeEditorWindow"
+        Title="Envelope Editor"
+        Width="800" Height="600"
+        MinWidth="780" MinHeight="350"
+        CanResize="True"
+        Background="#1e1e1e" Foreground="#d4d4d4"
+        WindowStartupLocation="CenterOwner"
+        KeyDown="Window_KeyDown">
+  
+  <Grid Margin="15" RowDefinitions="Auto, *, Auto, Auto, Auto">
+    
+    <!-- Header: Type and Index -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+      <TextBlock Text="エンベロープ種類:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#cccccc"/>
+      <TextBlock Name="TxtType" Text="@v" VerticalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="#4FC1FF"/>
+      
+      <TextBlock Text="番号:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#cccccc" Margin="20,0,0,0"/>
+      <NumericUpDown Name="NumIndex" Value="0" Minimum="0" Maximum="255" Width="80" FormatString="0" ShowButtonSpinner="False" ValueChanged="NumIndex_ValueChanged"/>
+      
+      <TextBlock Text="(グラフ直下をクリックでループ位置を設定)" VerticalAlignment="Center" Foreground="#858585" Margin="20,0,0,0" FontSize="12"/>
+
+      <TextBlock Name="TxtWarning" Text="⚠️ 既に定義されています" Foreground="#f48771" VerticalAlignment="Center" IsVisible="False" FontWeight="Bold" Margin="10,0,0,0"/>
+    </StackPanel>
+
+    <!-- Graphical Editor Area -->
+    <Border Grid.Row="1" BorderBrush="#3c3c3c" BorderThickness="1" Background="#252526" CornerRadius="4" Margin="0,0,0,10">
+      <Grid RowDefinitions="*, 25">
+         <!-- Canvas for drawing bars -->
+         <Canvas Name="GraphCanvas" Grid.Row="0" Background="Transparent" 
+                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                 PointerPressed="GraphCanvas_PointerPressed"
+                 PointerMoved="GraphCanvas_PointerMoved"
+                 PointerReleased="GraphCanvas_PointerReleased"
+                 ClipToBounds="True" />
+         
+         <!-- Loop Marker UI below graph -->
+         <Canvas Name="LoopMarkerCanvas" Grid.Row="1" Background="#2d2d30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" PointerPressed="LoopMarkerCanvas_PointerPressed"/>
+      </Grid>
+    </Border>
+
+    <!-- Text Editor Area -->
+    <StackPanel Grid.Row="2" Margin="0,0,0,15">
+        <TextBlock Text="MMLデータ (カンマ区切り、| はループ点):" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5" FontSize="12"/>
+        <TextBox Name="TxtData" Text="" TextWrapping="Wrap" Background="#1e1e1e" Foreground="#ce9178" MinHeight="65" MaxHeight="65" TextChanged="TxtData_TextChanged" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+    </StackPanel>
+
+    <!-- Preview Settings Area -->
+    <Border Grid.Row="3" BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,15" Background="#252526">
+      <StackPanel Spacing="5">
+          <TextBlock Text="プレビュー再生設定" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
+          
+          <Border BorderBrush="#3c3c3c" BorderThickness="1" Background="#252526" CornerRadius="4" Padding="10" Margin="0,0,0,10">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+              <ComboBox Name="CmbPreset" Width="220" SelectionChanged="CmbPreset_SelectionChanged">
+                  <ComboBoxItem Content="PSG (単音)"/>
+                  <ComboBoxItem Content="PSG (音階)"/>
+                  <ComboBoxItem Content="ノイズ: ホワイト (固定周波数)"/>
+                  <ComboBoxItem Content="ノイズ: 周期 (固定周波数)"/>
+              </ComboBox>
+              
+              <TextBlock Text="MML:" VerticalAlignment="Center" Foreground="#cccccc"/>
+              <TextBox Name="TxtPreviewMml" Text="@v0 o4 c4" Width="250" FontFamily="Consolas"/>
+              <Button Name="BtnPlay" Content="▶ 再生" Width="90" Background="#0e639c" Foreground="White" FontWeight="Bold" HorizontalContentAlignment="Center" Click="BtnPlay_Click"/>
+              <Button Name="BtnStop" Content="■ 停止" Width="90" Background="#8c2f2f" Foreground="White" FontWeight="Bold" HorizontalContentAlignment="Center" Click="BtnStop_Click"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- Footer Buttons -->
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="キャンセル" Click="Cancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+        <Button Name="BtnApply" Content="MMLに反映" Click="Apply_Click" Width="120" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="White" FontWeight="Bold"/>
+    </StackPanel>
+
+  </Grid>
+</Window>

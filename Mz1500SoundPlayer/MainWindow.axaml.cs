@@ -633,4 +633,145 @@ public partial class MainWindow : Window
             MmlInput.Select(start, result.Length);
         }
     }
+
+    private void MmlInput_ContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        var menuEditEnv = this.FindControl<MenuItem>("MenuEditEnvelope");
+        var menuNewVolEnv = this.FindControl<MenuItem>("MenuNewVolEnvelope");
+        var menuNewPitchEnv = this.FindControl<MenuItem>("MenuNewPitchEnvelope");
+
+        if (menuEditEnv == null || menuNewVolEnv == null || menuNewPitchEnv == null) return;
+
+        // カーソル行のテキストを取得
+        var document = MmlInput.Document;
+        var caretOffset = MmlInput.CaretOffset;
+        if (caretOffset < 0 || caretOffset > document.TextLength) return;
+
+        var line = document.GetLineByOffset(caretOffset);
+        string lineText = document.GetText(line).Trim();
+
+        // エンベロープ定義行かどうかの判定 (簡便に)
+        bool isEnvelopeLine = Regex.IsMatch(lineText, @"^@(v|EP)\d+\s*=");
+
+        if (isEnvelopeLine)
+        {
+            menuEditEnv.IsEnabled = true;
+            menuEditEnv.Header = "カーソル行のエンベロープを編集...";
+            
+            menuNewVolEnv.IsEnabled = false;
+            menuNewPitchEnv.IsEnabled = false;
+        }
+        else if (string.IsNullOrEmpty(lineText))
+        {
+            // 空行なら新規作成可能
+            menuEditEnv.IsEnabled = false;
+            menuEditEnv.Header = "カーソル行のエンベロープを編集... (空行)";
+
+            menuNewVolEnv.IsEnabled = true;
+            menuNewPitchEnv.IsEnabled = true;
+        }
+        else
+        {
+            // 上記以外（MMLデータ等）
+            menuEditEnv.IsEnabled = false;
+            menuEditEnv.Header = "カーソル行のエンベロープを編集... (無効な行)";
+            
+            menuNewVolEnv.IsEnabled = false;
+            menuNewPitchEnv.IsEnabled = false;
+        }
+    }
+
+    private int FindNextAvailableEnvelopeId(string prefix)
+    {
+        string text = MmlInput.Text ?? "";
+        var regex = new Regex($@"@{prefix}(\d+)\s*=");
+        var matches = regex.Matches(text);
+        
+        var usedIds = new HashSet<int>();
+        foreach (Match m in matches)
+        {
+            if (int.TryParse(m.Groups[1].Value, out int id))
+            {
+                usedIds.Add(id);
+            }
+        }
+
+        int nextId = 0;
+        while (usedIds.Contains(nextId))
+        {
+            nextId++;
+        }
+        return nextId;
+    }
+
+    private void EditEnvelope_Click(object? sender, RoutedEventArgs e)
+    {
+        var document = MmlInput.Document;
+        var line = document.GetLineByOffset(MmlInput.CaretOffset);
+        string lineText = document.GetText(line).Trim();
+
+        var match = Regex.Match(lineText, @"^@(v|EP)(\d+)\s*=\s*(.*)");
+        if (match.Success)
+        {
+            string typeStr = match.Groups[1].Value;
+            int id = int.Parse(match.Groups[2].Value);
+            string data = match.Groups[3].Value;
+
+            var type = typeStr == "v" ? EnvelopeEditorWindow.EnvelopeType.Volume : EnvelopeEditorWindow.EnvelopeType.Pitch;
+            OpenEnvelopeEditor(type, id, data, line.Offset, line.Length);
+        }
+    }
+
+    private void NewVolEnvelope_Click(object? sender, RoutedEventArgs e)
+    {
+        int nextId = FindNextAvailableEnvelopeId("v");
+        var document = MmlInput.Document;
+        var line = document.GetLineByOffset(MmlInput.CaretOffset);
+        OpenEnvelopeEditor(EnvelopeEditorWindow.EnvelopeType.Volume, nextId, "", line.Offset, line.Length);
+    }
+
+    private void NewPitchEnvelope_Click(object? sender, RoutedEventArgs e)
+    {
+        int nextId = FindNextAvailableEnvelopeId("EP");
+        var document = MmlInput.Document;
+        var line = document.GetLineByOffset(MmlInput.CaretOffset);
+        OpenEnvelopeEditor(EnvelopeEditorWindow.EnvelopeType.Pitch, nextId, "", line.Offset, line.Length);
+    }
+
+    private async void OpenEnvelopeEditor(EnvelopeEditorWindow.EnvelopeType type, int id, string existingData, int replaceOffset, int replaceLength)
+    {
+        // Get all used IDs to prevent overriding
+        var prefix = type == EnvelopeEditorWindow.EnvelopeType.Volume ? "v" : "EP";
+        string text = MmlInput.Text ?? "";
+        var regex = new Regex($@"@{prefix}(\d+)\s*=");
+        var matches = regex.Matches(text);
+        var usedIds = new HashSet<int>();
+        foreach (Match m in matches)
+        {
+            if (int.TryParse(m.Groups[1].Value, out int testId))
+            {
+                usedIds.Add(testId);
+            }
+        }
+
+        var editor = new EnvelopeEditorWindow(type, id, existingData, usedIds);
+        var result = await editor.ShowDialog<string>(this);
+
+        if (!string.IsNullOrEmpty(result))
+        {
+            // Empty line means insertion, Existing line means replace
+            var doc = MmlInput.Document;
+            string currentLineText = doc.GetText(replaceOffset, replaceLength);
+            
+            if (string.IsNullOrWhiteSpace(currentLineText))
+            {
+                doc.Replace(replaceOffset, replaceLength, result);
+            }
+            else
+            {
+                // If the user modified the ID in the editor, ensure we update the line start too
+                doc.Replace(replaceOffset, replaceLength, result);
+            }
+        }
+    }
 }

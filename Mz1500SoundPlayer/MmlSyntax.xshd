@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <SyntaxDefinition name="MML" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
     <Color name="Comment" foreground="Green" />
-    <Color name="Track" foreground="Cyan" fontWeight="bold" />
+    <Color name="Track" foreground="#9999ff" fontWeight="bold" />
     <Color name="Macro" foreground="Orange" />
     <Color name="Note" foreground="LightGreen" />
-    <Color name="Parameter" foreground="Magenta" />
+    <Color name="Parameter" foreground="#cc77cc" />
     <Color name="Looping" foreground="Red" fontWeight="bold" />
     <Color name="Number" foreground="Yellow" />
 
@@ -37,9 +37,9 @@
             \[|\]|\||L
         </Rule>
         
-        <!-- Numbers for anything else -->
+        <!-- Numbers for anything else (including value x count format like 12x5) -->
         <Rule color="Number">
-            \b\d+\b
+            \d+
         </Rule>
     </RuleSet>
 </SyntaxDefinition>
