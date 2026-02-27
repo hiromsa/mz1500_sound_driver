@@ -17,14 +17,14 @@
             @v\d*|@p\d*|@EP\d*|EP\d*|@t|@q|@in\d*|@wn\d*
         </Rule>
 
-        <!-- Main track letters -->
+        <!-- Main track letters (uppercase only) -->
         <Rule color="Track">
-            ^[A-Ha-hP\s]+
+            ^[A-HP\s]+
         </Rule>
 
-        <!-- Musical notes (c d e f g a b r and + - #) -->
+        <!-- Musical notes (c d e f g a b r and + - #, lowercase only) -->
         <Rule color="Note">
-            [a-gA-GrR][+\-#]*
+            [a-gr][+\-#]*
         </Rule>
 
         <!-- Command letters like o, l, q, v, t, D followed by numbers -->

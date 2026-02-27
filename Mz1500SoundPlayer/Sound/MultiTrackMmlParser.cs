@@ -212,8 +212,14 @@ public class MultiTrackMmlParser
                     case 'L': 
                         if (i < data.Length && char.IsDigit(data[i]))
                         {
-                            createdCmd = new DefaultLengthCommand { Length = ReadInt(data, ref i, 4, out parseError) };
+                            var dCmd = new DefaultLengthCommand { Length = ReadInt(data, ref i, 4, out parseError) };
                             if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効な音長値です。"));
+                            while (i < data.Length && data[i] == '.')
+                            {
+                                dCmd.Dots++;
+                                i++;
+                            }
+                            createdCmd = dCmd;
                         }
                         else
                             createdCmd = new InfiniteLoopPointCommand();

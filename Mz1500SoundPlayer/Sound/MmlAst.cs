@@ -67,7 +67,7 @@ public class FrameTempoCommand : MmlCommand { public int Length { get; set; } pu
 public class OctaveCommand : MmlCommand { public int Octave { get; set; } }
 public class RelativeOctaveCommand : MmlCommand { public int Offset { get; set; } }
 
-public class DefaultLengthCommand : MmlCommand { public int Length { get; set; } }
+public class DefaultLengthCommand : MmlCommand { public int Length { get; set; } public int Dots { get; set; } }
 
 public class VolumeCommand : MmlCommand { public int Volume { get; set; } }
 

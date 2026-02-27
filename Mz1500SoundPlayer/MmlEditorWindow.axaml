@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mz1500SoundPlayer.MmlEditorWindow"
+        Title="MML Editor"
+        Width="500" Height="600"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e" Foreground="#d4d4d4">
+  
+  <Grid Margin="15" RowDefinitions="Auto, *, Auto, Auto, *, Auto">
+    
+    <TextBlock Grid.Row="0" Text="対象テキストプレビュー" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
+    <TextBox Grid.Row="1" Name="TxtOriginal" IsReadOnly="True" TextWrapping="Wrap" Background="#252526" Foreground="#9cdcfe" Margin="0,0,0,15" MinHeight="60"/>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*, *" Margin="0,0,0,15">
+        <!-- 音長 (Note Length) -->
+        <Border Grid.Column="0" BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,5,0">
+            <StackPanel Spacing="10">
+                <TextBlock Text="■ 音長 (Note Length)" FontWeight="Bold" Foreground="#cccccc"/>
+                
+                <RadioButton Name="RadLenNone" Content="変更しない" IsChecked="True" GroupName="LenModes" Checked="UpdatePreview_Triggers"/>
+                <RadioButton Name="RadLenRemove" Content="すべて解除 (例: d4a16c8 → dac)" GroupName="LenModes" Checked="UpdatePreview_Triggers"/>
+                <RadioButton Name="RadLenOptimize" Content="lコマンドでまとめる (例: c8d8 → l8cd)" GroupName="LenModes" Checked="UpdatePreview_Triggers"/>
+                <RadioButton Name="RadLenExpand" Content="lコマンドを展開 (例: l8cd → c8d8)" GroupName="LenModes" Checked="UpdatePreview_Triggers"/>
+                
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <RadioButton Name="RadLenUnify" Content="指定音長に統一:" GroupName="LenModes" VerticalAlignment="Center" Checked="UpdatePreview_Triggers"/>
+                    <NumericUpDown Name="NumUnify" Value="16" Minimum="1" Maximum="192" Width="60" FormatString="0" ShowButtonSpinner="False" ValueChanged="UpdatePreview_Triggers"/>
+                </StackPanel>
+                <CheckBox Name="ChkUseLCommand" Content="先頭を 'l' コマンドでまとめる" Margin="20,0,0,0" IsCheckedChanged="UpdatePreview_Triggers"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <RadioButton Name="RadLenInc" Content="音長の増減:" GroupName="LenModes" VerticalAlignment="Center" Checked="UpdatePreview_Triggers"/>
+                    <NumericUpDown Name="NumInc" Value="16" Minimum="-192" Maximum="192" Width="60" FormatString="0" ShowButtonSpinner="False" ValueChanged="UpdatePreview_Triggers"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 音高 (Pitch) -->
+        <Border Grid.Column="1" BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10" Margin="5,0,0,0">
+            <StackPanel Spacing="10">
+                <TextBlock Text="■ 音高 (Pitch) / オクターブ" FontWeight="Bold" Foreground="#cccccc"/>
+                
+                <RadioButton Name="RadOctNone" Content="変更しない" IsChecked="True" GroupName="OctModes" Checked="UpdatePreview_Triggers"/>
+                <RadioButton Name="RadOctRelative" Content="オクターブ指定を相対指定(&lt;/&gt;)に変換" GroupName="OctModes" Checked="UpdatePreview_Triggers"/>
+                <RadioButton Name="RadOctAbsolute" Content="オクターブ指定を絶対指定(o)に変換" GroupName="OctModes" Checked="UpdatePreview_Triggers"/>
+                
+                <Separator Background="#3c3c3c" Margin="0,5,0,5"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBlock Text="トランスポーズ (半音):" VerticalAlignment="Center" Foreground="#cccccc"/>
+                    <NumericUpDown Name="NumTranspose" Value="0" Minimum="-24" Maximum="24" Width="60" FormatString="0" ShowButtonSpinner="False" ValueChanged="UpdatePreview_Triggers"/>
+                </StackPanel>
+
+                <Separator Background="#3c3c3c" Margin="0,5,0,5"/>
+                
+                <StackPanel Spacing="5">
+                    <TextBlock Text="ノート置換 (例: c=d+, e-=e):" Foreground="#cccccc"/>
+                    <TextBox Name="TxtNoteReplace" Watermark="c=c+, e-=e" TextChanged="UpdatePreview_Triggers"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+    <TextBlock Grid.Row="3" Text="変換後プレビュー" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
+    <TextBox Grid.Row="4" Name="TxtPreview" IsReadOnly="True" TextWrapping="Wrap" Background="#1e1e1e" Foreground="#ce9178" Margin="0,0,0,15" MinHeight="60"/>
+
+    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="キャンセル" Click="Cancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+        <Button Content="適 用" Click="Apply_Click" Width="100" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="White" FontWeight="Bold"/>
+    </StackPanel>
+
+  </Grid>
+</Window>

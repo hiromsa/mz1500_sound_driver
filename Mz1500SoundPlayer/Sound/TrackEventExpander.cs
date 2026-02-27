@@ -19,6 +19,7 @@ public class TrackEventExpander
         
         int currentTempo = 120; // 4分音符=120
         int defaultLength = 4;
+        int defaultDots = 0;
         int currentOctave = 4;
         int currentVolume = 15; // 0-15
         int currentEnvelopeId = -1; // -1 = off
@@ -52,7 +53,7 @@ public class TrackEventExpander
                     currentTempo = 14400 / ftc.FrameCount / ftc.Length; 
                 }
             }
-            else if (cmd is DefaultLengthCommand dlc) { defaultLength = dlc.Length; }
+            else if (cmd is DefaultLengthCommand dlc) { defaultLength = dlc.Length; defaultDots = dlc.Dots; }
             else if (cmd is OctaveCommand oc) { currentOctave = oc.Octave; }
             else if (cmd is RelativeOctaveCommand rc) { currentOctave += rc.Offset; }
             else if (cmd is VolumeCommand vc) { currentVolume = vc.Volume; } // (0-15)
@@ -82,12 +83,13 @@ public class TrackEventExpander
                 {
                     // 直前の音符の長さを延長する
                     int len = tieCmd.Length == 0 ? defaultLength : tieCmd.Length;
+                    int dots = tieCmd.Length == 0 && tieCmd.Dots == 0 ? defaultDots : tieCmd.Dots;
                     double quarterNoteMs = 60000.0 / currentTempo;
                     double durationMs = (quarterNoteMs * 4.0) / len;
-                    if (tieCmd.Dots > 0)
+                    if (dots > 0)
                     {
                         double add = durationMs / 2.0;
-                        for (int i = 0; i < tieCmd.Dots; i++) { durationMs += add; add /= 2.0; }
+                        for (int i = 0; i < dots; i++) { durationMs += add; add /= 2.0; }
                     }
 
                     var lastEvent = events[^1];
@@ -114,14 +116,15 @@ public class TrackEventExpander
                 }
 
                 int len = tupletCmd.Length == 0 ? defaultLength : tupletCmd.Length;
+                int dots = tupletCmd.Length == 0 && tupletCmd.Dots == 0 ? defaultDots : tupletCmd.Dots;
                 
                 // Calculate absolute total duration (ms) for the entire tuplet
                 double quarterNoteMs = 60000.0 / currentTempo;
                 double totalDurationMs = (quarterNoteMs * 4.0) / len;
-                if (tupletCmd.Dots > 0)
+                if (dots > 0)
                 {
                     double add = totalDurationMs / 2.0;
-                    for (int i=0; i<tupletCmd.Dots; i++) { totalDurationMs += add; add /= 2.0; }
+                    for (int i=0; i<dots; i++) { totalDurationMs += add; add /= 2.0; }
                 }
 
                 // Compute exact frame lengths so we can partition them properly across notes
@@ -208,16 +211,17 @@ public class TrackEventExpander
                 }
 
                 int len = nc.Length == 0 ? defaultLength : nc.Length;
+                int dots = nc.Length == 0 && nc.Dots == 0 ? defaultDots : nc.Dots;
                 
                 // 長さを ms で計算 ( tempo = 四分音符/min )
                 double quarterNoteMs = 60000.0 / currentTempo;
                 double durationMs = (quarterNoteMs * 4.0) / len;
                 
                 // 付点の計算
-                if (nc.Dots > 0)
+                if (dots > 0)
                 {
                     double add = durationMs / 2.0;
-                    for (int i=0; i<nc.Dots; i++) { durationMs += add; add /= 2.0; }
+                    for (int i=0; i<dots; i++) { durationMs += add; add /= 2.0; }
                 }
 
                 // ゲートタイム (発音時間) の計算
@@ -323,6 +327,7 @@ public class TrackEventExpander
 
         int currentTempo = 120;
         int defaultLength = 4;
+        int defaultDots = 0;
         double currentMs = 0;
         double nextBeatTargetMs = 0;
 
@@ -342,17 +347,19 @@ public class TrackEventExpander
             else if (cmd is DefaultLengthCommand dlc) 
             { 
                 defaultLength = dlc.Length; 
+                defaultDots = dlc.Dots;
             }
             else if (cmd is NoteCommand nc)
             {
                 int len = nc.Length == 0 ? defaultLength : nc.Length;
+                int dots = nc.Length == 0 && nc.Dots == 0 ? defaultDots : nc.Dots;
                 double quarterNoteMs = 60000.0 / currentTempo;
                 double durationMs = (quarterNoteMs * 4.0) / len;
 
-                if (nc.Dots > 0)
+                if (dots > 0)
                 {
                     double add = durationMs / 2.0;
-                    for (int i = 0; i < nc.Dots; i++) { durationMs += add; add /= 2.0; }
+                    for (int i = 0; i < dots; i++) { durationMs += add; add /= 2.0; }
                 }
 
                 while (currentMs >= nextBeatTargetMs)
@@ -372,13 +379,14 @@ public class TrackEventExpander
             else if (cmd is TupletCommand tupletCmd)
             {
                 int len = tupletCmd.Length == 0 ? defaultLength : tupletCmd.Length;
+                int dots = tupletCmd.Length == 0 && tupletCmd.Dots == 0 ? defaultDots : tupletCmd.Dots;
                 double quarterNoteMs = 60000.0 / currentTempo;
                 double totalMs = (quarterNoteMs * 4.0) / len;
 
-                if (tupletCmd.Dots > 0)
+                if (dots > 0)
                 {
                     double add = totalMs / 2.0;
-                    for (int i = 0; i < tupletCmd.Dots; i++) { totalMs += add; add /= 2.0; }
+                    for (int i = 0; i < dots; i++) { totalMs += add; add /= 2.0; }
                 }
 
                 while (currentMs >= nextBeatTargetMs)
@@ -398,13 +406,14 @@ public class TrackEventExpander
             else if (cmd is TieCommand tieCmd)
             {
                 int len = tieCmd.Length == 0 ? defaultLength : tieCmd.Length;
+                int dots = tieCmd.Length == 0 && tieCmd.Dots == 0 ? defaultDots : tieCmd.Dots;
                 double quarterNoteMs = 60000.0 / currentTempo;
                 double durationMs = (quarterNoteMs * 4.0) / len;
 
-                if (tieCmd.Dots > 0)
+                if (dots > 0)
                 {
                     double add = durationMs / 2.0;
-                    for (int i = 0; i < tieCmd.Dots; i++) { durationMs += add; add /= 2.0; }
+                    for (int i = 0; i < dots; i++) { durationMs += add; add /= 2.0; }
                 }
 
                 currentMs += durationMs;

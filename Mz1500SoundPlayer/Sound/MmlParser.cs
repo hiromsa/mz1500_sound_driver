@@ -9,6 +9,7 @@ public class MmlParser
 {
     private int _tempo = 120;
     private int _defaultLength = 4;
+    private int _defaultDots = 0;
     private int _octave = 4;
     private int _volume = 15; // 0-15
     private int _quantize = 8; // 1-8
@@ -26,7 +27,15 @@ public class MmlParser
             {
                 case 't': _tempo = ReadInt(mml, ref i, 120); break;
                 case 'o': _octave = ReadInt(mml, ref i, 4); break;
-                case 'l': _defaultLength = ReadInt(mml, ref i, 4); break;
+                case 'l': 
+                    _defaultLength = ReadInt(mml, ref i, 4); 
+                    _defaultDots = 0;
+                    while (i < mml.Length && mml[i] == '.')
+                    {
+                        _defaultDots++;
+                        i++;
+                    }
+                    break;
                 case 'v': _volume = ReadInt(mml, ref i, 15); break;
                 case 'q': _quantize = ReadInt(mml, ref i, 8); break;
                 case '>': _octave++; break;
@@ -55,15 +64,16 @@ public class MmlParser
         }
 
         int length = _defaultLength;
+        int dots = _defaultDots;
         if (i < mml.Length && char.IsDigit(mml[i]))
         {
             length = ReadInt(mml, ref i, _defaultLength);
+            dots = 0;
         }
 
-        bool dotted = false;
-        if (i < mml.Length && mml[i] == '.')
+        while (i < mml.Length && mml[i] == '.')
         {
-            dotted = true;
+            dots++;
             i++;
         }
 
@@ -71,7 +81,11 @@ public class MmlParser
         // tempo = quarter notes per minute. 1 quarter note = 60000 / tempo ms
         double quarterNoteMs = 60000.0 / _tempo;
         double durationMs = (quarterNoteMs * 4.0) / length;
-        if (dotted) durationMs *= 1.5;
+        if (dots > 0)
+        {
+            double add = durationMs / 2.0;
+            for (int d = 0; d < dots; d++) { durationMs += add; add /= 2.0; }
+        }
 
         double gateTimeMs = durationMs * (_quantize / 8.0);
         
