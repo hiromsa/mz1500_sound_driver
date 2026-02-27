@@ -86,16 +86,22 @@ public class MultiTrackMmlParser
 
     private EnvelopeData ParseEnvelopeData(string innerText, bool allowNegative = false)
     {
-        string pattern = allowNegative ? @"-?\d+(?:\s*[xX]\s*\d+)?|\|" : @"\d+(?:\s*[xX]\s*\d+)?|\|";
+        string pattern = allowNegative ? @"-?\d+(?:\s*[xX]\s*\d+)?|\||>" : @"\d+(?:\s*[xX]\s*\d+)?|\||>";
         var matches = Regex.Matches(innerText, pattern);
         
         var envData = new EnvelopeData();
+        bool isReleasePhase = false;
+
         foreach (Match m in matches)
         {
             string v = m.Value.Trim();
             if (v == "|")
             {
                 envData.LoopIndex = envData.Values.Count;
+            }
+            else if (v == ">")
+            {
+                isReleasePhase = true;
             }
             else
             {
@@ -119,7 +125,14 @@ public class MultiTrackMmlParser
                 {
                     for (int n = 0; n < repeatCount; n++)
                     {
-                        envData.Values.Add(val);
+                        if (isReleasePhase)
+                        {
+                            envData.ReleaseValues.Add(val);
+                        }
+                        else
+                        {
+                            envData.Values.Add(val);
+                        }
                     }
                 }
             }

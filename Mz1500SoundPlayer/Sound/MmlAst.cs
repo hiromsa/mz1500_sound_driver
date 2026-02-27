@@ -26,6 +26,7 @@ public class TrackData
 public class EnvelopeData
 {
     public List<int> Values { get; set; } = new();
+    public List<int> ReleaseValues { get; set; } = new();
     public int LoopIndex { get; set; } = -1;
 }
 

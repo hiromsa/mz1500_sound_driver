@@ -98,6 +98,7 @@ public class MmlPlayerModel
 
         var expander = new TrackEventExpander();
         var compiler = new MmlToZ80Compiler();
+        compiler.VolumeEnvelopes = mmlData.VolumeEnvelopes;
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         var trackBinaries = new Dictionary<string, byte[]>();
 
@@ -182,6 +183,7 @@ public class MmlPlayerModel
 
         var expander = new TrackEventExpander();
         var compiler = new MmlToZ80Compiler();
+        compiler.VolumeEnvelopes = mmlData.VolumeEnvelopes;
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         
         // 5. Build Z80 Execution Binary (QDC) for hardware/emulator

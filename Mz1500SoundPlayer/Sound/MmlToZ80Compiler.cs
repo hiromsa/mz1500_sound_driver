@@ -24,6 +24,7 @@ public class MmlToZ80Compiler
     public const byte CMD_LOOP_MARKER = 0x08; // Lコマンドによる無限ループマーカー
     public const byte CMD_END  = 0xFF; // 曲の終わり
 
+    public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
     public List<HwPitchEnvData> HwPitchEnvelopes { get; } = new();
     private Dictionary<string, int> _hwPitchEnvCache = new();
@@ -44,6 +45,7 @@ public class MmlToZ80Compiler
         int currentPEnvId = -1;
         double currentTimeMs = 0;
         int currentFrame = 0;
+        int currentReleaseEnvPos = -1; // -1 means release is off or finished
 
         foreach (var ev in events)
         {
@@ -83,20 +85,71 @@ public class MmlToZ80Compiler
 
             if (ev.Frequency == 0 || ev.Volume == 0 || gateFrames <= 0)
             {
-                // Mute before rest
-                byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                output.Add(CMD_VOL);
-                output.Add(muteVolCmd);
-                currentVol = 15;
+                // Mute before rest unless release is active
+                if (currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var relEnvData) && relEnvData.ReleaseValues.Count > 0 && currentReleaseEnvPos >= 0)
+                {
+                    // Fall back to Rest 処理 below to continue release phase
+                }
+                else
+                {
+                    byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
+                    output.Add(CMD_VOL);
+                    output.Add(muteVolCmd);
+                    currentVol = 15;
+                    currentReleaseEnvPos = -1;
+                }
 
-                // 休符 (Kyufu)
+                // 休符 (Kyufu) / Release Phase Expansion
                 ushort durationUnits = (ushort)(totalFrames - 1);
-                output.Add(CMD_REST);
-                output.Add((byte)(durationUnits & 0xFF));
-                output.Add((byte)((durationUnits >> 8) & 0xFF));
+                
+                if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
+                {
+                    // 1 frame step expansion for release phase during explicit rest
+                    for (int frm = 0; frm < totalFrames; frm++)
+                    {
+                        if (currentReleaseEnvPos < envDataR.ReleaseValues.Count)
+                        {
+                            int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
+                            int relVol15 = (int)Math.Round((relVal / 15.0) * 15.0); // AST already handles 0-15 values properly
+                            if (relVol15 < 0) relVol15 = 0;
+                            if (relVol15 > 15) relVol15 = 15;
+                            byte hwVol = (byte)(15 - relVol15);
+
+                            if (currentVol != hwVol)
+                            {
+                                output.Add(CMD_VOL);
+                                output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (hwVol & 0x0F)));
+                                currentVol = hwVol;
+                            }
+                        }
+                        else
+                        {
+                            if (currentVol != 15)
+                            {
+                                output.Add(CMD_VOL);
+                                output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
+                                currentVol = 15;
+                                currentReleaseEnvPos = -1;
+                            }
+                        }
+                        
+                        // Emit 1 frame rest
+                        output.Add(CMD_REST);
+                        output.Add(0);
+                        output.Add(0);
+                    }
+                }
+                else
+                {
+                    output.Add(CMD_REST);
+                    output.Add((byte)(durationUnits & 0xFF));
+                    output.Add((byte)((durationUnits >> 8) & 0xFF));
+                }
             }
             else
             {
+                // Note ON, reset release envelope position
+                currentReleaseEnvPos = 0; 
 
                 // 音量チェンジがあれば先に吐く (エンベロープが効いていればZ80側で上書きされるため初期値として機能する)
                 int vol15 = (int)Math.Round((ev.Volume / 0.15) * 15.0);
@@ -270,15 +323,53 @@ public class MmlToZ80Compiler
                 int restFrames = totalFrames - gateFrames;
                 if (restFrames > 0)
                 {
-                    byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                    output.Add(CMD_VOL);
-                    output.Add(muteVolCmd);
-                    currentVol = 15;
-                    
-                    ushort restUnits = (ushort)(restFrames - 1);
-                    output.Add(CMD_REST);
-                    output.Add((byte)(restUnits & 0xFF));
-                    output.Add((byte)((restUnits >> 8) & 0xFF));
+                    if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
+                    {
+                        for (int frm = 0; frm < restFrames; frm++)
+                        {
+                            if (currentReleaseEnvPos < envDataR.ReleaseValues.Count)
+                            {
+                                int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
+                                int relVol15 = (int)Math.Round((relVal / 15.0) * 15.0);
+                                if (relVol15 < 0) relVol15 = 0;
+                                if (relVol15 > 15) relVol15 = 15;
+                                byte relHwVol = (byte)(15 - relVol15);
+
+                                if (currentVol != relHwVol)
+                                {
+                                    output.Add(CMD_VOL);
+                                    output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (relHwVol & 0x0F)));
+                                    currentVol = relHwVol;
+                                }
+                            }
+                            else
+                            {
+                                if (currentVol != 15)
+                                {
+                                    output.Add(CMD_VOL);
+                                    output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
+                                    currentVol = 15;
+                                    currentReleaseEnvPos = -1;
+                                }
+                            }
+                            
+                            output.Add(CMD_REST);
+                            output.Add(0);
+                            output.Add(0);
+                        }
+                    }
+                    else
+                    {
+                        byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
+                        output.Add(CMD_VOL);
+                        output.Add(muteVolCmd);
+                        currentVol = 15;
+                        
+                        ushort restUnits = (ushort)(restFrames - 1);
+                        output.Add(CMD_REST);
+                        output.Add((byte)(restUnits & 0xFF));
+                        output.Add((byte)((restUnits >> 8) & 0xFF));
+                    }
                 }
             }
 
