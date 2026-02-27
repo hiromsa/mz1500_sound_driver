@@ -6,6 +6,11 @@ namespace Mz1500SoundPlayer.Sound.Mml
 {
     public static class MmlFormatter
     {
+        // 1 quarter note (l4) = 48 Ticks
+        // 1 whole note (l1) = 192 Ticks
+        private const int TicksPerQuarterNote = 48;
+        private const int TicksPerWholeNote = TicksPerQuarterNote * 4;
+
         public static string Format(string inputMml, int timeSigNumerator, int timeSigDenominator, double upbeatDurationInWholeNotes, int barsPerLine, bool insertSpace)
         {
             if (string.IsNullOrWhiteSpace(inputMml)) return inputMml;
@@ -13,16 +18,19 @@ namespace Mz1500SoundPlayer.Sound.Mml
             var sb = new StringBuilder();
             var lines = inputMml.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
-            double barLengthInWholeNotes = (double)timeSigNumerator / timeSigDenominator;
-            double wrapLength = barLengthInWholeNotes * barsPerLine;
+            int barLengthInTicks = (TicksPerWholeNote * timeSigNumerator) / timeSigDenominator;
+            int wrapLengthInTicks = barLengthInTicks * barsPerLine;
 
             string lastTrackPrefix = null;
-            double currentTime = 0;
-            if (upbeatDurationInWholeNotes > 0)
+            int currentTime = 0;
+            int upbeatTicks = (int)Math.Round(upbeatDurationInWholeNotes * TicksPerWholeNote);
+
+            if (upbeatTicks > 0)
             {
-                currentTime = wrapLength - upbeatDurationInWholeNotes;
+                currentTime = wrapLengthInTicks - upbeatTicks;
             }
-            double defaultLength = 1.0 / 4.0;
+            
+            int defaultLengthTicks = TicksPerQuarterNote;
             bool isFirstTokenOnLine = true;
             bool spaceBeforeNext = false;
 
@@ -31,7 +39,7 @@ namespace Mz1500SoundPlayer.Sound.Mml
             string pattern = 
                 @"(@[a-zA-Z]+\d*(?:,\d+)?(?:x\d+)?)|" + // @commands like @v1, @q8, @EP0
                 @"([eE][pP]\d+|@[eE][pP]\d+)|" + // EP0, @EP0
-                @"([qQ]\d+|[kK]\-?\d+|D\-?\d+)|" + // q, K, D detune (uppercase D)
+                @"([qQ]\d+|[kK]\-?\d+|[dD]\-?\d+)|" + // q, K, D detune (uppercase D)
                 @"([vV]\d+)|" + // v
                 @"([tT]\d+)|" + // t
                 @"([oO]\d+|[<>])|" + // o, <, >
@@ -60,8 +68,8 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     sb.AppendLine(line);
                     
                     lastTrackPrefix = null;
-                    currentTime = upbeatDurationInWholeNotes > 0 ? wrapLength - upbeatDurationInWholeNotes : 0;
-                    defaultLength = 1.0 / 4.0;
+                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
+                    defaultLengthTicks = TicksPerQuarterNote;
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
                     continue;
@@ -94,8 +102,8 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     }
                     
                     lastTrackPrefix = trackPrefix;
-                    currentTime = upbeatDurationInWholeNotes > 0 ? wrapLength - upbeatDurationInWholeNotes : 0;
-                    defaultLength = 1.0 / 4.0;
+                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
+                    defaultLengthTicks = TicksPerQuarterNote;
                     
                     sb.Append(trackPrefix);
                     isFirstTokenOnLine = true;
@@ -105,8 +113,8 @@ namespace Mz1500SoundPlayer.Sound.Mml
                 {
                     // No prefix, no previous state
                     lastTrackPrefix = "";
-                    currentTime = upbeatDurationInWholeNotes > 0 ? wrapLength - upbeatDurationInWholeNotes : 0;
-                    defaultLength = 1.0 / 4.0;
+                    currentTime = upbeatTicks > 0 ? wrapLengthInTicks - upbeatTicks : 0;
+                    defaultLengthTicks = TicksPerQuarterNote;
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
                 }
@@ -117,20 +125,20 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     var token = m.Value;
                     if (string.IsNullOrWhiteSpace(token)) continue;
 
-                    double durationToAdd = 0.0;
+                    int durationToAdd = 0;
                     char firstChar = char.ToLower(token[0]);
                     
                     if ((firstChar >= 'a' && firstChar <= 'g') || firstChar == 'r' || firstChar == '^')
                     {
-                        durationToAdd = ParseDuration(token, defaultLength);
+                        durationToAdd = ParseDurationTicks(token, defaultLengthTicks);
                     }
                     else if (firstChar == 'l' && token != "L")
                     {
-                        defaultLength = ParseDuration(token, defaultLength);
+                        defaultLengthTicks = ParseDurationTicks(token, defaultLengthTicks);
                     }
 
                     // If this token pushes us PAST the wrap boundary, we wrap FIRST
-                    if (currentTime + durationToAdd > wrapLength + 0.0001 && wrapLength > 0)
+                    if (currentTime + durationToAdd > wrapLengthInTicks && wrapLengthInTicks > 0)
                     {
                         sb.AppendLine();
                         sb.Append(lastTrackPrefix);
@@ -154,9 +162,9 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     currentTime += durationToAdd;
 
                     // If this token perfectly hits the wrap boundary, we wrap AFTER it
-                    if (currentTime >= wrapLength - 0.0001 && wrapLength > 0)
+                    if (currentTime >= wrapLengthInTicks && wrapLengthInTicks > 0)
                     {
-                        if (Math.Abs(currentTime - wrapLength) < 0.001)
+                        if (currentTime == wrapLengthInTicks)
                         {
                             sb.AppendLine();
                             sb.Append(lastTrackPrefix);
@@ -171,23 +179,26 @@ namespace Mz1500SoundPlayer.Sound.Mml
             return sb.ToString().TrimEnd('\t', ' ', '\r', '\n');
         }
 
-        private static double ParseDuration(string token, double defaultLength)
+        private static int ParseDurationTicks(string token, int defaultLengthTicks)
         {
             var match = Regex.Match(token, @"\d+");
-            double val = defaultLength;
+            int val = defaultLengthTicks;
             if (match.Success)
             {
                 int len = int.Parse(match.Value);
-                if (len > 0) val = 1.0 / len;
+                if (len > 0) 
+                {
+                    val = TicksPerWholeNote / len;
+                }
             }
             else if (token.StartsWith("^") && token.Length == 1)
             {
-                val = defaultLength;
+                val = defaultLengthTicks;
             }
             
             int dots = token.Length - token.Replace(".", "").Length;
-            double total = val;
-            double currentAddition = val;
+            int total = val;
+            int currentAddition = val;
             for (int i = 0; i < dots; i++)
             {
                 currentAddition /= 2;
