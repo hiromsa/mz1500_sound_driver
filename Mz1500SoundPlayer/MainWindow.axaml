@@ -2,99 +2,128 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Mz1500SoundPlayer"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Mz1500SoundPlayer.MainWindow"
+        x:DataType="local:MainWindow"
         xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         Title="Mz1500SoundPlayer"
         Background="#1e1e1e" Foreground="#d4d4d4">
-  <!-- 2-Column layout: Left for Editor, Right for Controls -->
-  <Grid Margin="15" ColumnDefinitions="*, 250" RowDefinitions="Auto, *, Auto">
-    
-    <!-- LEFT PANEL -->
-    <TextBlock Grid.Row="0" Grid.Column="0" Text="MZ-1500 Sound Player" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5" Foreground="#cccccc"/>
-    <TextBlock Grid.Row="0" Grid.Column="0" Text="MMLを入力してPlayボタンを押してください:" Margin="5,25,0,5" Foreground="#858585"/>
+  <DockPanel>
+    <!-- Top Menu -->
+    <Menu DockPanel.Dock="Top" Background="#333333">
+      <MenuItem Header="_File">
+        <MenuItem Header="Load MML" Click="LoadMmlButton_Click"/>
+        <MenuItem Header="Save MML" Click="SaveMmlButton_Click"/>
+        <Separator/>
+        <MenuItem Header="Import MIDI" Click="LoadMidiButton_Click"/>
+        <MenuItem Header="Import FMS" Click="LoadFmsButton_Click"/>
+        <MenuItem Header="Export QDC (.qdc)" Click="ExportQdcButton_Click"/>
+        <Separator/>
+        <MenuItem Header="Exit" Click="Exit_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem Header="Remap Channels" Click="RemapButton_Click"/>
+        <MenuItem Header="Clear Text" Click="ClearButton_Click"/>
+      </MenuItem>
+    </Menu>
 
-    <AvaloniaEdit:TextEditor Grid.Row="1" Grid.Column="0" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Margin="0,0,15,5"
-             Background="#1e1e1e" Foreground="#d4d4d4"
-             Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r">
-      <AvaloniaEdit:TextEditor.ContextMenu>
-        <ContextMenu Opening="MmlInput_ContextMenuOpening">
-          <MenuItem Name="MenuEditEnvelope" Header="カーソル行のエンベロープを編集..." Click="EditEnvelope_Click"/>
-          <MenuItem Name="MenuNewVolEnvelope" Header="新規音量エンベロープ(@v)の挿入..." Click="NewVolEnvelope_Click"/>
-          <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
-          <Separator/>
-          <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
-        </ContextMenu>
-      </AvaloniaEdit:TextEditor.ContextMenu>
-    </AvaloniaEdit:TextEditor>
-    
-    <!-- Logging / Status -->
-    <TextBlock Grid.Row="2" Grid.Column="0" Name="LogOutput" Foreground="#4FC1FF" TextWrapping="Wrap" HorizontalAlignment="Stretch" Margin="0,5,0,0"/>
+    <!-- 2-Column layout: Left for Editor, Right for Controls -->
+    <Grid Margin="15" ColumnDefinitions="*, 250" RowDefinitions="Auto, *, Auto">
+      
+      <!-- LEFT PANEL -->
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="MZ-1500 Sound Player" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5" Foreground="#cccccc"/>
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="MMLを入力してPlayボタンを押してください:" Margin="5,25,0,5" Foreground="#858585"/>
 
-    <!-- RIGHT PANEL: Controls wrapped in ScrollViewer -->
-    <ScrollViewer Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="10" Margin="5,0,0,5" Background="#252526">
-        
-        <!-- MML File Group -->
-        <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-          <StackPanel Spacing="5">
-            <TextBlock Text="📁 MML File" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
-            <Button Name="LoadMmlButton" Content="Load MML" Click="LoadMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-            <Button Name="SaveMmlButton" Content="Save MML" Click="SaveMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-          </StackPanel>
-        </Border>
+      <AvaloniaEdit:TextEditor Grid.Row="1" Grid.Column="0" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Margin="0,0,15,5"
+               Background="#1e1e1e" Foreground="#d4d4d4"
+               Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r">
+        <AvaloniaEdit:TextEditor.ContextMenu>
+          <ContextMenu Opening="MmlInput_ContextMenuOpening">
+            <MenuItem Name="MenuEditEnvelope" Header="カーソル行のエンベロープを編集..." Click="EditEnvelope_Click"/>
+            <MenuItem Name="MenuNewVolEnvelope" Header="新規音量エンベロープ(@v)の挿入..." Click="NewVolEnvelope_Click"/>
+            <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
+            <Separator/>
+            <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
+          </ContextMenu>
+        </AvaloniaEdit:TextEditor.ContextMenu>
+      </AvaloniaEdit:TextEditor>
+      
+      <!-- Logging / Status -->
+      <TextBlock Grid.Row="2" Grid.Column="0" Name="LogOutput" Foreground="#4FC1FF" TextWrapping="Wrap" HorizontalAlignment="Stretch" Margin="0,5,0,0"/>
 
-        <!-- Edit Group -->
-        <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-          <StackPanel Spacing="5">
-            <TextBlock Text="✏️ Edit Tools" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
-            <Button Name="RemapButton" Content="Remap Channels" Click="RemapButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-            <Button Name="ClearButton" Content="Clear Text" Click="ClearButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-          </StackPanel>
-        </Border>
+      <!-- RIGHT PANEL: Controls wrapped in ScrollViewer -->
+      <ScrollViewer Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="10" Margin="5,0,0,5" Background="#252526">
+          
+          <!-- Playback Group -->
+          <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
+            <StackPanel Spacing="5">
+              <TextBlock Text="▶️ Playback" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
+              <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,0,5" HorizontalAlignment="Center">
+                <TextBlock Text="Vol:" VerticalAlignment="Center" Foreground="#cccccc"/>
+                <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="140" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
+              </StackPanel>
+              
+              <CheckBox Name="ChkMetronome" Content="Metronome (Sync Tr.A)" IsChecked="False" Checked="ChkMetronome_Changed" Unchecked="ChkMetronome_Changed" Margin="0,0,0,5" Foreground="#cccccc"/>
 
-        <!-- Playback Group -->
-        <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-          <StackPanel Spacing="5">
-            <TextBlock Text="▶️ Playback" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
-            <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,0,5" HorizontalAlignment="Center">
-              <TextBlock Text="Vol:" VerticalAlignment="Center" Foreground="#cccccc"/>
-              <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="140" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
+              <StackPanel Orientation="Vertical" Spacing="2" Margin="0,0,0,10">
+                <CheckBox Name="ChkAll" Content="ALL" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed" Foreground="#d4d4d4" Margin="0,0,0,5"/>
+                
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkA" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="A ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeA}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkB" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="B ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkC" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="C ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeC}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkD" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="D 🥁" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeD}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="DarkOrange"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkE" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="E ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeE}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkF" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="F ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeF}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkG" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="G ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeG}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkH" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="H 🥁" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeH}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="DarkOrange"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
+                  <CheckBox Name="ChkP" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
+                  <TextBlock Text="P 📢" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
+                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeP}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="MediumOrchid"/>
+                </Grid>
+              </StackPanel>
+
+              <Button Name="PlayMmlButton" Content="Play" Click="PlayMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="#ffffff" FontWeight="Bold" Margin="0,5,0,0"/>
+              <Button Name="StopButton" Content="Stop" Click="StopButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#8c2f2f" Foreground="#ffffff"/>
             </StackPanel>
-            
-            <CheckBox Name="ChkMetronome" Content="Metronome (Sync Tr.A)" IsChecked="False" Checked="ChkMetronome_Changed" Unchecked="ChkMetronome_Changed" Margin="0,0,0,5" Foreground="#cccccc"/>
+          </Border>
 
-            <TextBlock Text="Ch Mask:" VerticalAlignment="Center" FontWeight="Bold" FontSize="11" Margin="0,5,0,0" Foreground="#cccccc"/>
-            <WrapPanel Orientation="Horizontal" Margin="0,0,0,5">
-              <CheckBox Name="ChkAll" Content="ALL" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkA" Content="A" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkB" Content="B" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkC" Content="C" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkD" Content="D" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkE" Content="E" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkF" Content="F" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkG" Content="G" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkH" Content="H" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-              <CheckBox Name="ChkP" Content="P(BEEP)" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Margin="0,0,5,0" Foreground="#d4d4d4"/>
-            </WrapPanel>
-
-            <Button Name="PlayMmlButton" Content="Play MML (Ctrl+Enter)" Click="PlayMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="#ffffff" FontWeight="Bold" Margin="0,5,0,0"/>
-            <Button Name="PlayDemoButton" Content="Play Demo" Click="PlayDemoButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-            <Button Name="StopButton" Content="Stop" Click="StopButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#8c2f2f" Foreground="#ffffff"/>
-          </StackPanel>
-        </Border>
-
-        <!-- Import / Export Group -->
-        <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-          <StackPanel Spacing="5">
-            <TextBlock Text="💾 Import / Export" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
-            <Button Name="LoadMidiButton" Content="Load MIDI" Click="LoadMidiButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-            <Button Name="LoadFmsButton" Content="Load FMS" Click="LoadFmsButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-            <Button Name="ExportQdcButton" Content="Export QDC (.qdc)" Click="ExportQdcButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#333333" Foreground="#cccccc"/>
-          </StackPanel>
-        </Border>
-
-      </StackPanel>
-    </ScrollViewer>
-  </Grid>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </DockPanel>
 </Window>

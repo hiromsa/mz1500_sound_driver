@@ -14,9 +14,12 @@ using System.Reflection;
 using Avalonia.Threading;
 using System.Linq;
 
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace Mz1500SoundPlayer;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, INotifyPropertyChanged
 {
     private readonly MmlPlayerModel _player;
     private readonly PlaybackHighlightRenderer _highlightRenderer;
@@ -24,9 +27,38 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _playbackTimer;
     private readonly DispatcherTimer _validationTimer;
 
+    // View Model Properties for UI binding
+    private int _currentVolumeA;
+    public int CurrentVolumeA { get => _currentVolumeA; set => SetProperty(ref _currentVolumeA, value); }
+    private int _currentVolumeB;
+    public int CurrentVolumeB { get => _currentVolumeB; set => SetProperty(ref _currentVolumeB, value); }
+    private int _currentVolumeC;
+    public int CurrentVolumeC { get => _currentVolumeC; set => SetProperty(ref _currentVolumeC, value); }
+    private int _currentVolumeD;
+    public int CurrentVolumeD { get => _currentVolumeD; set => SetProperty(ref _currentVolumeD, value); }
+    private int _currentVolumeE;
+    public int CurrentVolumeE { get => _currentVolumeE; set => SetProperty(ref _currentVolumeE, value); }
+    private int _currentVolumeF;
+    public int CurrentVolumeF { get => _currentVolumeF; set => SetProperty(ref _currentVolumeF, value); }
+    private int _currentVolumeG;
+    public int CurrentVolumeG { get => _currentVolumeG; set => SetProperty(ref _currentVolumeG, value); }
+    private int _currentVolumeH;
+    public int CurrentVolumeH { get => _currentVolumeH; set => SetProperty(ref _currentVolumeH, value); }
+    private int _currentVolumeP;
+    public int CurrentVolumeP { get => _currentVolumeP; set => SetProperty(ref _currentVolumeP, value); }
+
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    private void SetProperty<T>(ref T backingField, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(backingField, value)) return;
+        backingField = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     public MainWindow()
     {
         InitializeComponent();
+        this.DataContext = this;
         _player = new MmlPlayerModel();
         
         // Setup Highlight Renderer
@@ -80,19 +112,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void PlayDemoButton_Click(object? sender, RoutedEventArgs e)
+    private void Exit_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
-        {
-            btn.IsEnabled = false;
-            await _player.PlaySequenceAsync();
-            btn.IsEnabled = true;
-        }
+        this.Close();
     }
 
     private async void LoadMidiButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Control btn)
         {
             btn.IsEnabled = false;
             try
@@ -130,7 +157,7 @@ public partial class MainWindow : Window
 
     private async void LoadFmsButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Control btn)
         {
             btn.IsEnabled = false;
             try
@@ -176,7 +203,7 @@ public partial class MainWindow : Window
 
     private async void LoadMmlButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Control btn)
         {
             btn.IsEnabled = false;
             try
@@ -218,7 +245,7 @@ public partial class MainWindow : Window
 
     private async void SaveMmlButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Control btn)
         {
             btn.IsEnabled = false;
             try
@@ -358,7 +385,7 @@ public partial class MainWindow : Window
 
     private async void PlayMmlButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Control btn)
         {
             ValidateMml();
             if (_errorRenderer.ActiveErrors.Count > 0)
@@ -406,6 +433,19 @@ public partial class MainWindow : Window
         {
             // Try to avoid excessive UI lag, only update if needed or limit rate
         }
+
+        // --- Volume Polling Section ---
+        var volumes = _player.GetCurrentVolumes();
+        CurrentVolumeA = volumes.TryGetValue("A", out var va) ? va : 0;
+        CurrentVolumeB = volumes.TryGetValue("B", out var vb) ? vb : 0;
+        CurrentVolumeC = volumes.TryGetValue("C", out var vc) ? vc : 0;
+        CurrentVolumeD = volumes.TryGetValue("D", out var vd) ? vd : 0;
+        CurrentVolumeE = volumes.TryGetValue("E", out var ve) ? ve : 0;
+        CurrentVolumeF = volumes.TryGetValue("F", out var vf) ? vf : 0;
+        CurrentVolumeG = volumes.TryGetValue("G", out var vg) ? vg : 0;
+        CurrentVolumeH = volumes.TryGetValue("H", out var vh) ? vh : 0;
+        CurrentVolumeP = volumes.TryGetValue("P", out var vp) ? vp : 0;
+        // ------------------------------
 
         if (activeEvents.Any())
         {
@@ -497,7 +537,21 @@ public partial class MainWindow : Window
         _player.Stop();
         _playbackTimer.Stop();
         ClearHighlight();
+        ResetVolumes();
         LogOutput.Text = "Playback stopped.";
+    }
+
+    private void ResetVolumes()
+    {
+        CurrentVolumeA = 0;
+        CurrentVolumeB = 0;
+        CurrentVolumeC = 0;
+        CurrentVolumeD = 0;
+        CurrentVolumeE = 0;
+        CurrentVolumeF = 0;
+        CurrentVolumeG = 0;
+        CurrentVolumeH = 0;
+        CurrentVolumeP = 0;
     }
 
     private void Window_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)

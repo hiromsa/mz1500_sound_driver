@@ -63,6 +63,15 @@ public class MmlPlayerModel
     {
     }
 
+    public Dictionary<string, int> GetCurrentVolumes()
+    {
+        if (_multiSequenceProvider != null && _waveOut != null && _waveOut.PlaybackState == NAudio.Wave.PlaybackState.Playing)
+        {
+            return _multiSequenceProvider.GetCurrentVolumes();
+        }
+        return new Dictionary<string, int>();
+    }
+
     public async Task PlaySequenceAsync()
     {
         var demo = new List<NoteEvent>

@@ -32,6 +32,16 @@ public class MultiTrackSequenceProvider : ISampleProvider
         }
     }
 
+    public Dictionary<string, int> GetCurrentVolumes()
+    {
+        var vols = new Dictionary<string, int>();
+        foreach (var item in _trackProviders)
+        {
+            vols[item.TrackName] = item.Provider.CurrentVolume;
+        }
+        return vols;
+    }
+
     public int Read(float[] buffer, int offset, int count)
     {
         if (_tempBuffer == null || _tempBuffer.Length < count)

@@ -10,6 +10,8 @@ public class MmlSequenceProvider : ISampleProvider
 
     public bool IsMuted { get; set; } = false;
 
+    public int CurrentVolume => IsMuted || _isRest || _phaseIncrement <= 0 ? 0 : (15 - _hwVolume);
+
     private readonly byte[] _bytecode;
     private int _pc; // Program Counter
     
