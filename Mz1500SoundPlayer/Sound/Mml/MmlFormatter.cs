@@ -117,13 +117,26 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     var token = m.Value;
                     if (string.IsNullOrWhiteSpace(token)) continue;
 
-                    if (currentTime >= wrapLength - 0.0001 && wrapLength > 0)
+                    double durationToAdd = 0.0;
+                    char firstChar = char.ToLower(token[0]);
+                    
+                    if ((firstChar >= 'a' && firstChar <= 'g') || firstChar == 'r' || firstChar == '^')
                     {
-                        currentTime -= wrapLength;
+                        durationToAdd = ParseDuration(token, defaultLength);
+                    }
+                    else if (firstChar == 'l' && token != "L")
+                    {
+                        defaultLength = ParseDuration(token, defaultLength);
+                    }
+
+                    // If this token pushes us PAST the wrap boundary, we wrap FIRST
+                    if (currentTime + durationToAdd > wrapLength + 0.0001 && wrapLength > 0)
+                    {
                         sb.AppendLine();
                         sb.Append(lastTrackPrefix);
                         isFirstTokenOnLine = true;
                         spaceBeforeNext = false;
+                        currentTime = 0;
                     }
 
                     if (insertSpace && !isFirstTokenOnLine)
@@ -138,19 +151,20 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     isFirstTokenOnLine = false;
                     spaceBeforeNext = token.StartsWith("^"); 
 
-                    double durationToAdd = 0.0;
-                    char firstChar = char.ToLower(token[0]);
-                    
-                    if ((firstChar >= 'a' && firstChar <= 'g') || firstChar == 'r' || firstChar == '^')
-                    {
-                        durationToAdd = ParseDuration(token, defaultLength);
-                    }
-                    else if (firstChar == 'l' && token != "L")
-                    {
-                        defaultLength = ParseDuration(token, defaultLength);
-                    }
-
                     currentTime += durationToAdd;
+
+                    // If this token perfectly hits the wrap boundary, we wrap AFTER it
+                    if (currentTime >= wrapLength - 0.0001 && wrapLength > 0)
+                    {
+                        if (Math.Abs(currentTime - wrapLength) < 0.001)
+                        {
+                            sb.AppendLine();
+                            sb.Append(lastTrackPrefix);
+                            isFirstTokenOnLine = true;
+                            spaceBeforeNext = false;
+                            currentTime = 0;
+                        }
+                    }
                 }
             }
 
