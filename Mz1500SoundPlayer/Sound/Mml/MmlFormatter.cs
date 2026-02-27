@@ -20,6 +20,7 @@ namespace Mz1500SoundPlayer.Sound.Mml
 
             int barLengthInTicks = (TicksPerWholeNote * timeSigNumerator) / timeSigDenominator;
             int wrapLengthInTicks = barLengthInTicks * barsPerLine;
+            bool pendingWrap = false;
 
             string lastTrackPrefix = null;
             int currentTime = 0;
@@ -108,6 +109,7 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     sb.Append(trackPrefix);
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
+                    pendingWrap = false;
                 }
                 else if (trackPrefix == "" && lastTrackPrefix == null)
                 {
@@ -117,6 +119,7 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     defaultLengthTicks = TicksPerQuarterNote;
                     isFirstTokenOnLine = true;
                     spaceBeforeNext = false;
+                    pendingWrap = false;
                 }
 
                 var matches = regex.Matches(trimmed);
@@ -128,23 +131,34 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     int durationToAdd = 0;
                     char firstChar = char.ToLower(token[0]);
                     
-                    if ((firstChar >= 'a' && firstChar <= 'g') || firstChar == 'r' || firstChar == '^')
+                    bool isNote = (firstChar >= 'a' && firstChar <= 'g') || firstChar == 'r';
+                    bool isTie = firstChar == '^';
+                    
+                    if (isNote)
+                    {
+                        string lowerToken = token.ToLowerInvariant();
+                        if (lowerToken.StartsWith("ep") || lowerToken.StartsWith("@ep"))
+                        {
+                            isNote = false;
+                        }
+                    }
+
+                    if (isNote || isTie)
                     {
                         durationToAdd = ParseDurationTicks(token, defaultLengthTicks);
                     }
-                    else if (firstChar == 'l' && token != "L")
+                    else if (firstChar == 'l' && token.ToUpperInvariant() != "L")
                     {
                         defaultLengthTicks = ParseDurationTicks(token, defaultLengthTicks);
                     }
 
-                    // If this token pushes us PAST the wrap boundary, we wrap FIRST
-                    if (currentTime + durationToAdd > wrapLengthInTicks && wrapLengthInTicks > 0)
+                    if (pendingWrap && !isTie)
                     {
                         sb.AppendLine();
                         sb.Append(lastTrackPrefix);
                         isFirstTokenOnLine = true;
                         spaceBeforeNext = false;
-                        currentTime = 0;
+                        pendingWrap = false;
                     }
 
                     if (insertSpace && !isFirstTokenOnLine)
@@ -159,18 +173,16 @@ namespace Mz1500SoundPlayer.Sound.Mml
                     isFirstTokenOnLine = false;
                     spaceBeforeNext = token.StartsWith("^"); 
 
-                    currentTime += durationToAdd;
-
-                    // If this token perfectly hits the wrap boundary, we wrap AFTER it
-                    if (currentTime >= wrapLengthInTicks && wrapLengthInTicks > 0)
+                    if (durationToAdd > 0)
                     {
-                        if (currentTime == wrapLengthInTicks)
+                        if (currentTime < wrapLengthInTicks && currentTime + durationToAdd >= wrapLengthInTicks)
                         {
-                            sb.AppendLine();
-                            sb.Append(lastTrackPrefix);
-                            isFirstTokenOnLine = true;
-                            spaceBeforeNext = false;
-                            currentTime = 0;
+                            currentTime = (currentTime + durationToAdd) - wrapLengthInTicks;
+                            pendingWrap = true;
+                        }
+                        else
+                        {
+                            currentTime += durationToAdd;
                         }
                     }
                 }
