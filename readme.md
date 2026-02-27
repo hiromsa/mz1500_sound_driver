@@ -136,7 +136,9 @@ Z80上でセントからHzへの浮動小数点演算は負荷が高すぎるた
 - **選択範囲の部分再生 (Partial Playback)**: エディタ上で特定のMML文法をドラッグ選択して「Play MML」を押すと、テンポ(`t`)やオクターブ(`o`)、エンベロープ状態などを維持したまま、**選択された範囲の音符のみ**を瞬時に抽出・発音部だけをプレビュー再生します。
 - **スマート・チャンネルリマップ**: 各トラック(A〜H, P)のアサイン先を一括置換するダイアログ機能を備えます。選択不可な（未使用の）チャンネルは自動で非活性化処理(`Disabled`)が行われ、正規表現と一時タグ(`_TMP_`)を用いた安全な置換アルゴリズムにより、トラック間のスワップ(交換)操作等でもテキストデータが破壊されません。
 - **リアルタイム・シンタックスバリデーション**: エディタ上で未知のコマンドや不適切なパラメータ（例: `@x` や大文字の音符）を入力した際、即座に該当箇所へ赤い波線（エラーハイライト）を表示します。波線の上にカーソルを合わせることで、画面下部のログにエラーの詳細な原因が表示されます。エラーが解消されない限り再生をブロックし、不正なデータによるクラッシュを未然に防ぎます。
-- **VSCode風ダークテーマ**: `AvaloniaEdit`のカスタムシンタックスハイライト(`MmlSyntax.xshd`)を用いて、目に優しいインテリセンスライクなダークテーマレイアウト（パステルカラーによる色分け）を実現しています。
+- **エンベロープエディタ機能**: 煩雑になりがちなソフトウェア音量エンベロープ（`@v`）やピッチエンベロープ（`@EP`）の数値を、専用のGUIウインドウ上で波形グラフを見ながら直感的に編集できる機能を搭載しています。エディタ上で作成・編集した波形は、自動的に最適化された短縮記法（`value x count`形式）でMMLテキストへ反映させることが可能です。
+- **MML一括編集機能**: ピッチ、長さ、タイの有無などを複数ノートに対して一括で変換・適用できるパラメータ編集機能を提供します。
+- **PCG画像プレビューおよびqdc埋め込み表示**: 任意の画像ファイル（jpg, png, bmp）を読み込み、フロイド-スタインバーグ(Floyd-Steinberg)・ディザリング処理を用いてMZ-1500の8色パレットに減色し、320x200の解像度へ自動リサイズします。GUI上のプレビューに加えて、生成されるqdcファイルへPCGキャラクタデータとして自動変換・ロードするZ80アセンブラを埋め込み、実機・エミュレータ再生時に背景表示させることが可能です。
 
 ## 5. 技術スタック
 * 開発言語: C# .NET 9.0 (ツールチェイン本体), Avalonia UI (GUIフロントエンド)
@@ -173,4 +175,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### SkiaSharp
+画像（PCG）のリサイズ処理およびディザリングによる減色プレビュー機能の実装に、[SkiaSharp](https://github.com/mono/SkiaSharp) を使用しています。SkiaSharp は MIT License の元で公開されています。
+
+```text
+Copyright (c) 2015-2016 Xamarin, Inc.
+Copyright (c) 2017-2018 Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
