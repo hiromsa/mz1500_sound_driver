@@ -13,6 +13,8 @@ public class MmlPlayerModel
     private NAudio.Wave.SampleProviders.VolumeSampleProvider? _volumeProvider;
     private System.Threading.CancellationTokenSource? _cancellationTokenSource;
     private readonly System.Diagnostics.Stopwatch _playbackStopwatch = new();
+    
+    public string? PcgImagePath { get; set; }
 
     public record TextHighlightEvent(double StartMs, double EndMs, int TextStartIndex, int TextLength);
     public List<TextHighlightEvent> HighlightTimeline { get; private set; } = new();
@@ -173,6 +175,7 @@ public class MmlPlayerModel
 
     public string ExportQdc(string mmlString, string filePath)
     {
+        var log = new System.Text.StringBuilder();
         var parser = new MultiTrackMmlParser();
         var mmlData = parser.Parse(mmlString);
         var tracks = mmlData.Tracks;
@@ -216,15 +219,28 @@ public class MmlPlayerModel
 
         musicAssembler.HwPitchEnvelopes = compiler.HwPitchEnvelopes; // Z80ドライバにハードウェアピッチエンベロープを渡す
 
+        byte[]? pcgData = null;
+        if (!string.IsNullOrEmpty(PcgImagePath))
+        {
+            try
+            {
+                pcgData = PcgImageConverter.ConvertImageToPcgData(PcgImagePath);
+                log.AppendLine($"[Export] Successfully converted PCG Image (24000 bytes) from: {PcgImagePath}");
+            }
+            catch (Exception ex)
+            {
+                log.AppendLine($"[Export] Warning: Failed to convert PCG Image: {ex.Message}");
+            }
+        }
+
         // Z80の再生ドライバ一式を含む完全なバイナリプログラムをビルド
-        byte[] z80Bin = musicAssembler.Build();
+        byte[] z80Bin = musicAssembler.Build(pcgData);
 
         var qdcBuilder = new QdcImageBuilder();
         byte[] qdcData = qdcBuilder.BuildStandardExecutable("MZTUNE", z80Bin);
 
         System.IO.File.WriteAllBytes(filePath, qdcData);
 
-        var log = new System.Text.StringBuilder();
         log.AppendLine($"[Export] QDC file generated at {filePath}");
         log.AppendLine($"- Compiled {tracks.Count} sound tracks.");
         log.AppendLine($"- Z80 Executable built: {z80Bin.Length} bytes");

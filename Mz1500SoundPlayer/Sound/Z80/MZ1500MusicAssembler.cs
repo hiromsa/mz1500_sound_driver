@@ -58,13 +58,22 @@ public class MZ1500MusicAssembler
         DataPEnvTableBase
     }
 
-    public byte[] Build()
+    public byte[] Build(byte[]? pcgData = null)
     {
         var assembler = new MZ1500Assembler();
         
         assembler.ORG(0x1200);
         assembler.Label("main:");
         assembler.DI();
+        
+        if (pcgData != null && pcgData.Length == 24000)
+        {
+            assembler.CALL(assembler.LabelRef("ImageLoader"));
+            assembler.JP(assembler.LabelRef("main2:"));
+            AppendImageLoader(assembler, pcgData);
+            assembler.Label("main2:");
+        }
+
         assembler.IM1();
 
         // 割り込みベクタの設定
@@ -97,22 +106,25 @@ public class MZ1500MusicAssembler
         assembler.LD(assembler.HLref, 0x36);
 
         // --- VRAMクリアとテスト描画 (フリーズ(無反応)しているように見えないための対策) ---
-        // VRAM(0xD000〜0xD3E7)をクリア
-        assembler.LD(assembler.HL, 0xD000);
-        assembler.LD(assembler.DE, 0xD001);
-        assembler.LD(assembler.BC, 0x03FF);
-        assembler.LD(assembler.HLref, 0x00); // 0x00 (Space or Empty)
-        assembler.LDIR();
+        if (pcgData == null)
+        {
+            // VRAM(0xD000〜0xD3E7)をクリア
+            assembler.LD(assembler.HL, 0xD000);
+            assembler.LD(assembler.DE, 0xD001);
+            assembler.LD(assembler.BC, 0x03FF);
+            assembler.LD(assembler.HLref, 0x00); // 0x00 (Space or Empty)
+            assembler.LDIR();
 
-        // 画面左上(0xD000)に 'PLAYING' をMZ-1500のアスキー文字（画面表示コード）で直書き
-        assembler.LD(assembler.HL, 0xD000);
-        assembler.LD(assembler.HLref, 0x10); assembler.INC(assembler.HL); // P = 16 = 0x10
-        assembler.LD(assembler.HLref, 0x0C); assembler.INC(assembler.HL); // L = 12 = 0x0C
-        assembler.LD(assembler.HLref, 0x01); assembler.INC(assembler.HL); // A = 1  = 0x01
-        assembler.LD(assembler.HLref, 0x19); assembler.INC(assembler.HL); // Y = 25 = 0x19
-        assembler.LD(assembler.HLref, 0x09); assembler.INC(assembler.HL); // I = 9  = 0x09
-        assembler.LD(assembler.HLref, 0x0E); assembler.INC(assembler.HL); // N = 14 = 0x0E
-        assembler.LD(assembler.HLref, 0x07);                              // G = 7  = 0x07
+            // 画面左上(0xD000)に 'PLAYING' をMZ-1500のアスキー文字（画面表示コード）で直書き
+            assembler.LD(assembler.HL, 0xD000);
+            assembler.LD(assembler.HLref, 0x10); assembler.INC(assembler.HL); // P = 16 = 0x10
+            assembler.LD(assembler.HLref, 0x0C); assembler.INC(assembler.HL); // L = 12 = 0x0C
+            assembler.LD(assembler.HLref, 0x01); assembler.INC(assembler.HL); // A = 1  = 0x01
+            assembler.LD(assembler.HLref, 0x19); assembler.INC(assembler.HL); // Y = 25 = 0x19
+            assembler.LD(assembler.HLref, 0x09); assembler.INC(assembler.HL); // I = 9  = 0x09
+            assembler.LD(assembler.HLref, 0x0E); assembler.INC(assembler.HL); // N = 14 = 0x0E
+            assembler.LD(assembler.HLref, 0x07);                              // G = 7  = 0x07
+        }
         // --- 描画ここまで ---
 
         assembler.EI();
@@ -930,5 +942,154 @@ public class MZ1500MusicAssembler
                 asm.DB(0xFF);
             }
         }
+    }
+
+    private void AppendImageLoader(MZ1500Assembler asm, byte[] pcgData)
+    {
+        string prefix = "pcg_";
+
+        asm.Label("ImageLoader");
+        asm.CALL(asm.LabelRef(prefix + "CLS"));
+        asm.CALL(asm.LabelRef(prefix + "start"));
+        asm.RET();
+
+        asm.Label(prefix + "CLS");
+        asm.CALL(asm.Value((ushort)0x0DA6)); // Basic CLS routine
+        asm.LD(asm.HL, 0xD000);
+        asm.LD(asm.BC, 40 * 25);
+        asm.XOR(asm.A);
+        asm.CALL(asm.LabelRef(prefix + "MEMFIL"));
+
+        asm.LD(asm.HL, 0xD800);
+        asm.LD(asm.BC, 40 * 25);
+        asm.LD(asm.A, 0x0);
+        asm.CALL(asm.LabelRef(prefix + "MEMFIL"));
+        asm.RET();
+
+        asm.Label(prefix + "MEMFIL");
+        asm.LD(asm.D, asm.H);
+        asm.LD(asm.E, asm.L);
+        asm.INC(asm.DE);
+        asm.DEC(asm.BC);
+        asm.LD(asm.HLref, asm.A);
+        asm.LDIR();
+        asm.RET();
+
+        asm.Label(prefix + "start");
+        
+        asm.OUT(0xF1); // F1 Output
+        asm.LD(asm.A, 0x1);
+        asm.OUT(0xF0); // F0 Output for Display Priority/Screen 2
+
+        // PCG Pattern setup
+        byte e5 = 0xE5;
+
+        // Bank 3 (Green)
+        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Green-start"));
+        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Green-end"));
+        asm.LD(asm.HL, 0xD000);
+        asm.LD(asm.A, 0x3);
+        asm.OUT(e5);
+        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
+
+        // Bank 2 (Red)
+        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Red-start"));
+        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Red-end"));
+        asm.LD(asm.HL, 0xD000);
+        asm.LD(asm.A, 0x2);
+        asm.OUT(e5);
+        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
+
+        // Bank 1 (Blue)
+        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Blue-start"));
+        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Blue-end"));
+        asm.LD(asm.HL, 0xD000);
+        asm.LD(asm.A, 0x1);
+        asm.OUT(e5);
+        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
+
+        asm.JP(asm.LabelRef(prefix + "LoopEnd"));
+
+        asm.Label(prefix + "LoopStart");
+        asm.LD(asm.A, asm.DEref); // Get 1 byte of PCG
+        asm.LD(asm.HLref, asm.A); // Write to VRAM
+        asm.INC(asm.DE);
+        asm.INC(asm.HL);
+
+        asm.LD(asm.A, asm.B);
+        asm.CP(asm.D);
+        asm.JP(asm.NZ, asm.LabelRef(prefix + "LoopStart"));
+        asm.LD(asm.A, asm.C);
+        asm.CP(asm.E);
+        asm.JP(asm.NZ, asm.LabelRef(prefix + "LoopStart"));
+        asm.RET();
+
+        asm.Label(prefix + "LoopEnd");
+
+        // Set Screen VRAM characters to match PCG indices
+        asm.Label(prefix + "VRAM-start");
+        asm.LD(asm.HL, 0xD400); // Screen 2 VRAM
+        asm.LD(asm.DE, 0xDC00); // Screen 2 Color Data
+        
+        asm.LD(asm.B, 0x00);
+        asm.LD(asm.C, 0b00001000); // 0x08
+        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
+        
+        asm.LD(asm.B, 0x00);
+        asm.LD(asm.C, 0b01001000); // 0x48
+        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
+        
+        asm.LD(asm.B, 0x00);
+        asm.LD(asm.C, 0b10001000); // 0x88
+        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
+        
+        asm.LD(asm.B, 0x00);
+        asm.LD(asm.C, 0b11001000); // 0xC8
+        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
+        
+        asm.JP(asm.LabelRef(prefix + "loop_skip_pcg:")); // bypass loop symbol name collision
+
+        asm.Label(prefix + "VRAM-loop");
+        asm.LD(asm.A, 0x1);
+        asm.OUT(0xE6); // PCG Access Enable?
+
+        asm.LD(asm.HLref, asm.B); // Set char code 0~255
+        asm.INC(asm.HL);
+
+        asm.LD(asm.A, asm.C);
+        asm.LD(asm.DEref, asm.A); // Set color attribute
+        asm.INC(asm.DE);
+
+        asm.LD(asm.A, 0xFF);
+        asm.CP(asm.B);
+        asm.JP(asm.Z, asm.LabelRef(prefix + "VRAM-loop-return"));
+        asm.INC(asm.B);
+        asm.JP(asm.LabelRef(prefix + "VRAM-loop"));
+
+        asm.Label(prefix + "VRAM-loop-return");
+        asm.RET();
+
+        asm.Label(prefix + "loop_skip_pcg:");
+        asm.RET();
+
+        // Data payload
+        var greenPlane = new byte[8000];
+        var redPlane = new byte[8000];
+        var bluePlane = new byte[8000];
+        Array.Copy(pcgData, 0, greenPlane, 0, 8000);
+        Array.Copy(pcgData, 8000, redPlane, 0, 8000);
+        Array.Copy(pcgData, 16000, bluePlane, 0, 8000);
+
+        asm.Label(prefix + "PSGData-Green-start");
+        asm.DB(greenPlane);
+        asm.Label(prefix + "PSGData-Green-end");
+
+        asm.Label(prefix + "PSGData-Red-start");
+        asm.DB(redPlane);
+        asm.Label(prefix + "PSGData-Red-end");
+
+        asm.Label(prefix + "PSGData-Blue-start");
+        asm.DB(bluePlane);
+        asm.Label(prefix + "PSGData-Blue-end");
     }
 }

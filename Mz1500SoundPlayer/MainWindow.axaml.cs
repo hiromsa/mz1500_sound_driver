@@ -580,6 +580,127 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async void PastePcgImageButton_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard == null)
+            {
+                LogOutput.Text = "Clipboard not available.";
+                return;
+            }
+
+            // 1. File copied from Explorer
+            var files = await clipboard.GetDataAsync(Avalonia.Input.DataFormats.Files) as System.Collections.Generic.IEnumerable<Avalonia.Platform.Storage.IStorageItem>;
+            if (files != null && files.Any())
+            {
+                string path = files.First().Path.LocalPath;
+                await LoadImageFromPath(path);
+                return;
+            }
+
+            // 2. PNG block (e.g. from browser right-click copy image)
+            string? pngTempPath = null;
+            foreach (var format in new[] { "PNG", "image/png", "PNG Format" })
+            {
+                var pngData = await clipboard.GetDataAsync(format) as byte[];
+                if (pngData != null && pngData.Length > 0)
+                {
+                    pngTempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "pcg_paste_tmp.png");
+                    await System.IO.File.WriteAllBytesAsync(pngTempPath, pngData);
+                    break;
+                }
+            }
+
+            if (pngTempPath != null && System.IO.File.Exists(pngTempPath))
+            {
+                await LoadImageFromPath(pngTempPath);
+                return;
+            }
+
+            // 3. DeviceIndependentBitmap (スクリーンショット等)
+            // Windows DIB形式: 40バイトのBITMAPINFOHEADERが先頭にある
+            var dibData = await clipboard.GetDataAsync("DeviceIndependentBitmap") as byte[];
+            if (dibData != null && dibData.Length > 40)
+            {
+                string tmpPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "pcg_paste_tmp_dib.bmp");
+                // BMPファイルとして保存 (14バイトのBMPFILEHEADERを先頭に追加)
+                int fileSize = 14 + dibData.Length;
+                int pixelDataOffset = 14 + 40; // FH + BITMAPINFOHEADER size
+                // Check color table based on bit count
+                int biBitCount = System.BitConverter.ToInt16(dibData, 14);
+                if (biBitCount <= 8) pixelDataOffset += (1 << biBitCount) * 4;
+
+                using var ms = new System.IO.MemoryStream(fileSize);
+                // BITMAPFILEHEADER
+                ms.WriteByte((byte)'B'); ms.WriteByte((byte)'M'); // Signature
+                ms.Write(System.BitConverter.GetBytes(fileSize), 0, 4); // File size
+                ms.Write(new byte[4], 0, 4);                     // Reserved
+                ms.Write(System.BitConverter.GetBytes(pixelDataOffset), 0, 4); // Pixel data offset
+                ms.Write(dibData, 0, dibData.Length);
+                await System.IO.File.WriteAllBytesAsync(tmpPath, ms.ToArray());
+                await LoadImageFromPath(tmpPath);
+                return;
+            }
+
+            // Nothing found
+            var formats = await clipboard.GetFormatsAsync();
+            LogOutput.Text = $"No image found on clipboard. Available formats: {string.Join(", ", formats)}";
+        }
+        catch (System.Exception ex)
+        {
+            LogOutput.Text = $"Paste error: {ex.Message}";
+        }
+    }
+
+    private async Task LoadImageFromPath(string path)
+    {
+        try
+        {
+            var bitmap = new Avalonia.Media.Imaging.Bitmap(path);
+            PcgImagePreview.Source = bitmap;
+            if (_player != null)
+            {
+                _player.PcgImagePath = path;
+            }
+            LogOutput.Text = $"Loaded PCG Image: {System.IO.Path.GetFileName(path)}";
+        }
+        catch (System.Exception ex)
+        {
+            LogOutput.Text = $"Failed to load image: {ex.Message}";
+        }
+    }
+
+    private async void LoadPcgImageButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new Avalonia.Controls.OpenFileDialog
+        {
+            Title = "Load PCG Image",
+            AllowMultiple = false,
+            Filters = new List<Avalonia.Controls.FileDialogFilter>
+            {
+                new Avalonia.Controls.FileDialogFilter { Name = "Image Files", Extensions = { "png", "jpg", "jpeg", "bmp" } }
+            }
+        };
+
+        var result = await dialog.ShowAsync(this);
+        if (result != null && result.Length > 0)
+        {
+            await LoadImageFromPath(result[0]);
+        }
+    }
+
+    private void ClearPcgImageButton_Click(object? sender, RoutedEventArgs e)
+    {
+        PcgImagePreview.Source = null;
+        if (_player != null)
+        {
+            _player.PcgImagePath = null;
+        }
+        LogOutput.Text = "PCG Image cleared.";
+    }
+
     private void ExportQdcButton_Click(object? sender, RoutedEventArgs e)
     {
         try
