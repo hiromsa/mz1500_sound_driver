@@ -19,7 +19,7 @@
       <TextBlock Text="番号:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#cccccc" Margin="20,0,0,0"/>
       <NumericUpDown Name="NumIndex" Value="0" Minimum="0" Maximum="255" Width="80" FormatString="0" ShowButtonSpinner="False" ValueChanged="NumIndex_ValueChanged"/>
       
-      <TextBlock Text="(グラフ直下をクリックでループ位置を設定)" VerticalAlignment="Center" Foreground="#858585" Margin="20,0,0,0" FontSize="12"/>
+      <TextBlock Text="(グラフ直下の上段クリックでループ位置、下段でリリース位置を設定)" VerticalAlignment="Center" Foreground="#858585" Margin="20,0,0,0" FontSize="12"/>
 
       <TextBlock Name="TxtWarning" Text="⚠️ 既に定義されています" Foreground="#f48771" VerticalAlignment="Center" IsVisible="False" FontWeight="Bold" Margin="10,0,0,0"/>
     </StackPanel>
@@ -35,8 +35,11 @@
                  PointerReleased="GraphCanvas_PointerReleased"
                  ClipToBounds="True" />
          
-         <!-- Loop Marker UI below graph -->
-         <Canvas Name="LoopMarkerCanvas" Grid.Row="1" Background="#2d2d30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" PointerPressed="LoopMarkerCanvas_PointerPressed"/>
+         <!-- Loop Marker (upper) / Release Marker (lower) -->
+         <Grid Grid.Row="1" RowDefinitions="14,14">
+           <Canvas Name="LoopMarkerCanvas" Grid.Row="0" Background="#2d2d30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" PointerPressed="LoopMarkerCanvas_PointerPressed"/>
+           <Canvas Name="ReleaseMarkerCanvas" Grid.Row="1" Background="#252526" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" PointerPressed="ReleaseMarkerCanvas_PointerPressed"/>
+         </Grid>
       </Grid>
     </Border>
 
