@@ -330,7 +330,7 @@ public class MmlToZ80Compiler
                             if (currentReleaseEnvPos < envDataR.ReleaseValues.Count)
                             {
                                 int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
-                                int relVol15 = (int)Math.Round((relVal / 15.0) * 15.0);
+                                int relVol15 = (int)Math.Round((relVal / 15.0) * ((ev.Volume / 0.15) * 15.0));
                                 if (relVol15 < 0) relVol15 = 0;
                                 if (relVol15 > 15) relVol15 = 15;
                                 byte relHwVol = (byte)(15 - relVol15);
