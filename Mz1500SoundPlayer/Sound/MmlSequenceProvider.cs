@@ -186,11 +186,27 @@ public class MmlSequenceProvider : ISampleProvider
                     byte rlenL = _bytecode[_pc++];
                     byte rlenH = _bytecode[_pc++];
                     _waitFrames = rlenL | (rlenH << 8);
-                    _isRest = true;
-                    _hwVolume = 15;
+                    // _isRest = true はここでは設定しない:
+                    // リリースフェーズ中は直前のCMD_VOLによる音量が維持される必要がある。
+                    // (MmlToZ80Compilerはリリース時に CMD_VOL→CMD_REST の順で出力している)
+                    // 音量ミュートは MmlToZ80Compiler 側でリリースが終わった時に CMD_VOL 15 として送付される。
+                    // _isRest フラグは、休符中に周波数が 0 = 無音として扱うかどうかを制御するため、
+                    // ここで true にすると Read() でサイン波生成がスキップされ音が出なくなる。
+                    // リリース用の短い休符（0フレーム）に対しては、直前のトーン周波数のまま継続する。
+                    if (_waitFrames == 0 && rlenL == 0 && rlenH == 0)
+                    {
+                        // 1フレーム待機（リリース展開中の短い休止）。音量は直前のCMD_VOLのままにする。
+                        _isRest = false;
+                    }
+                    else
+                    {
+                        _isRest = true;
+                        _hwVolume = 15; // 通常の休符はミュート
+                    }
                     
                     fetchNext = false; // Yield VM processing until next tick
                     break;
+
                     
                 case MmlToZ80Compiler.CMD_NOISE:
                     byte noiseCmd = _bytecode[_pc++];
