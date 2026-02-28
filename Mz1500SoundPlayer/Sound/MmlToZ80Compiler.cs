@@ -305,7 +305,7 @@ public class MmlToZ80Compiler
                     }
                     else if (!hasSweep)
                     {
-                        // スイープなし: @EPがあればHwPitchEnvに任せ、なければデッド始まりスタット出力
+                        // スイープなし: @EPがあればHwPitchEnvに任せ、なければ單一CMD_TONE
                         int startReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
                         ushort startRegU = (ushort)startReg;
                         byte toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (startRegU & 0x0F));
@@ -320,20 +320,50 @@ public class MmlToZ80Compiler
                     }
                     else
                     {
-                        // スイープあり: gateFrames分をス1フレームずつ展開し、tickごとにレジスタ値を変化させる
-                        for (int tick = 0; tick < gateFrames; tick++)
+                        // スイープあり: HwPitchEnvとして事前展開しCMD_PENVで登録する
+                        // CMD_TONEは1回のみ出力することで、@v エンベロープカウンタへの干渉を防ぐ
+                        string sweepKey = $"Sweep_{baseReg}_D{ev.Detune}_SW{ev.Sweep}_Frames{gateFrames}_Ch{psgChannel}";
+                        if (!_hwPitchEnvCache.TryGetValue(sweepKey, out int sweepHwId))
                         {
-                            // 出力レジスタ = ベース - D値 - Sweep*tick
-                            int sweepReg = Math.Clamp(baseReg - ev.Detune - (ev.Sweep * tick), 0, 1023);
-                            ushort sweepRegU = (ushort)sweepReg;
-                            byte sweepCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (sweepRegU & 0x0F));
-                            byte sweepCmd2 = (byte)((sweepRegU >> 4) & 0x3F);
-                            output.Add(CMD_TONE);
-                            output.Add(sweepCmd1);
-                            output.Add(sweepCmd2);
-                            output.Add(0); // duration = 1 frame
-                            output.Add(0);
+                            var sweepRegs = new List<ushort>();
+                            for (int tick = 0; tick < gateFrames; tick++)
+                            {
+                                int sweepReg = Math.Clamp(baseReg - ev.Detune - (ev.Sweep * tick), 0, 1023);
+                                ushort sweepRegU = (ushort)sweepReg;
+                                byte sc1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (sweepRegU & 0x0F));
+                                byte sc2 = (byte)((sweepRegU >> 4) & 0x3F);
+                                sweepRegs.Add((ushort)(sc1 | (sc2 << 8)));
+                            }
+                            sweepHwId = HwPitchEnvelopes.Count;
+                            HwPitchEnvelopes.Add(new HwPitchEnvData
+                            {
+                                Id = sweepHwId,
+                                AbsoluteRegisters = sweepRegs,
+                                LoopIndex = -1
+                            });
+                            _hwPitchEnvCache[sweepKey] = sweepHwId;
                         }
+
+                        // CMD_PENVでスイープ用HwPitchEnvを設定
+                        if (sweepHwId != currentPEnvId)
+                        {
+                            output.Add(CMD_PENV);
+                            output.Add((byte)sweepHwId);
+                            currentPEnvId = sweepHwId;
+                        }
+
+                        // CMD_TONEは最初のレジスタ値で1回のみ出力
+                        int initReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
+                        ushort initRegU = (ushort)initReg;
+                        byte swToneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (initRegU & 0x0F));
+                        byte swToneCmd2 = (byte)((initRegU >> 4) & 0x3F);
+                        output.Add(CMD_TONE);
+                        output.Add(swToneCmd1);
+                        output.Add(swToneCmd2);
+                        // 長さ出力
+                        ushort sweepDuration = (ushort)(gateFrames - 1);
+                        output.Add((byte)(sweepDuration & 0xFF));
+                        output.Add((byte)((sweepDuration >> 8) & 0xFF));
                     }
                 }
 
