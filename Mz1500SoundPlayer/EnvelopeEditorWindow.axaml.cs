@@ -19,8 +19,9 @@ public partial class EnvelopeEditorWindow : Window
     private EnvelopeType _type;
     private int _initialIndex = -1;
     private List<int> _values = new List<int>();
-    private int _loopIndex = -1;    // -1 means no loop
-    private int _releaseIndex = -1; // -1 means no release
+    private int _loopIndex = -1;       // -1 means no loop
+    private int _releaseIndex = -1;    // -1 means no release
+    private bool _isReleaseEnabled;    // true only for Volume envelopes
     private HashSet<int> _existingIds = new HashSet<int>();
 
     // Constants for drawing
@@ -48,6 +49,11 @@ public partial class EnvelopeEditorWindow : Window
 
         TxtType.Text = type == EnvelopeType.Volume ? "@v" : "@EP";
         NumIndex.Value = id;
+
+        _isReleaseEnabled = (type == EnvelopeType.Volume);
+        TxtDescription.Text = _isReleaseEnabled
+            ? "(グラフ直下の上段クリックでループ位置、下段でリリース位置を設定)"
+            : "(グラフ直下をクリックでループ位置を設定)";
 
         if (type == EnvelopeType.Volume)
         {
@@ -202,66 +208,55 @@ public partial class EnvelopeEditorWindow : Window
 
         int count = Math.Min(_values.Count, MaxSteps); // Limit visual steps
         
-        // Render Bars
+        // リリースUIの可視性制御
+        ReleaseMarkerCanvas.IsVisible = _isReleaseEnabled;
+
+        // Render Bars (フェーズに応じた3色分け)
         for (int i = 0; i < count; i++)
         {
              double x = i * (StepWidth + Spacing);
              
-             // Normalize Y
              double normalizedVal = (double)(_values[i] - _minValue) / (_maxValue - _minValue);
              double h = normalizedVal * cvH;
              double y = cvH - h;
 
-             // Center zero for Pitch
              if (_type == EnvelopeType.Pitch)
              {
                   double zeroY = cvH / 2.0;
                   h = Math.Abs(normalizedVal - 0.5) * cvH;
-                  if (_values[i] >= 0) y = zeroY - h; // Positive goes up from middle
-                  else y = zeroY;                     // Negative goes down from middle
-                  if (h < 1) h = 1; // min height for visibility
+                  if (_values[i] >= 0) y = zeroY - h;
+                  else y = zeroY;
+                  if (h < 1) h = 1;
              }
 
-             // Use different colors: default blue, release = HotPink
-             bool isRelease = _releaseIndex >= 0 && i >= _releaseIndex;
-             string barColor = isRelease ? "#FF69B4" : "#4FC1FF";
+             // 3色: リリース（ピンク） > サステイン/ループ（オレンジ） > アタック/ディケイ（ブルー）
+             string barColor;
+             if (_isReleaseEnabled && _releaseIndex >= 0 && i >= _releaseIndex)
+                 barColor = "#FF69B4"; // リリース: HotPink
+             else if (_loopIndex >= 0 && i >= _loopIndex)
+                 barColor = "#FF8C00"; // サステイン: Orange
+             else
+                 barColor = "#4FC1FF"; // アタック/ディケイ: Cyan
 
              if (_values[i] == 0)
              {
                  double zeroHeight = 2;
                  double zeroY = _type == EnvelopeType.Volume ? cvH - zeroHeight : (cvH / 2.0) - (zeroHeight / 2.0);
-                 
-                 var rect = new Avalonia.Controls.Shapes.Rectangle
-                 {
-                     Width = StepWidth,
-                     Height = zeroHeight,
-                     Fill = new SolidColorBrush(Color.Parse(barColor)),
-                     RadiusX = 2,
-                     RadiusY = 2
-                 };
-                 
+                 var rect = new Avalonia.Controls.Shapes.Rectangle { Width=StepWidth, Height=zeroHeight, Fill=new SolidColorBrush(Color.Parse(barColor)), RadiusX=2, RadiusY=2 };
                  Canvas.SetLeft(rect, x);
                  Canvas.SetTop(rect, zeroY);
                  GraphCanvas.Children.Add(rect);
              }
              else
              {
-                 var rect = new Avalonia.Controls.Shapes.Rectangle
-                 {
-                     Width = StepWidth,
-                     Height = Math.Max(1, h),
-                     Fill = new SolidColorBrush(Color.Parse(barColor)),
-                     RadiusX = 2,
-                     RadiusY = 2
-                 };
-                 
+                 var rect = new Avalonia.Controls.Shapes.Rectangle { Width=StepWidth, Height=Math.Max(1, h), Fill=new SolidColorBrush(Color.Parse(barColor)), RadiusX=2, RadiusY=2 };
                  Canvas.SetLeft(rect, x);
                  Canvas.SetTop(rect, y);
                  GraphCanvas.Children.Add(rect);
              }
         }
 
-        // Render zero line for pitch
+        // ゼロライン (Pitch)
         if (_type == EnvelopeType.Pitch)
         {
              var zeroLine = new Avalonia.Controls.Shapes.Line
@@ -275,23 +270,22 @@ public partial class EnvelopeEditorWindow : Window
              GraphCanvas.Children.Add(zeroLine);
         }
 
-        // Render Loop / Release markers
+        // マーカー描画（バー左端を基準に配置）
         ReleaseMarkerCanvas.Children.Clear();
         for (int i = 0; i <= count; i++)
         {
-            double barCenter = i < count
-                ? i * (StepWidth + Spacing) + (StepWidth / 2)
-                : count * (StepWidth + Spacing) + (StepWidth / 2);
+            // マーカーは「インデックス i のバー左端」に配置する
+            double barLeft = i * (StepWidth + Spacing);
 
-            // ------ Loop lane (upper) ------
+            // ------ ループレーン (upper) ------
             if (i == _loopIndex && _loopIndex != -1)
             {
-               var marker = new Avalonia.Controls.Shapes.Rectangle { Width=8, Height=14, Fill=Brushes.Orange, RadiusX=2, RadiusY=2 };
-               Canvas.SetLeft(marker, barCenter - 4);
+               var marker = new Avalonia.Controls.Shapes.Rectangle { Width=4, Height=14, Fill=Brushes.Orange, RadiusX=1, RadiusY=1 };
+               Canvas.SetLeft(marker, barLeft);
                LoopMarkerCanvas.Children.Add(marker);
                var gline = new Avalonia.Controls.Shapes.Line
                {
-                 StartPoint = new Point(barCenter, 0), EndPoint = new Point(barCenter, cvH),
+                 StartPoint = new Point(barLeft, 0), EndPoint = new Point(barLeft, cvH),
                  Stroke = Brushes.Orange, StrokeThickness = 1, StrokeDashArray=new Avalonia.Collections.AvaloniaList<double>{4,4}
                };
                GraphCanvas.Children.Add(gline);
@@ -299,28 +293,31 @@ public partial class EnvelopeEditorWindow : Window
             else
             {
                var hit = new Avalonia.Controls.Shapes.Rectangle { Width=StepWidth+Spacing, Height=14, Fill=Brushes.Transparent };
-               Canvas.SetLeft(hit, barCenter - ((StepWidth+Spacing)/2));
+               Canvas.SetLeft(hit, barLeft);
                LoopMarkerCanvas.Children.Add(hit);
             }
 
-            // ------ Release lane (lower) ------
-            if (i == _releaseIndex && _releaseIndex != -1)
+            // ------ リリースレーン (lower) – @v のみ ------
+            if (_isReleaseEnabled)
             {
-               var marker = new Avalonia.Controls.Shapes.Rectangle { Width=8, Height=14, Fill=Brushes.HotPink, RadiusX=2, RadiusY=2 };
-               Canvas.SetLeft(marker, barCenter - 4);
-               ReleaseMarkerCanvas.Children.Add(marker);
-               var gline = new Avalonia.Controls.Shapes.Line
-               {
-                 StartPoint = new Point(barCenter, 0), EndPoint = new Point(barCenter, cvH),
-                 Stroke = Brushes.HotPink, StrokeThickness = 1, StrokeDashArray=new Avalonia.Collections.AvaloniaList<double>{4,4}
-               };
-               GraphCanvas.Children.Add(gline);
-            }
-            else
-            {
-               var hit = new Avalonia.Controls.Shapes.Rectangle { Width=StepWidth+Spacing, Height=14, Fill=Brushes.Transparent };
-               Canvas.SetLeft(hit, barCenter - ((StepWidth+Spacing)/2));
-               ReleaseMarkerCanvas.Children.Add(hit);
+                if (i == _releaseIndex && _releaseIndex != -1)
+                {
+                   var marker = new Avalonia.Controls.Shapes.Rectangle { Width=4, Height=14, Fill=Brushes.HotPink, RadiusX=1, RadiusY=1 };
+                   Canvas.SetLeft(marker, barLeft);
+                   ReleaseMarkerCanvas.Children.Add(marker);
+                   var gline = new Avalonia.Controls.Shapes.Line
+                   {
+                     StartPoint = new Point(barLeft, 0), EndPoint = new Point(barLeft, cvH),
+                     Stroke = Brushes.HotPink, StrokeThickness = 1, StrokeDashArray=new Avalonia.Collections.AvaloniaList<double>{4,4}
+                   };
+                   GraphCanvas.Children.Add(gline);
+                }
+                else
+                {
+                   var hit = new Avalonia.Controls.Shapes.Rectangle { Width=StepWidth+Spacing, Height=14, Fill=Brushes.Transparent };
+                   Canvas.SetLeft(hit, barLeft);
+                   ReleaseMarkerCanvas.Children.Add(hit);
+                }
             }
         }
     }
