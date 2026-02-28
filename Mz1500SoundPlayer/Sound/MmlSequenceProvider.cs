@@ -166,18 +166,20 @@ public class MmlSequenceProvider : ISampleProvider
                         }
                     }
                     
-                    // Update frequency
-                    if (_pEnvPosOffset == 0 && _hwFreqRaw > 0)
+                    // Update frequency (only if pitch env did NOT already set it)
+                    if (_pEnvPosOffset == 0)
                     {
-                        // SN76489 Formula: freq_hz = (MasterClock/32) / reg_value
-                        // Intel 8253 Formula: freq_hz = 894886 / reg_value
-                        double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
-                        _phaseIncrement = freqHz / WaveFormat.SampleRate;
+                        if (_hwFreqRaw > 0)
+                        {
+                            double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
+                            _phaseIncrement = freqHz / WaveFormat.SampleRate;
+                        }
+                        else
+                        {
+                            _phaseIncrement = 0;
+                        }
                     }
-                    else
-                    {
-                        _phaseIncrement = 0;
-                    }
+                    // else: pitch envelope already set _phaseIncrement, keep it
                     
                     fetchNext = false; // Yield VM processing until next tick
                     break;
