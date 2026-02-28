@@ -110,7 +110,7 @@ public class MmlToZ80Compiler
                         if (currentReleaseEnvPos >= 0 && currentReleaseEnvPos < envDataR.ReleaseValues.Count)
                         {
                             int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
-                            int relVol15 = (int)Math.Round((relVal / 15.0) * ((ev.Volume / 0.15) * 15.0)); // scale correctly
+                            int relVol15 = relVal;
                             if (relVol15 < 0) relVol15 = 0;
                             if (relVol15 > 15) relVol15 = 15;
                             byte hwVol = (byte)(15 - relVol15);
@@ -127,10 +127,10 @@ public class MmlToZ80Compiler
                             if (currentVol != 15)
                             {
                                 output.Add(CMD_VOL);
-                                output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
+                                output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (0x0F)));
                                 currentVol = 15;
                             }
-                            currentReleaseEnvPos = -1; // keep it at -1
+                            currentReleaseEnvPos = -1;
                         }
                         
                         // Emit 1 frame rest
@@ -330,7 +330,7 @@ public class MmlToZ80Compiler
                             if (currentReleaseEnvPos >= 0 && currentReleaseEnvPos < envDataR.ReleaseValues.Count)
                             {
                                 int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
-                                int relVol15 = (int)Math.Round((relVal / 15.0) * ((ev.Volume / 0.15) * 15.0));
+                                int relVol15 = relVal;
                                 if (relVol15 < 0) relVol15 = 0;
                                 if (relVol15 > 15) relVol15 = 15;
                                 byte relHwVol = (byte)(15 - relVol15);
