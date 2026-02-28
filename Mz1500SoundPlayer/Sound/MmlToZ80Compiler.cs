@@ -320,13 +320,15 @@ public class MmlToZ80Compiler
                     }
                     else
                     {
-                        // スイープあり: HwPitchEnvとして事前展開しCMD_PENVで登録する
-                        // CMD_TONEは1回のみ出力することで、@v エンベロープカウンタへの干渉を防ぐ
-                        string sweepKey = $"Sweep_{baseReg}_D{ev.Detune}_SW{ev.Sweep}_Frames{gateFrames}_Ch{psgChannel}";
+                        // スイープあり: 毼ノート共通のHwPitchEnvを使い回す（ノート長に依存しない）
+                        // 最大256ステップのリープ付きエンヘロープを生成する（LoopIndex=0）
+                        // CMD_TONEのたびに_pEnvPosOffset=0へリセットされるので、各ノートでちゃんと最初から
+                        string sweepKey = $"Sweep_{baseReg}_D{ev.Detune}_SW{ev.Sweep}_Ch{psgChannel}";
                         if (!_hwPitchEnvCache.TryGetValue(sweepKey, out int sweepHwId))
                         {
                             var sweepRegs = new List<ushort>();
-                            for (int tick = 0; tick < gateFrames; tick++)
+                            const int SweepTableLength = 256;
+                            for (int tick = 0; tick < SweepTableLength; tick++)
                             {
                                 int sweepReg = Math.Clamp(baseReg - ev.Detune - (ev.Sweep * tick), 0, 1023);
                                 ushort sweepRegU = (ushort)sweepReg;
@@ -339,7 +341,7 @@ public class MmlToZ80Compiler
                             {
                                 Id = sweepHwId,
                                 AbsoluteRegisters = sweepRegs,
-                                LoopIndex = -1
+                                LoopIndex = -1 // ループなし: 限界に達したら最後の値を保持
                             });
                             _hwPitchEnvCache[sweepKey] = sweepHwId;
                         }
