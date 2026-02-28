@@ -107,10 +107,10 @@ public class MmlToZ80Compiler
                     // 1 frame step expansion for release phase during explicit rest
                     for (int frm = 0; frm < totalFrames; frm++)
                     {
-                        if (currentReleaseEnvPos < envDataR.ReleaseValues.Count)
+                        if (currentReleaseEnvPos >= 0 && currentReleaseEnvPos < envDataR.ReleaseValues.Count)
                         {
                             int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
-                            int relVol15 = (int)Math.Round((relVal / 15.0) * 15.0); // AST already handles 0-15 values properly
+                            int relVol15 = (int)Math.Round((relVal / 15.0) * ((ev.Volume / 0.15) * 15.0)); // scale correctly
                             if (relVol15 < 0) relVol15 = 0;
                             if (relVol15 > 15) relVol15 = 15;
                             byte hwVol = (byte)(15 - relVol15);
@@ -129,8 +129,8 @@ public class MmlToZ80Compiler
                                 output.Add(CMD_VOL);
                                 output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
                                 currentVol = 15;
-                                currentReleaseEnvPos = -1;
                             }
+                            currentReleaseEnvPos = -1; // keep it at -1
                         }
                         
                         // Emit 1 frame rest
@@ -327,7 +327,7 @@ public class MmlToZ80Compiler
                     {
                         for (int frm = 0; frm < restFrames; frm++)
                         {
-                            if (currentReleaseEnvPos < envDataR.ReleaseValues.Count)
+                            if (currentReleaseEnvPos >= 0 && currentReleaseEnvPos < envDataR.ReleaseValues.Count)
                             {
                                 int relVal = envDataR.ReleaseValues[currentReleaseEnvPos++];
                                 int relVol15 = (int)Math.Round((relVal / 15.0) * ((ev.Volume / 0.15) * 15.0));
@@ -349,8 +349,8 @@ public class MmlToZ80Compiler
                                     output.Add(CMD_VOL);
                                     output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
                                     currentVol = 15;
-                                    currentReleaseEnvPos = -1;
                                 }
+                                currentReleaseEnvPos = -1;
                             }
                             
                             output.Add(CMD_REST);
