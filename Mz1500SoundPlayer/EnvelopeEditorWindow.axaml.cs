@@ -89,6 +89,8 @@ public partial class EnvelopeEditorWindow : Window
         // E.g. {15x3, 14, |, 10x2} -> removes {}, parses "15x3", finds "|"
         mmlData = mmlData.Replace("{", "").Replace("}", "").Trim();
         
+        // | や > がカンマで挟まれていないケース（例: |13, >7）に対応するため、前後にカンマを挿入する
+        mmlData = System.Text.RegularExpressions.Regex.Replace(mmlData, @"([|>])", ",${1},");
         var parts = mmlData.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         _values.Clear();
         _loopIndex = -1;
@@ -162,6 +164,8 @@ public partial class EnvelopeEditorWindow : Window
     private void ParseDataString(string dataStr)
     {
         if (string.IsNullOrWhiteSpace(dataStr)) return;
+        // | や > がカンマで挟まれていないケース（例: |13, >7）に対応するため、前後にカンマを挿入する
+        dataStr = System.Text.RegularExpressions.Regex.Replace(dataStr, @"([|>])", ",${1},");
         var parts = dataStr.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var newVals = new List<int>();
         int newLoop = -1;
