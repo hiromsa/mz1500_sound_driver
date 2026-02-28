@@ -77,10 +77,16 @@ public class MmlToZ80Compiler
             }
             else if (ev.EnvelopeId < 0 && currentEnvId >= 0)
             {
-                output.Add(CMD_ENV);
-                output.Add(0xFF); // 0xFF means off
-                currentEnvId = -1;
-                currentVol = -1; 
+                // リリースがある場合はサステイン終了直後にCMD_ENVをOFFにすると音が切れる可能性があるため、
+                // リリースを持たない場合のみ即座にOFFにする。
+                // (リリースがある場合は、NoteOff時の展開ループに任せる)
+                if (!VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataOff) || envDataOff.ReleaseValues.Count == 0)
+                {
+                    output.Add(CMD_ENV);
+                    output.Add(0xFF); // 0xFF means off
+                    currentEnvId = -1;
+                    currentVol = -1;
+                }
             }
 
             if (ev.Frequency == 0 || ev.Volume == 0 || gateFrames <= 0)
@@ -104,6 +110,11 @@ public class MmlToZ80Compiler
                 
                 if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                 {
+                    // 休符開始時にハードウェアエンベロープをOFFにしてリリース展開を許可する
+                    output.Add(CMD_ENV);
+                    output.Add(0xFF);
+                    currentEnvId = -1;
+
                     // 1 frame step expansion for release phase during explicit rest
                     for (int frm = 0; frm < totalFrames; frm++)
                     {
@@ -325,6 +336,12 @@ public class MmlToZ80Compiler
                 {
                     if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                     {
+                        // リリース開始時にハードウェアエンベロープをOFFにする (ソフトウェアでの音量制御に切り替えるため)
+                        output.Add(CMD_ENV);
+                        output.Add(0xFF);
+                        int activeEnvId = currentEnvId;
+                        currentEnvId = -1;
+
                         for (int frm = 0; frm < restFrames; frm++)
                         {
                             if (currentReleaseEnvPos >= 0 && currentReleaseEnvPos < envDataR.ReleaseValues.Count)
