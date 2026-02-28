@@ -344,6 +344,20 @@ public class MultiTrackMmlParser
             // but if there was a duplicate case 'e': here, it's removed.
             case 'q': 
                 return new FrameQuantizeCommand { Frames = ReadInt(data, ref i, 0, out parseError) };
+            case 's':
+                // @SW: ピッチスイープ (レジスタ差分/tick，プラス=音程上昇)
+                if (i < data.Length && char.ToLowerInvariant(data[i]) == 'w')
+                {
+                    i++;
+                    int swAmount = ReadSignedInt(data, ref i, 0, out parseError);
+                    if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なスイープ値です。"));
+                    return new SweepCommand { SweepAmount = swAmount };
+                }
+                else
+                {
+                    mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 2, $"未知の @ コマンド '@{c}' です。'@sw' が期待されます。"));
+                    return null;
+                }
             case 'w': 
                 if (i < data.Length && char.ToLowerInvariant(data[i]) == 'n')
                 {

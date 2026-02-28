@@ -86,8 +86,11 @@ public class FrameQuantizeCommand : MmlCommand { public int Frames { get; set; }
 
 public class VoiceCommand : MmlCommand { public int VoiceId { get; set; } }
 
-// ディチューンコマンド (D<num>) セント単位
+// ディチューンコマンド (D<num>) レジスタ値の増減幅（プラス値=音程上昇）
 public class DetuneCommand : MmlCommand { public int Detune { get; set; } }
+
+// ピッチスイープコマンド (@SW<num>) 毼tick加算されるレジスタ差分（プラス値=毼tick音程上昇）
+public class SweepCommand : MmlCommand { public int SweepAmount { get; set; } }
 
 // トランスポーズコマンド (K<num>) 半音単位
 public class TransposeCommand : MmlCommand { public int Transpose { get; set; } }

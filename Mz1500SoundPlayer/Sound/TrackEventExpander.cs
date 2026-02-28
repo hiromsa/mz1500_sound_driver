@@ -30,7 +30,8 @@ public class TrackEventExpander
 
         int currentNoiseWaveMode = 1; // @wn1
         int currentIntegrateNoiseMode = 0; // @in0
-        int currentDetune = 0; // D (cents)
+        int currentDetune = 0; // D レジスタ差分（プラス=音程上昇）
+        int currentSweep = 0;  // @SW 毼tickレジスタ差分
         int currentTranspose = 0; // Transpose (semitones)
 
         // ループ処理用スタック等 (今回は簡易的にフラット展開する)
@@ -67,6 +68,7 @@ public class TrackEventExpander
             else if (cmd is NoiseWaveCommand nwc) { currentNoiseWaveMode = nwc.WaveType; }
             else if (cmd is IntegrateNoiseCommand inc) { currentIntegrateNoiseMode = inc.IntegrateMode; }
             else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
+            else if (cmd is SweepCommand swc) { currentSweep = swc.SweepAmount; }
             else if (cmd is TransposeCommand tr) { currentTranspose = tr.Transpose; }
             else if (cmd is TieCommand tieCmd)
             {
@@ -185,13 +187,10 @@ public class TrackEventExpander
                             }
                             else
                             {
+                                // 連符内ノート (@SW/Detune/Transpose は全体状態から引き継ぎ)
                                 double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
-                                if (currentDetune != 0)
-                                {
-                                    freq = freq * Math.Pow(2.0, currentDetune / 1200.0);
-                                }
                                 double vol = (currentVolume / 15.0) * 0.15;
-                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength));
+                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, currentDetune, currentSweep));
                             }
                             nextIsLoopPoint = false;
                             noteIndex++;
@@ -245,13 +244,9 @@ public class TrackEventExpander
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
-                    if (currentDetune != 0)
-                    {
-                        freq = freq * Math.Pow(2.0, currentDetune / 1200.0);
-                    }
-                    // 音量を 0.0 - 0.2 くらいにスケーリング
+                    // D (Detune) と @SW (Sweep) は整数レジスタ差分としてNoteEventに渡す
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength));
+                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, currentDetune, currentSweep));
                 }
                 nextIsLoopPoint = false;
             }

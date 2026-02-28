@@ -177,57 +177,51 @@ public class MmlToZ80Compiler
                     currentVol = hwVol;
                 }
 
-                // ピッチエンベロープの処理 (周波数に依存するためTone出力前に動的生成)
+                // ---------- @EP (ピッチエンベロープ) 処理 ----------
+                // @EPの値は「レジスタ差分」として扱う（プラス=音程上昇）
+                // baseReg - ep値 の整数クランプで生成する
                 if (ev.PitchEnvelopeId >= 0 && PitchEnvelopes.ContainsKey(ev.PitchEnvelopeId))
                 {
-                    string cacheKey = $"Freq_{ev.Frequency}_EP_{ev.PitchEnvelopeId}_Ch_{psgChannel}";
+                    // ベース周波数からベースレジスタ値を求める
+                    double baseFreqForEp = ev.Frequency;
+                    double baseClockForEp = isBeep ? BeepClockFreq : BaseClockFreq;
+                    double baseRegRaw = (baseFreqForEp > 0) ? (baseClockForEp / baseFreqForEp) : 0;
+                    int baseRegInt = (int)Math.Round(baseRegRaw);
+
+                    string cacheKey = $"Reg_{baseRegInt}_EP_{ev.PitchEnvelopeId}_Ch_{psgChannel}_D_{ev.Detune}";
                     if (!_hwPitchEnvCache.TryGetValue(cacheKey, out int hwId))
                     {
                         var pEnvData = PitchEnvelopes[ev.PitchEnvelopeId];
                         var registers = new List<ushort>();
-                        double baseFreq = ev.Frequency;
-                        
-                        double baseClock = isBeep ? BeepClockFreq : BaseClockFreq;
-                        foreach (var cent in pEnvData.Values)
+
+                        foreach (var epDelta in pEnvData.Values)
                         {
-                            double freqCent = baseFreq * Math.Pow(2.0, cent / 1200.0);
-                            
+                            // 出力レジスタ = ベースレジスタ - D値 - EP値の引き算
+                            int reg = Math.Clamp(baseRegInt - ev.Detune - epDelta, 0, isBeep ? 65535 : 1023);
+                            ushort regU = (ushort)reg;
+
                             if (isBeep)
                             {
-                                double regCent = baseClock / freqCent;
-                                if (regCent > 65535) regCent = 65535;
-                                if (regCent < 1) regCent = 1;
-                                ushort regUshortCent = (ushort)regCent;
-                                
-                                byte cmd1 = (byte)(regUshortCent & 0xFF);
-                                byte cmd2 = (byte)((regUshortCent >> 8) & 0xFF);
-                                registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                                registers.Add((ushort)(regU & 0xFF | ((regU >> 8) << 8)));
                             }
                             else
                             {
-                                while (freqCent > 0 && baseClock / freqCent > 1023) freqCent *= 2.0;
-                                double regCent = baseClock / freqCent;
-                                if (regCent > 1023) regCent = 1023;
-                                if (regCent < 0) regCent = 0;
-                                ushort regUshortCent = (ushort)regCent;
-                                
-                                byte cmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshortCent & 0x0F));
-                                byte cmd2 = (byte)((regUshortCent >> 4) & 0x3F);
-                                
-                                registers.Add((ushort)(cmd1 | (cmd2 << 8)));
+                                byte c1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regU & 0x0F));
+                                byte c2 = (byte)((regU >> 4) & 0x3F);
+                                registers.Add((ushort)(c1 | (c2 << 8)));
                             }
                         }
-                        
+
                         hwId = HwPitchEnvelopes.Count;
-                        HwPitchEnvelopes.Add(new HwPitchEnvData 
-                        { 
-                            Id = hwId, 
-                            AbsoluteRegisters = registers, 
-                            LoopIndex = pEnvData.LoopIndex 
+                        HwPitchEnvelopes.Add(new HwPitchEnvData
+                        {
+                            Id = hwId,
+                            AbsoluteRegisters = registers,
+                            LoopIndex = pEnvData.LoopIndex
                         });
                         _hwPitchEnvCache[cacheKey] = hwId;
                     }
-                    
+
                     if (hwId != currentPEnvId)
                     {
                         output.Add(CMD_PENV);
@@ -242,93 +236,106 @@ public class MmlToZ80Compiler
                     currentPEnvId = -1;
                 }
 
-                // トーン出力 (Tone)
+                // ---------- トーン出力 ----------
+                // ベース周波数からPSGレジスタ値を計算
                 double freq = ev.Frequency;
-                byte toneCmd1 = 0;
-                byte toneCmd2 = 0;
 
                 if (isBeep)
                 {
+                    // Beepチャンネル: ユーザー向けにHzベースのままここは変更なし
                     double regVal = BeepClockFreq / freq;
                     if (regVal > 65535) regVal = 65535;
                     if (regVal < 1) regVal = 1;
                     ushort regUshort = (ushort)regVal;
-                    toneCmd1 = (byte)(regUshort & 0xFF);
-                    toneCmd2 = (byte)((regUshort >> 8) & 0xFF);
-
+                    byte toneCmd1 = (byte)(regUshort & 0xFF);
+                    byte toneCmd2 = (byte)((regUshort >> 8) & 0xFF);
                     output.Add(CMD_TONE);
                     output.Add(toneCmd1);
                     output.Add(toneCmd2);
+                    // Beepは長さ出力
+                    ushort durationUnitsBp = (ushort)(gateFrames - 1);
+                    output.Add((byte)(durationUnitsBp & 0xFF));
+                    output.Add((byte)((durationUnitsBp >> 8) & 0xFF));
                 }
                 else if (psgChannel == 3)
                 {
-                    // ノイズトラック判定 (D, H)
-                    // 仕様: freq値をShift Rateへマッピング (c < 300Hz -> Low(2), e < 350Hz -> Mid(1), g -> High(0))
+                    // ノイズトラック
                     byte shiftRate = (freq < 300) ? (byte)2 : (freq < 350) ? (byte)1 : (byte)0;
-                    byte feedback = (byte)(ev.NoiseWaveMode & 0x01); // 0=Periodic, 1=White Noise
-                    
-                    // ノイズ制御レジスタ形式: 1110_0FBW
+                    byte feedback = (byte)(ev.NoiseWaveMode & 0x01);
                     byte noiseCmd = (byte)(0xE0 | (feedback << 2) | shiftRate);
-
-                    // TODO 骨格: Z80ドライバとVMに CMD_NOISE(0x06) を実装するまでの間、
-                    // 仮のコマンドとしてバイト列を出力するステートメント
                     output.Add(CMD_NOISE);
                     output.Add(noiseCmd);
+                    // 長さ出力
+                    ushort durationUnitsNoise = (ushort)(gateFrames - 1);
+                    output.Add((byte)(durationUnitsNoise & 0xFF));
+                    output.Add((byte)((durationUnitsNoise >> 8) & 0xFF));
                 }
                 else
                 {
-                    // トーンチャネル判定 (A, B, C, E, F, G)
+                    // ---------- トーンチャンネル (A/B/C/E/F/G) ----------
+                    // ベースレジスタ値を計算 (Hz→レジスタ)
+                    while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0; // octave up if too low
+                    int baseReg = (int)Math.Round(BaseClockFreq / freq);
+                    baseReg = Math.Clamp(baseReg, 0, 1023);
+
+                    bool hasSweep = (ev.Sweep != 0);
+                    bool hasPEnv = (ev.PitchEnvelopeId >= 0);
+
                     if (psgChannel == 2 && ev.IntegrateNoiseMode > 0)
                     {
-                        // Tone 3 連動ノイズモード (@in)
-                        // Tone 3として周波数計算
-                        while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0;
-                        double regVal = BaseClockFreq / freq;
-                        if (regVal > 1023) regVal = 1023;
-                        ushort regUshort = (ushort)regVal;
-
-                        byte freqCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
-                        byte freqCmd2 = (byte)((regUshort >> 4) & 0x3F);
-
+                        // Tone3 連動ノイズモード: ベースレジスタにDetuneだけ適用
+                        int syncReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
+                        ushort syncRegU = (ushort)syncReg;
+                        byte freqCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (syncRegU & 0x0F));
+                        byte freqCmd2 = (byte)((syncRegU >> 4) & 0x3F);
                         byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                        
-                        byte feedback = (ev.IntegrateNoiseMode == 2) ? (byte)1 : (byte)0; // 2=White, 1=Periodic
-                        byte linkedNoiseCmd = (byte)(0xE0 | (feedback << 2) | 3); // W=3 (Tone 3 Linked)
-                        
-                        // Noise Channel = psgChannel + 1
+                        byte feedback2 = (ev.IntegrateNoiseMode == 2) ? (byte)1 : (byte)0;
+                        byte linkedNoiseCmd = (byte)(0xE0 | (feedback2 << 2) | 3);
                         byte noiseVolCmd = (byte)(0x90 | (((psgChannel + 1) & 0x03) << 5) | ((byte)(currentVol >= 0 ? currentVol : 15) & 0x0F));
-
-                        // TODO 骨格: Z80ドライバとVMに CMD_SYNC_NOISE(0x07) を実装し、以下のパラメータを解釈させる
                         output.Add(CMD_SYNC_NOISE);
                         output.Add(freqCmd1);
                         output.Add(freqCmd2);
                         output.Add(muteVolCmd);
                         output.Add(linkedNoiseCmd);
                         output.Add(noiseVolCmd);
+                        // 長さ出力
+                        ushort syncDur = (ushort)(gateFrames - 1);
+                        output.Add((byte)(syncDur & 0xFF));
+                        output.Add((byte)((syncDur >> 8) & 0xFF));
                     }
-                    else
+                    else if (!hasSweep)
                     {
-                        // 通常トーンモード
-                        // SN76489は10bitレジスタのため、BaseClockFreq / 1023 = 約109Hz より低い音は出せない。
-                        while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0;
-
-                        double regVal = BaseClockFreq / freq;
-                        if (regVal > 1023) regVal = 1023; // Safety
-                        ushort regUshort = (ushort)regVal;
-
-                        toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (regUshort & 0x0F));
-                        toneCmd2 = (byte)((regUshort >> 4) & 0x3F);
-
+                        // スイープなし: @EPがあればHwPitchEnvに任せ、なければデッド始まりスタット出力
+                        int startReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
+                        ushort startRegU = (ushort)startReg;
+                        byte toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (startRegU & 0x0F));
+                        byte toneCmd2 = (byte)((startRegU >> 4) & 0x3F);
                         output.Add(CMD_TONE);
                         output.Add(toneCmd1);
                         output.Add(toneCmd2);
+                        // 長さ出力
+                        ushort durationUnits = (ushort)(gateFrames - 1);
+                        output.Add((byte)(durationUnits & 0xFF));
+                        output.Add((byte)((durationUnits >> 8) & 0xFF));
+                    }
+                    else
+                    {
+                        // スイープあり: gateFrames分をス1フレームずつ展開し、tickごとにレジスタ値を変化させる
+                        for (int tick = 0; tick < gateFrames; tick++)
+                        {
+                            // 出力レジスタ = ベース - D値 - Sweep*tick
+                            int sweepReg = Math.Clamp(baseReg - ev.Detune - (ev.Sweep * tick), 0, 1023);
+                            ushort sweepRegU = (ushort)sweepReg;
+                            byte sweepCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (sweepRegU & 0x0F));
+                            byte sweepCmd2 = (byte)((sweepRegU >> 4) & 0x3F);
+                            output.Add(CMD_TONE);
+                            output.Add(sweepCmd1);
+                            output.Add(sweepCmd2);
+                            output.Add(0); // duration = 1 frame
+                            output.Add(0);
+                        }
                     }
                 }
-
-                // 長さ (2バイト)
-                ushort durationUnits = (ushort)(gateFrames - 1);
-                output.Add((byte)(durationUnits & 0xFF));
-                output.Add((byte)((durationUnits >> 8) & 0xFF));
 
                 // Rest 処理
                 int restFrames = totalFrames - gateFrames;
