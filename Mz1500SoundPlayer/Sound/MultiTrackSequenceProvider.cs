@@ -13,7 +13,6 @@ public class MultiTrackSequenceProvider : ISampleProvider
     // トラック毎の独立したシーケンスプロバイダを保持
     private readonly List<(string TrackName, ISampleProvider Provider)> _trackProviders;
     private float[]? _tempBuffer;
-    private float[]? _ym2151Buffer;
     private int[][]? _ym2151IntBuffer;
     
     public YM2151Manager YM2151 { get; }
@@ -57,6 +56,10 @@ public class MultiTrackSequenceProvider : ISampleProvider
         return vols;
     }
 
+    // YM2151のレジスタ書き込みと波形生成を同期させるためのフレームサイズ
+    // 60fps = 44100 / 60 ≒ 735サンプル
+    private int SamplesPerFrame => WaveFormat.SampleRate / 60;
+
     public int Read(float[] buffer, int offset, int count)
     {
         if (_tempBuffer == null || _tempBuffer.Length < count)
@@ -67,43 +70,77 @@ public class MultiTrackSequenceProvider : ISampleProvider
         // 最終出力バッファをゼロクリア
         Array.Clear(buffer, offset, count);
 
+        // --- PSGトラック（MmlSequenceProvider）は従来通り一括Read ---
+        // PSGは自身のRead()内でサンプル単位に波形生成が完結しているため問題なし
         foreach (var item in _trackProviders)
         {
             var provider = item.Provider;
             bool isMuted = !ActiveChannels.Contains(item.TrackName);
-            if (provider is MmlSequenceProvider m) m.IsMuted = isMuted;
-            if (provider is Ym2151SequenceProvider y) y.IsMuted = isMuted;
 
-            int read = provider.Read(_tempBuffer, 0, count);
-            if (read > 0)
+            if (provider is MmlSequenceProvider m)
             {
-                for (int i = 0; i < read; i++)
+                m.IsMuted = isMuted;
+                int read = provider.Read(_tempBuffer, 0, count);
+                if (read > 0)
                 {
-                    buffer[offset + i] += _tempBuffer[i];
+                    for (int i = 0; i < read; i++)
+                    {
+                        buffer[offset + i] += _tempBuffer[i];
+                    }
                 }
+            }
+            else if (provider is Ym2151SequenceProvider y)
+            {
+                y.IsMuted = isMuted;
+                // FMトラックのVM実行は下のフレーム単位ループ内で行う
             }
         }
 
-        // YM2151の波形を生成してミックスする
-        if (_ym2151Buffer == null || _ym2151Buffer.Length < count)
-        {
-            _ym2151Buffer = new float[count];
-            _ym2151IntBuffer = new int[2][];
-            _ym2151IntBuffer[0] = new int[count]; // L
-            _ym2151IntBuffer[1] = new int[count]; // R
-        }
+        // --- FM音源: フレーム単位チャンク処理 ---
+        // VM実行（レジスタ書き込み）と波形生成を1フレーム(≒735サンプル)ごとに交互実行し、
+        // ノートごとのレジスタ変更が波形に即座に反映されるようにする
+        int samplesPerFrame = SamplesPerFrame;
+        int processed = 0;
 
-        // YM2151Coreからの出力はStereoだが、今回は簡易的にL/RをミックスしてMono出力する
-        // （ステレオ出力対応する場合はWaveFormatを2chに変更する必要がある）
-        YM2151.GenerateSamples(_ym2151IntBuffer, count);
-
-        // YM2151の出力を合成（YM2151の内部出力は値が大きいので適度にスケールする）
-        const float ym2151VolumeScale = 1.0f / 32768.0f; // 16bit相当と仮定
-        for (int i = 0; i < count; i++)
+        while (processed < count)
         {
-            // LとRを平均してモノラル化
-            float ymSample = (_ym2151IntBuffer[0][i] + _ym2151IntBuffer[1][i]) * 0.5f * ym2151VolumeScale;
-            buffer[offset + i] += ymSample;
+            int chunkSize = Math.Min(samplesPerFrame, count - processed);
+
+            // 1) FMトラックのVM実行（このチャンク分のサンプル進行でレジスタが更新される）
+            foreach (var item in _trackProviders)
+            {
+                if (item.Provider is Ym2151SequenceProvider y)
+                {
+                    // Read()内でサンプルカウントに応じてProcessVM()が呼ばれ、レジスタが書き込まれる
+                    // バッファには0fが書かれるだけなので出力値は使わない
+                    y.Read(_tempBuffer, 0, chunkSize);
+                }
+            }
+
+            // 2) このチャンク分のYM2151波形を生成
+            if (_ym2151IntBuffer == null || _ym2151IntBuffer[0].Length < chunkSize)
+            {
+                _ym2151IntBuffer = new int[2][];
+                _ym2151IntBuffer[0] = new int[samplesPerFrame]; // L
+                _ym2151IntBuffer[1] = new int[samplesPerFrame]; // R
+            }
+
+            // 前回の残留データをクリア
+            Array.Clear(_ym2151IntBuffer[0], 0, chunkSize);
+            Array.Clear(_ym2151IntBuffer[1], 0, chunkSize);
+
+            YM2151.GenerateSamples(_ym2151IntBuffer, chunkSize);
+
+            // 3) YM2151の出力をメインバッファに合成
+            const float ym2151VolumeScale = 1.0f / 32768.0f; // 16bit相当と仮定
+            for (int i = 0; i < chunkSize; i++)
+            {
+                // LとRを平均してモノラル化
+                float ymSample = (_ym2151IntBuffer[0][i] + _ym2151IntBuffer[1][i]) * 0.5f * ym2151VolumeScale;
+                buffer[offset + processed + i] += ymSample;
+            }
+
+            processed += chunkSize;
         }
 
         // オーバーフロー(クリッピング)の簡易防止 (本来はリミッター等が望ましい)
@@ -113,8 +150,6 @@ public class MultiTrackSequenceProvider : ISampleProvider
             else if (buffer[offset + i] < -1.0f) buffer[offset + i] = -1.0f;
         }
 
-        // if (!hasMoreData) return 0; とすると再生が終了するが、
-        // NAudio側で突然切れるのを防ぐため無音を返し続けるか適宜判断する
         return count;
     }
 }

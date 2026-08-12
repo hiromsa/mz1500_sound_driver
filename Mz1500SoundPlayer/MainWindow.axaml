@@ -33,7 +33,7 @@
              IsReadOnly="True" TextWrapping="Wrap" 
              FontFamily="Consolas, Courier New, monospace" FontSize="12" 
              Background="#1E1E1E" Foreground="#D4D4D4" Margin="0,5,0,0"/>
-    <Grid Margin="15" ColumnDefinitions="*, 250" RowDefinitions="Auto, *, Auto">
+    <Grid Margin="15" ColumnDefinitions="*, 250" RowDefinitions="Auto, *">
       
       <!-- LEFT PANEL -->
       <TextBlock Grid.Row="0" Grid.Column="0" Text="MZ-1500 Sound Player" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5" Foreground="#cccccc"/>
@@ -53,12 +53,9 @@
           </ContextMenu>
         </AvaloniaEdit:TextEditor.ContextMenu>
       </AvaloniaEdit:TextEditor>
-      
-      <!-- Logging / Status -->
-      <TextBlock Grid.Row="2" Grid.Column="0" Name="LogOutput" Foreground="#4FC1FF" TextWrapping="Wrap" HorizontalAlignment="Stretch" Margin="0,5,0,0"/>
 
       <!-- RIGHT PANEL: Controls wrapped in ScrollViewer -->
-      <ScrollViewer Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="10" Margin="5,0,0,5" Background="#252526">
           
           <!-- Playback Group -->

@@ -140,13 +140,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         var converter = new MidiToMmlConverter();
                         string mml = converter.Convert(filePath);
                         MmlInput.Text = mml;
-                        LogOutput.Text = $"Loaded {files[0].Name} successfully.";
+                        LogTextBox.Text = $"Loaded {files[0].Name} successfully.";
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"MIDI Load Error: {ex.Message}";
+                LogTextBox.Text = $"MIDI Load Error: {ex.Message}";
             }
             finally
             {
@@ -181,18 +181,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         {
                             string mml = FamiStudioToMmlConverter.Convert(project, 0);
                             MmlInput.Text = string.IsNullOrEmpty(mml) ? "; No MML output" : mml;
-                            LogOutput.Text = $"Loaded {files[0].Name} successfully.";
+                            LogTextBox.Text = $"Loaded {files[0].Name} successfully.";
                         }
                         else
                         {
-                            LogOutput.Text = $"Failed to parse {files[0].Name}. Error loading .fms";
+                            LogTextBox.Text = $"Failed to parse {files[0].Name}. Error loading .fms";
                         }
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"FMS Load Error: {ex.Message}";
+                LogTextBox.Text = $"FMS Load Error: {ex.Message}";
             }
             finally
             {
@@ -228,13 +228,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         string filePath = files[0].Path.LocalPath;
                         string mml = await File.ReadAllTextAsync(filePath);
                         MmlInput.Text = mml;
-                        LogOutput.Text = $"Loaded MML: {files[0].Name}";
+                        LogTextBox.Text = $"Loaded MML: {files[0].Name}";
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"MML Load Error: {ex.Message}";
+                LogTextBox.Text = $"MML Load Error: {ex.Message}";
             }
             finally
             {
@@ -268,13 +268,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     {
                         string filePath = file.Path.LocalPath;
                         await File.WriteAllTextAsync(filePath, MmlInput.Text ?? "");
-                        LogOutput.Text = $"Saved MML to: {file.Name}";
+                        LogTextBox.Text = $"Saved MML to: {file.Name}";
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"MML Save Error: {ex.Message}";
+                LogTextBox.Text = $"MML Save Error: {ex.Message}";
             }
             finally
             {
@@ -369,11 +369,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 }
                 
                 MmlInput.Text = string.Join(System.Environment.NewLine, lines);
-                LogOutput.Text = "Channels remapped successfully.";
+                LogTextBox.Text = "Channels remapped successfully.";
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"Remap Error: {ex.Message}";
+                LogTextBox.Text = $"Remap Error: {ex.Message}";
             }
         }
     }
@@ -390,7 +390,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             ValidateMml();
             if (_errorRenderer.ActiveErrors.Count > 0)
             {
-                LogOutput.Text = "エラーがあるため再生できません。修正してください。";
+                LogTextBox.Text = "エラーがあるため再生できません。修正してください。";
                 return;
             }
 
@@ -403,11 +403,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 
                 _playbackTimer.Start();
                 string log = await _player.PlayMmlAsync(mml, selStart, selLen);
-                LogOutput.Text = log;
+                LogTextBox.Text = log;
             }
             catch (System.Exception ex)
             {
-                LogOutput.Text = $"MML Parse Error: {ex.Message}";
+                LogTextBox.Text = $"MML Parse Error: {ex.Message}";
             }
             finally
             {
@@ -515,11 +515,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (error != null)
         {
-            LogOutput.Text = $"文法エラー: {error.Message}";
+            LogTextBox.Text = $"文法エラー: {error.Message}";
         }
-        else if (LogOutput.Text?.StartsWith("文法エラー:") == true)
+        else if (LogTextBox.Text?.StartsWith("文法エラー:") == true)
         {
-            LogOutput.Text = "Ready";
+            LogTextBox.Text = "Ready";
         }
     }
 
@@ -538,7 +538,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _playbackTimer.Stop();
         ClearHighlight();
         ResetVolumes();
-        LogOutput.Text = "Playback stopped.";
+        LogTextBox.Text = "Playback stopped.";
     }
 
     private void ResetVolumes()
@@ -587,7 +587,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
             if (clipboard == null)
             {
-                LogOutput.Text = "Clipboard not available.";
+                LogTextBox.Text = "Clipboard not available.";
                 return;
             }
 
@@ -646,11 +646,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             // Nothing found
             var formats = await clipboard.GetFormatsAsync();
-            LogOutput.Text = $"No image found on clipboard. Available formats: {string.Join(", ", formats)}";
+            LogTextBox.Text = $"No image found on clipboard. Available formats: {string.Join(", ", formats)}";
         }
         catch (System.Exception ex)
         {
-            LogOutput.Text = $"Paste error: {ex.Message}";
+            LogTextBox.Text = $"Paste error: {ex.Message}";
         }
     }
 
@@ -664,11 +664,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 _player.PcgImagePath = path;
             }
-            LogOutput.Text = $"Loaded PCG Image: {System.IO.Path.GetFileName(path)}";
+            LogTextBox.Text = $"Loaded PCG Image: {System.IO.Path.GetFileName(path)}";
         }
         catch (System.Exception ex)
         {
-            LogOutput.Text = $"Failed to load image: {ex.Message}";
+            LogTextBox.Text = $"Failed to load image: {ex.Message}";
         }
     }
 
@@ -698,7 +698,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             _player.PcgImagePath = null;
         }
-        LogOutput.Text = "PCG Image cleared.";
+        LogTextBox.Text = "PCG Image cleared.";
     }
 
     private void ExportQdcButton_Click(object? sender, RoutedEventArgs e)
@@ -711,11 +711,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             string outPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "output.qdc");
             
             string log = _player.ExportQdc(mml, outPath);
-            LogOutput.Text = log;
+            LogTextBox.Text = log;
         }
         catch (System.Exception ex)
         {
-            LogOutput.Text = $"Export Error: {ex.Message}";
+            LogTextBox.Text = $"Export Error: {ex.Message}";
         }
     }
 
