@@ -947,28 +947,21 @@ namespace Mz1500SoundPlayer.Sound
         {
             if ((v & 0x08) != 0)   /* M1 */
                 KEY_ON(op[opPtr + 0], 1);
-
             else
                 KEY_OFF(op[opPtr + 0], ~1);
 
-
             if ((v & 0x20) != 0)   /* M2 */
                 KEY_ON(op[opPtr + 1], 1);
-
             else
                 KEY_OFF(op[opPtr + 1], ~1);
 
-
             if ((v & 0x10) != 0)   /* C1 */
                 KEY_ON(op[opPtr + 2], 1);
-
             else
                 KEY_OFF(op[opPtr + 2], ~1);
 
-
             if ((v & 0x40) != 0)   /* C2 */
                 KEY_ON(op[opPtr + 3], 1);
-
             else
                 KEY_OFF(op[opPtr + 3], ~1);
         }

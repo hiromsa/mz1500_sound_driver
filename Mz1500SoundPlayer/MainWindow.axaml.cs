@@ -58,6 +58,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public MainWindow()
     {
         InitializeComponent();
+        
+        try
+        {
+            var buildDate = System.IO.File.GetLastWriteTime(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            this.Title = $"Mz1500SoundPlayer - Build: {buildDate:yyyy/MM/dd HH:mm:ss}";
+        }
+        catch { }
+
         this.DataContext = this;
         _player = new MmlPlayerModel();
         

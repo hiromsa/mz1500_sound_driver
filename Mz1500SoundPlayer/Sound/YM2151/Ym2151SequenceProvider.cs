@@ -1,4 +1,4 @@
-﻿using NAudio.Wave;
+using NAudio.Wave;
 using System;
 
 namespace Mz1500SoundPlayer.Sound;
@@ -37,6 +37,8 @@ public class Ym2151SequenceProvider : ISampleProvider
         ProcessVM();
     }
 
+    private long _totalSamplesProcessed = 0;
+
     private void ProcessVM()
     {
         bool fetchNext = true;
@@ -55,6 +57,7 @@ public class Ym2151SequenceProvider : ISampleProvider
                     byte wL = _bytecode[_pc++];
                     byte wH = _bytecode[_pc++];
                     _waitFrames = (wL | (wH << 8)) + 1; // CMD_WAIT stores frames - 1
+                    Console.WriteLine($"  [FM-VM] CMD_WAIT: {_waitFrames} frames (sample pos: {_totalSamplesProcessed})");
                     break;
                 case MmlToZ80Compiler.CMD_YM2151_REG_WRITE:
                     byte reg = _bytecode[_pc++];
@@ -64,12 +67,24 @@ public class Ym2151SequenceProvider : ISampleProvider
                         _ym2151Manager.OutPort(0x0708, reg);
                         _ym2151Manager.OutPort(0x0709, val);
                     }
+                    // KEY ON/OFFとKCの書き込みを目立つようにログ出力
+                    if (reg == 0x08)
+                        Console.WriteLine($"  [FM-VM] ** KEY {(val > 0 ? "ON " : "OFF")} ** reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                    else if (reg >= 0x28 && reg <= 0x2F)
+                        Console.WriteLine($"  [FM-VM] KC  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                    else if (reg >= 0x30 && reg <= 0x37)
+                        Console.WriteLine($"  [FM-VM] KF  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
                     break;
                 case MmlToZ80Compiler.CMD_LOOP_MARKER:
                     // Loops not fully implemented in simple version, ignore marker
                     break;
                 case MmlToZ80Compiler.CMD_END:
+                    Console.WriteLine($"  [FM-VM] CMD_END (sample pos: {_totalSamplesProcessed})");
+                    _isEnd = true;
+                    fetchNext = false;
+                    break;
                 default:
+                    Console.WriteLine($"  [FM-VM] UNKNOWN CMD 0x{cmd:X2}, treating as END (sample pos: {_totalSamplesProcessed})");
                     _isEnd = true;
                     fetchNext = false;
                     break;
@@ -93,10 +108,12 @@ public class Ym2151SequenceProvider : ISampleProvider
                 }
                 if (_waitFrames == 0 && !_isEnd)
                 {
+                    Console.WriteLine($"[FM-VM] Frame boundary at sample {_totalSamplesProcessed + i}, calling ProcessVM (waitFrames was just decremented to 0)");
                     ProcessVM();
                 }
             }
         }
+        _totalSamplesProcessed += count;
         return count;
     }
 }

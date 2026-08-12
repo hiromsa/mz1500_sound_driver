@@ -550,6 +550,8 @@ public class MmlToZ80Compiler
             }
             else
             {
+                // 休符(r)の時は明確にKEY OFFを送ってからWAITする
+                emitReg(0x08, (byte)(0x00 | fmChannel));
                 emitWait(totalFrames);
             }
 
