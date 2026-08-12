@@ -763,6 +763,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (ChkG.IsChecked == true) activeChannels.Add("G");
         if (ChkH.IsChecked == true) activeChannels.Add("H");
         if (ChkP.IsChecked == true) activeChannels.Add("P");
+        if (ChkAll.IsChecked == true) 
+        {
+            activeChannels.Add("F1"); activeChannels.Add("F2"); activeChannels.Add("F3"); activeChannels.Add("F4");
+            activeChannels.Add("F5"); activeChannels.Add("F6"); activeChannels.Add("F7"); activeChannels.Add("F8");
+        }
         
         _player.ActiveChannels = activeChannels;
     }

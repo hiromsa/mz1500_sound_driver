@@ -160,7 +160,17 @@ public class MmlPlayerModel
                 default: psgChannel = 0; break;
             }
             bool isBeep = kvp.Key.ToUpperInvariant() == "P";
-            byte[] seqBin = compiler.CompileTrack(events, psgChannel, isBeep);
+            bool isFm = kvp.Key.ToUpperInvariant().StartsWith("F") && kvp.Key.Length == 2;
+            byte[] seqBin;
+            if (isFm)
+            {
+                byte fmChannel = (byte)(int.Parse(kvp.Key.Substring(1)) - 1);
+                seqBin = compiler.CompileFmTrack(events, fmChannel, mmlData);
+            }
+            else
+            {
+                seqBin = compiler.CompileTrack(events, psgChannel, isBeep);
+            }
             trackBinaries[kvp.Key] = seqBin;
 
             double totalMs = 0;
@@ -214,7 +224,17 @@ public class MmlPlayerModel
 
             var events = expander.Expand(kvp.Value);
             bool isBeep = kvp.Key.ToUpperInvariant() == "P";
-            byte[] seqBin = compiler.CompileTrack(events, psgChannel, isBeep);
+            bool isFm = kvp.Key.ToUpperInvariant().StartsWith("F") && kvp.Key.Length == 2;
+            byte[] seqBin;
+            if (isFm)
+            {
+                byte fmChannel = (byte)(int.Parse(kvp.Key.Substring(1)) - 1);
+                seqBin = compiler.CompileFmTrack(events, fmChannel, mmlData);
+            }
+            else
+            {
+                seqBin = compiler.CompileTrack(events, psgChannel, isBeep);
+            }
             
             musicAssembler.AppendChannel(new Z80.Channel("track_" + kvp.Key, ioPort, seqBin));
         }

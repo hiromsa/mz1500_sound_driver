@@ -33,6 +33,11 @@ public class TrackEventExpander
         int currentDetune = 0; // D レジスタ差分（プラス=音程上昇）
         int currentSweep = 0;  // @SW 毼tickレジスタ差分
         int currentTranspose = 0; // Transpose (semitones)
+        
+        int currentFmVoiceId = 0;
+        int currentFmPan = 3;
+        int currentFmVolume = 127;
+        var currentRegisterWrites = new List<Ym2151RegisterCommand>();
 
         // ループ処理用スタック等 (今回は簡易的にフラット展開する)
         var flatCommands = FlattenLoops(track.Commands);
@@ -70,6 +75,10 @@ public class TrackEventExpander
             else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
             else if (cmd is SweepCommand swc) { currentSweep = swc.SweepAmount; }
             else if (cmd is TransposeCommand tr) { currentTranspose = tr.Transpose; }
+            else if (cmd is VoiceCommand vcmd) { currentFmVoiceId = vcmd.VoiceId; }
+            else if (cmd is PanCommand pcmd) { currentFmPan = pcmd.Pan; }
+            else if (cmd is FmVolumeCommand fvcmd) { currentFmVolume = fvcmd.Volume; }
+            else if (cmd is Ym2151RegisterCommand ycmd) { currentRegisterWrites.Add(ycmd); }
             else if (cmd is TieCommand tieCmd)
             {
                 if (selectionStart >= 0)
@@ -159,6 +168,10 @@ public class TrackEventExpander
                         else if (inner is IntegrateNoiseCommand ini) { currentIntegrateNoiseMode = ini.IntegrateMode; }
                         else if (inner is DetuneCommand rdi) { currentDetune = rdi.Detune; }
                         else if (inner is TransposeCommand trci) { currentTranspose = trci.Transpose; }
+                        else if (inner is VoiceCommand vcmd2) { currentFmVoiceId = vcmd2.VoiceId; }
+                        else if (inner is PanCommand pcmd2) { currentFmPan = pcmd2.Pan; }
+                        else if (inner is FmVolumeCommand fvcmd2) { currentFmVolume = fvcmd2.Volume; }
+                        else if (inner is Ym2151RegisterCommand ycmd2) { currentRegisterWrites.Add(ycmd2); }
                         else if (inner is TieCommand)
                         {
                             // Tying inside a tuplet isn't typical MML standard but conceptually straightforward: add duration to the last appended tuplet note
@@ -183,14 +196,18 @@ public class TrackEventExpander
 
                             if (nc.Note == 'r')
                             {
-                                events.Add(new NoteEvent(0, specificDurationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength));
+                                var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
+                                currentRegisterWrites.Clear();
+                                events.Add(new NoteEvent(0, specificDurationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
                             }
                             else
                             {
                                 // 連符内ノート (@SW/Detune/Transpose は全体状態から引き継ぎ)
                                 double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
                                 double vol = (currentVolume / 15.0) * 0.15;
-                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, currentDetune, currentSweep));
+                                var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
+                                currentRegisterWrites.Clear();
+                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
                             }
                             nextIsLoopPoint = false;
                             noteIndex++;
@@ -239,14 +256,18 @@ public class TrackEventExpander
 
                 if (nc.Note == 'r')
                 {
-                    events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength));
+                    var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
+                                currentRegisterWrites.Clear();
+                                events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
                 }
                 else
                 {
                     double freq = GetFrequency(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave);
                     // D (Detune) と @SW (Sweep) は整数レジスタ差分としてNoteEventに渡す
                     double vol = (currentVolume / 15.0) * 0.15;
-                    events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, currentDetune, currentSweep));
+                    var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
+                                currentRegisterWrites.Clear();
+                                events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
                 }
                 nextIsLoopPoint = false;
             }
@@ -255,7 +276,9 @@ public class TrackEventExpander
         // 行末などにLだけ置いて終わった場合、終端フラグを立たせるために長さ0のダミー休符を置く
         if (nextIsLoopPoint)
         {
-            events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true, -1, 0));
+            var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
+                                currentRegisterWrites.Clear();
+                                events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true, -1, 0, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
         }
 
         return events;

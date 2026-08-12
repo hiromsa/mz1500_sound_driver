@@ -14,7 +14,10 @@ public class MultiTrackMmlParser
         var tracks = result.Tracks;
 
         int absoluteIndex = 0;
-        string currentTrackNames = "A";
+        List<string> currentTrackNamesList = new List<string> { "A" };
+        bool insideFmBlock = false;
+        int currentFmId = -1;
+        string currentFmData = "";
 
         while (absoluteIndex < mmlText.Length)
         {
@@ -34,6 +37,33 @@ public class MultiTrackMmlParser
 
             string trimmed = logicalLine.Trim();
 
+            if (insideFmBlock)
+            {
+                currentFmData += trimmed + " ";
+                int closingIndex = currentFmData.IndexOf('}');
+                if (closingIndex >= 0)
+                {
+                    insideFmBlock = false;
+                    result.FmVoiceEnvelopes[currentFmId] = ParseFmToneData(currentFmData.Substring(0, closingIndex));
+                }
+                continue;
+            }
+
+            var fmEnvMatch = Regex.Match(trimmed, @"^@FM(\d+)\s*=\s*\{");
+            if (fmEnvMatch.Success)
+            {
+                currentFmId = int.Parse(fmEnvMatch.Groups[1].Value);
+                insideFmBlock = true;
+                currentFmData = trimmed.Substring(fmEnvMatch.Length) + " ";
+                int closingIndex = currentFmData.IndexOf('}');
+                if (closingIndex >= 0)
+                {
+                    insideFmBlock = false;
+                    result.FmVoiceEnvelopes[currentFmId] = ParseFmToneData(currentFmData.Substring(0, closingIndex));
+                }
+                continue;
+            }
+
             // Check Envelope Definitions
             var envMatch = Regex.Match(trimmed, @"^@v(\d+)\s*=\s*\{(.*?)\}");
             if (envMatch.Success)
@@ -51,24 +81,24 @@ public class MultiTrackMmlParser
                 continue;
             }
 
-            // Check Track Definition (e.g. "ABC o4cde")
-            var trackMatch = Regex.Match(logicalLine, @"^\s*([A-Za-z]+)\s+(.*)");
+            // Check Track Definition
+            var trackMatch = Regex.Match(logicalLine, @"^\s*([A-Za-z0-9,]+)\s+(.*)");
             string mmlData = logicalLine;
             int dataOffsetInLine = 0;
 
             if (trackMatch.Success)
             {
-                currentTrackNames = trackMatch.Groups[1].Value.ToUpperInvariant();
+                string rawTracks = trackMatch.Groups[1].Value.ToUpperInvariant();
                 mmlData = trackMatch.Groups[2].Value;
                 dataOffsetInLine = trackMatch.Groups[2].Index;
+                currentTrackNamesList = ParseTrackNames(rawTracks);
             }
 
             var commandsLine = new List<MmlCommand>();
             ParseLineChunk(mmlData, lineStartIndex + dataOffsetInLine, result, commandsLine);
 
-            foreach (char tName in currentTrackNames)
+            foreach (string tKey in currentTrackNamesList)
             {
-                string tKey = tName.ToString();
                 if (!tracks.ContainsKey(tKey))
                 {
                     tracks[tKey] = new TrackData { Name = tKey };
@@ -84,8 +114,44 @@ public class MultiTrackMmlParser
         return result;
     }
 
+    private List<string> ParseTrackNames(string rawTracks)
+    {
+        var list = new List<string>();
+        rawTracks = rawTracks.Replace(",", "");
+        for (int i = 0; i < rawTracks.Length; i++)
+        {
+            if (rawTracks[i] == 'F' && i + 1 < rawTracks.Length && rawTracks[i + 1] >= '1' && rawTracks[i + 1] <= '8')
+            {
+                list.Add(rawTracks.Substring(i, 2));
+                i++;
+            }
+            else
+            {
+                list.Add(rawTracks[i].ToString());
+            }
+        }
+        return list;
+    }
+
+    private FmToneData ParseFmToneData(string innerText)
+    {
+        var tone = new FmToneData();
+        // Remove comments
+        innerText = Regex.Replace(innerText, @";.*", "");
+        innerText = Regex.Replace(innerText, @"//.*", "");
+        var matches = Regex.Matches(innerText, @"-?\d+");
+        int count = Math.Min(46, matches.Count);
+        for (int i = 0; i < count; i++)
+        {
+            tone.Parameters[i] = int.Parse(matches[i].Value);
+        }
+        return tone;
+    }
+
     private EnvelopeData ParseEnvelopeData(string innerText, bool allowNegative = false)
     {
+        innerText = Regex.Replace(innerText, @";.*", "");
+        innerText = Regex.Replace(innerText, @"//.*", "");
         string pattern = allowNegative ? @"-?\d+(?:\s*[xX]\s*\d+)?|\||>" : @"\d+(?:\s*[xX]\s*\d+)?|\||>";
         var matches = Regex.Matches(innerText, pattern);
         
@@ -238,8 +304,32 @@ public class MultiTrackMmlParser
                             createdCmd = new InfiniteLoopPointCommand();
                         break;
                     case 'v':
-                        createdCmd = new VolumeCommand { Volume = ReadInt(data, ref i, 15, out parseError) };
-                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なボリューム値です。"));
+                        if (originalC == 'V')
+                        {
+                            createdCmd = new FmVolumeCommand { Volume = ReadInt(data, ref i, 127, out parseError) };
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なFMボリューム値です。"));
+                        }
+                        else
+                        {
+                            createdCmd = new VolumeCommand { Volume = ReadInt(data, ref i, 15, out parseError) };
+                            if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なボリューム値です。"));
+                        }
+                        break;
+                    case 'p':
+                        createdCmd = new PanCommand { Pan = ReadInt(data, ref i, 3, out parseError) };
+                        if (parseError) mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, i - cmdStartIdx, $"無効なパン値です。"));
+                        break;
+                    case 'y':
+                        int reg = 0, val = 0;
+                        if (i < data.Length && data[i] == '$') { i++; reg = ReadHex(data, ref i, out parseError); }
+                        else { reg = ReadInt(data, ref i, 0, out parseError); }
+                        
+                        if (i < data.Length && data[i] == ',') i++;
+                        
+                        if (i < data.Length && data[i] == '$') { i++; val = ReadHex(data, ref i, out parseError); }
+                        else { val = ReadInt(data, ref i, 0, out parseError); }
+                        
+                        createdCmd = new Ym2151RegisterCommand { Register = reg, Value = val };
                         break;
                     case 'q':
                         createdCmd = new QuantizeCommand { Quantize = ReadInt(data, ref i, 8, out parseError) };
@@ -463,6 +553,15 @@ public class MultiTrackMmlParser
         }
         hasError = true;
         return defaultValue;
+    }
+
+    private int ReadHex(string data, ref int i, out bool parseError)
+    {
+        parseError = false;
+        int start = i;
+        while (i < data.Length && ((data[i] >= '0' && data[i] <= '9') || (data[i] >= 'a' && data[i] <= 'f') || (data[i] >= 'A' && data[i] <= 'F'))) i++;
+        if (i == start) { parseError = true; return 0; }
+        return Convert.ToInt32(data.Substring(start, i - start), 16);
     }
 
     private int ReadSignedInt(string data, ref int i, int defaultValue, out bool hasError)

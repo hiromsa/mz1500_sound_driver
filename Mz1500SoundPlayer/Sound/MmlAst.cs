@@ -35,6 +35,7 @@ public class MmlData
     public Dictionary<string, TrackData> Tracks { get; set; } = new();
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
+    public Dictionary<int, FmToneData> FmVoiceEnvelopes { get; set; } = new();
     public List<MmlError> Errors { get; set; } = new();
 }
 
@@ -98,6 +99,18 @@ public class TransposeCommand : MmlCommand { public int Transpose { get; set; } 
 // ノイズ関連
 public class NoiseWaveCommand : MmlCommand { public int WaveType { get; set; } }
 public class IntegrateNoiseCommand : MmlCommand { public int IntegrateMode { get; set; } }
+
+// YM2151用コマンド
+public class PanCommand : MmlCommand { public int Pan { get; set; } }
+public class FmVolumeCommand : MmlCommand { public int Volume { get; set; } }
+public class Ym2151RegisterCommand : MmlCommand { public int Register { get; set; } public int Value { get; set; } }
+
+// FM音色定義用
+public class FmToneData
+{
+    public int[] Parameters { get; set; } = new int[46]; // ALG, FB + 44 ops params
+}
+
 
 // 音長減算用パラメータ (ex: ~12, -2) ※今回は簡略化のため一旦無視か拡張枠として用意
 // ...
