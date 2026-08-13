@@ -359,7 +359,7 @@ public class SingleNoteProvider : ISampleProvider
         bool isFm = state.TrackName.ToUpperInvariant().StartsWith("F") && state.TrackName.Length == 2;
         if (isFm)
         {
-            // Key OFF
+            // Send Key OFF to YM2151
             _ym2151.OutPort(0x0708, 0x08);
             _ym2151.OutPort(0x0709, (byte)(0x00 | _fmChannel));
         }
@@ -369,18 +369,25 @@ public class SingleNoteProvider : ISampleProvider
     public int Read(float[] buffer, int offset, int count)
     {
         Array.Clear(buffer, offset, count);
-        if (_isPlaying)
-        {
-            Array.Clear(_intBuffer[0], 0, count);
-            Array.Clear(_intBuffer[1], 0, count);
-            _ym2151.GenerateSamples(_intBuffer, count);
 
-            const float ym2151VolumeScale = 1.0f / 32768.0f;
-            for (int i = 0; i < count; i++)
-            {
-                buffer[offset + i] = (_intBuffer[0][i] + _intBuffer[1][i]) * 0.5f * ym2151VolumeScale;
-            }
+        if (_intBuffer[0].Length < count)
+        {
+            _intBuffer[0] = new int[count];
+            _intBuffer[1] = new int[count];
         }
+
+        // 鍵盤を離した後もYM2151の波形生成(GenerateSamples)を止めずに実行し続けることで、
+        // リリース（減衰）フェーズが正常に消化され、クリックノイズや波形断線ノイズの発生を防ぐ
+        Array.Clear(_intBuffer[0], 0, count);
+        Array.Clear(_intBuffer[1], 0, count);
+        _ym2151.GenerateSamples(_intBuffer, count);
+
+        const float ym2151VolumeScale = 1.0f / 32768.0f;
+        for (int i = 0; i < count; i++)
+        {
+            buffer[offset + i] = (_intBuffer[0][i] + _intBuffer[1][i]) * 0.5f * ym2151VolumeScale;
+        }
+
         return count;
     }
 }
