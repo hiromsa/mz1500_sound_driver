@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Mz1500SoundPlayer.Sound;
 using NAudio.Wave;
@@ -18,6 +18,12 @@ public partial class VirtualKeyboardWindow : Window
     private int _currentOctave = 4;
 
     private readonly List<KeyInfo> _keys = new();
+    private readonly Dictionary<Key, KeyInfo> _physicalKeyMap = new();
+    private readonly HashSet<Key> _pressedPhysicalKeys = new();
+
+    private bool _isMouseDown = false;
+    private KeyInfo? _activeMouseKey = null;
+
     public Action<string>? OnInsertMml { get; set; }
 
     // Audio output components
@@ -31,8 +37,9 @@ public partial class VirtualKeyboardWindow : Window
         public int OctaveOffset { get; set; } // 0, 1, 2
         public int NoteInOctave { get; set; } // 0..11
         public bool IsBlack { get; set; }
-        public Control Control { get; set; } = null!;
+        public Border Control { get; set; } = null!;
         public string MmlName { get; set; } = "";
+        public string PhysicalChar { get; set; } = "";
     }
 
     public VirtualKeyboardWindow()
@@ -78,14 +85,40 @@ public partial class VirtualKeyboardWindow : Window
     {
         PianoCanvas.Children.Clear();
         _keys.Clear();
+        _physicalKeyMap.Clear();
 
-        double whiteKeyWidth = 720.0 / 21.0; // 21 white keys (3 octaves * 7)
+        double whiteKeyWidth = 720.0 / 21.0; // 21 white keys
         double blackKeyWidth = whiteKeyWidth * 0.6;
         double whiteKeyHeight = 145.0;
         double blackKeyHeight = 90.0;
 
         string[] whiteNoteNames = { "c", "d", "e", "f", "g", "a", "b" };
         int[] whiteNoteOffsets = { 0, 2, 4, 5, 7, 9, 11 };
+
+        // Physical Keyboard Mappings
+        Key[] whitePhysicalKeys = {
+            Key.Z, Key.X, Key.C, Key.V, Key.B, Key.N, Key.M,
+            Key.OemComma, Key.OemPeriod, Key.OemQuestion, Key.Q, Key.W, Key.E, Key.R,
+            Key.T, Key.Y, Key.U, Key.I, Key.O, Key.P, Key.OemOpenBrackets
+        };
+
+        string[] whitePhysicalChars = {
+            "Z", "X", "C", "V", "B", "N", "M",
+            ",", ".", "/", "Q", "W", "E", "R",
+            "T", "Y", "U", "I", "O", "P", "["
+        };
+
+        Key[] blackPhysicalKeys = {
+            Key.S, Key.D, Key.G, Key.H, Key.J,
+            Key.L, Key.OemSemicolon, Key.D2, Key.D3, Key.D5,
+            Key.D6, Key.D7, Key.D9, Key.D0, Key.OemMinus
+        };
+
+        string[] blackPhysicalChars = {
+            "S", "D", "G", "H", "J",
+            "L", ";", "2", "3", "5",
+            "6", "7", "9", "0", "-"
+        };
 
         // 1. Build White Keys
         int whiteCount = 0;
@@ -94,6 +127,25 @@ public partial class VirtualKeyboardWindow : Window
             for (int i = 0; i < 7; i++)
             {
                 double left = whiteCount * whiteKeyWidth;
+                int physIndex = oct * 7 + i;
+
+                string physChar = physIndex < whitePhysicalChars.Length ? whitePhysicalChars[physIndex] : "";
+                Key physKey = physIndex < whitePhysicalKeys.Length ? whitePhysicalKeys[physIndex] : Key.None;
+
+                var textBlock = new TextBlock
+                {
+                    Text = physChar,
+                    FontSize = 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = Brushes.Gray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Avalonia.Thickness(0, 0, 0, 6)
+                };
+
+                var grid = new Grid();
+                grid.Children.Add(textBlock);
+
                 var border = new Border
                 {
                     Width = whiteKeyWidth - 2,
@@ -102,13 +154,15 @@ public partial class VirtualKeyboardWindow : Window
                     BorderBrush = Brushes.Black,
                     BorderThickness = new Avalonia.Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(0, 0, 4, 4),
+                    Child = grid,
                     Tag = new KeyInfo
                     {
                         NoteName = whiteNoteNames[i],
                         OctaveOffset = oct,
                         NoteInOctave = whiteNoteOffsets[i],
                         IsBlack = false,
-                        MmlName = whiteNoteNames[i]
+                        MmlName = whiteNoteNames[i],
+                        PhysicalChar = physChar
                     }
                 };
 
@@ -119,9 +173,14 @@ public partial class VirtualKeyboardWindow : Window
                 keyInfo.Control = border;
                 _keys.Add(keyInfo);
 
+                if (physKey != Key.None)
+                {
+                    _physicalKeyMap[physKey] = keyInfo;
+                }
+
                 border.PointerPressed += Key_PointerPressed;
+                border.PointerEntered += Key_PointerEntered;
                 border.PointerReleased += Key_PointerReleased;
-                border.PointerExited += Key_PointerReleased;
 
                 PianoCanvas.Children.Add(border);
                 whiteCount++;
@@ -131,14 +190,33 @@ public partial class VirtualKeyboardWindow : Window
         // 2. Build Black Keys
         int[] blackNoteOffsets = { 1, 3, 6, 8, 10 };
         string[] blackMmlNames = { "c+", "d+", "f+", "g+", "a+" };
-        int[] blackPositionsAfterWhite = { 0, 1, 3, 4, 5 }; // Index of white key after which black key goes
+        int[] blackPositionsAfterWhite = { 0, 1, 3, 4, 5 };
 
+        int blackCount = 0;
         for (int oct = 0; oct < 3; oct++)
         {
             for (int i = 0; i < 5; i++)
             {
                 int whiteIdx = oct * 7 + blackPositionsAfterWhite[i];
                 double left = (whiteIdx + 1) * whiteKeyWidth - (blackKeyWidth / 2.0);
+                int physIndex = blackCount;
+
+                string physChar = physIndex < blackPhysicalChars.Length ? blackPhysicalChars[physIndex] : "";
+                Key physKey = physIndex < blackPhysicalKeys.Length ? blackPhysicalKeys[physIndex] : Key.None;
+
+                var textBlock = new TextBlock
+                {
+                    Text = physChar,
+                    FontSize = 10,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = Brushes.LightGray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Avalonia.Thickness(0, 0, 0, 4)
+                };
+
+                var grid = new Grid();
+                grid.Children.Add(textBlock);
 
                 var border = new Border
                 {
@@ -149,13 +227,15 @@ public partial class VirtualKeyboardWindow : Window
                     BorderThickness = new Avalonia.Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(0, 0, 3, 3),
                     ZIndex = 10,
+                    Child = grid,
                     Tag = new KeyInfo
                     {
                         NoteName = blackMmlNames[i],
                         OctaveOffset = oct,
                         NoteInOctave = blackNoteOffsets[i],
                         IsBlack = true,
-                        MmlName = blackMmlNames[i]
+                        MmlName = blackMmlNames[i],
+                        PhysicalChar = physChar
                     }
                 };
 
@@ -166,11 +246,17 @@ public partial class VirtualKeyboardWindow : Window
                 keyInfo.Control = border;
                 _keys.Add(keyInfo);
 
+                if (physKey != Key.None)
+                {
+                    _physicalKeyMap[physKey] = keyInfo;
+                }
+
                 border.PointerPressed += Key_PointerPressed;
+                border.PointerEntered += Key_PointerEntered;
                 border.PointerReleased += Key_PointerReleased;
-                border.PointerExited += Key_PointerReleased;
 
                 PianoCanvas.Children.Add(border);
+                blackCount++;
             }
         }
     }
@@ -179,17 +265,63 @@ public partial class VirtualKeyboardWindow : Window
     {
         if (sender is Border b && b.Tag is KeyInfo key)
         {
-            b.Background = key.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
-            PlayNote(key);
+            _isMouseDown = true;
+            SwitchToKey(key);
+        }
+    }
+
+    private void Key_PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_isMouseDown && sender is Border b && b.Tag is KeyInfo key && key != _activeMouseKey)
+        {
+            SwitchToKey(key);
         }
     }
 
     private void Key_PointerReleased(object? sender, PointerEventArgs e)
     {
-        if (sender is Border b && b.Tag is KeyInfo key)
+        _isMouseDown = false;
+        if (_activeMouseKey != null)
         {
-            b.Background = key.IsBlack ? Brushes.Black : Brushes.White;
+            _activeMouseKey.Control.Background = _activeMouseKey.IsBlack ? Brushes.Black : Brushes.White;
+            _activeMouseKey = null;
             StopNote();
+        }
+    }
+
+    private void SwitchToKey(KeyInfo key)
+    {
+        if (_activeMouseKey != null)
+        {
+            _activeMouseKey.Control.Background = _activeMouseKey.IsBlack ? Brushes.Black : Brushes.White;
+        }
+
+        _activeMouseKey = key;
+        key.Control.Background = key.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
+        PlayNote(key);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo) && !_pressedPhysicalKeys.Contains(e.Key))
+        {
+            _pressedPhysicalKeys.Add(e.Key);
+            keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
+            PlayNote(keyInfo);
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo))
+        {
+            _pressedPhysicalKeys.Remove(e.Key);
+            keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.Black : Brushes.White;
+            StopNote();
+            e.Handled = true;
         }
     }
 
@@ -295,8 +427,15 @@ public class SingleNoteProvider : ISampleProvider
 
     private readonly YM2151Manager _ym2151;
     private readonly int[][] _intBuffer;
-    private bool _isPlaying = false;
+
+    private bool _isFm = true;
     private byte _fmChannel = 0;
+
+    // PSG synthesis parameters
+    private double _psgPhase = 0;
+    private double _psgFreq = 0;
+    private float _psgVolume = 0f;
+    private bool _psgActive = false;
 
     public SingleNoteProvider(YM2151Manager ym2151)
     {
@@ -307,6 +446,8 @@ public class SingleNoteProvider : ISampleProvider
     public void StartNote(double freq, ChannelState state, MmlData? mmlData)
     {
         bool isFm = state.TrackName.ToUpperInvariant().StartsWith("F") && state.TrackName.Length == 2;
+        _isFm = isFm;
+
         if (isFm)
         {
             _fmChannel = (byte)(int.Parse(state.TrackName.Substring(1)) - 1);
@@ -349,8 +490,13 @@ public class SingleNoteProvider : ISampleProvider
             _ym2151.OutPort(0x0709, kf);
             _ym2151.OutPort(0x0708, 0x08);
             _ym2151.OutPort(0x0709, (byte)(0x78 | _fmChannel));
-            
-            _isPlaying = true;
+        }
+        else
+        {
+            // PSG Single Note synthesis
+            _psgFreq = freq;
+            _psgVolume = (Math.Max(1, state.Volume) / 15.0f) * 0.25f;
+            _psgActive = true;
         }
     }
 
@@ -363,29 +509,44 @@ public class SingleNoteProvider : ISampleProvider
             _ym2151.OutPort(0x0708, 0x08);
             _ym2151.OutPort(0x0709, (byte)(0x00 | _fmChannel));
         }
-        _isPlaying = false;
+        else
+        {
+            _psgActive = false;
+        }
     }
 
     public int Read(float[] buffer, int offset, int count)
     {
         Array.Clear(buffer, offset, count);
 
-        if (_intBuffer[0].Length < count)
+        if (_isFm)
         {
-            _intBuffer[0] = new int[count];
-            _intBuffer[1] = new int[count];
+            if (_intBuffer[0].Length < count)
+            {
+                _intBuffer[0] = new int[count];
+                _intBuffer[1] = new int[count];
+            }
+
+            Array.Clear(_intBuffer[0], 0, count);
+            Array.Clear(_intBuffer[1], 0, count);
+            _ym2151.GenerateSamples(_intBuffer, count);
+
+            const float ym2151VolumeScale = 1.0f / 32768.0f;
+            for (int i = 0; i < count; i++)
+            {
+                buffer[offset + i] = (_intBuffer[0][i] + _intBuffer[1][i]) * 0.5f * ym2151VolumeScale;
+            }
         }
-
-        // 鍵盤を離した後もYM2151の波形生成(GenerateSamples)を止めずに実行し続けることで、
-        // リリース（減衰）フェーズが正常に消化され、クリックノイズや波形断線ノイズの発生を防ぐ
-        Array.Clear(_intBuffer[0], 0, count);
-        Array.Clear(_intBuffer[1], 0, count);
-        _ym2151.GenerateSamples(_intBuffer, count);
-
-        const float ym2151VolumeScale = 1.0f / 32768.0f;
-        for (int i = 0; i < count; i++)
+        else if (_psgActive && _psgFreq > 0)
         {
-            buffer[offset + i] = (_intBuffer[0][i] + _intBuffer[1][i]) * 0.5f * ym2151VolumeScale;
+            // Square wave synthesis for PSG
+            double phaseInc = _psgFreq / WaveFormat.SampleRate;
+            for (int i = 0; i < count; i++)
+            {
+                buffer[offset + i] = _psgPhase < 0.5 ? _psgVolume : -_psgVolume;
+                _psgPhase += phaseInc;
+                if (_psgPhase >= 1.0) _psgPhase -= 1.0;
+            }
         }
 
         return count;
