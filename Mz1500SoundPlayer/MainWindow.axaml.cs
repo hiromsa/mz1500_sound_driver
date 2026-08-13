@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -980,4 +981,49 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
         }
     }
-}
+
+    private void OpenVirtualKeyboard_Click(object? sender, RoutedEventArgs e)
+    {
+        int caretOffset = MmlInput.CaretOffset;
+        string mmlText = MmlInput.Text ?? "";
+        
+        var parser = new MultiTrackMmlParser();
+        var mmlData = parser.Parse(mmlText);
+
+        // Find track name at caret line, or default to first track / F1
+        var document = MmlInput.Document;
+        var line = document.GetLineByOffset(caretOffset);
+        string lineText = document.GetText(line).Trim();
+        
+        string targetTrack = "F1";
+        foreach (var kvp in mmlData.Tracks)
+        {
+            if (lineText.StartsWith(kvp.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                targetTrack = kvp.Key;
+                break;
+            }
+        }
+
+        var expander = new TrackEventExpander();
+        ChannelState state;
+        if (mmlData.Tracks.TryGetValue(targetTrack, out var trackData))
+        {
+            state = expander.GetStateAtPosition(trackData, targetTrack, caretOffset);
+        }
+        else
+        {
+            state = new ChannelState(targetTrack, 4, 15, -1, -1, 0, 3, 127, 0, 0);
+        }
+
+        var keyboardWindow = new VirtualKeyboardWindow();
+        keyboardWindow.InitializeState(state, mmlData);
+
+        keyboardWindow.OnInsertMml = (insertedMml) =>
+        {
+            MmlInput.Document.Insert(MmlInput.CaretOffset, insertedMml);
+        };
+
+        keyboardWindow.Show(this);
+    }
+}

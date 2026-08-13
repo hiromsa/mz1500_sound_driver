@@ -446,4 +446,64 @@ public class TrackEventExpander
 
         return beats;
     }
+
+    public ChannelState GetStateAtPosition(TrackData track, string trackName, int textIndex)
+    {
+        int currentOctave = 4;
+        int currentVolume = 15;
+        int currentEnvelopeId = -1;
+        int currentPitchEnvelopeId = -1;
+        int currentDetune = 0;
+        int currentTranspose = 0;
+        int currentFmVoiceId = 0;
+        int currentFmPan = 3;
+        int currentFmVolume = 127;
+
+        var flatCommands = FlattenLoops(track.Commands);
+        foreach (var cmd in flatCommands)
+        {
+            if (textIndex >= 0 && cmd.TextStartIndex > textIndex)
+            {
+                break;
+            }
+
+            if (cmd is OctaveCommand oc) { currentOctave = oc.Octave; }
+            else if (cmd is RelativeOctaveCommand rc) { currentOctave += rc.Offset; }
+            else if (cmd is VolumeCommand vc) { currentVolume = vc.Volume; }
+            else if (cmd is EnvelopeCommand evc) { currentEnvelopeId = evc.EnvelopeId; }
+            else if (cmd is PitchEnvelopeCommand pevc) { currentPitchEnvelopeId = pevc.EnvelopeId == 255 ? -1 : pevc.EnvelopeId; }
+            else if (cmd is DetuneCommand dc) { currentDetune = dc.Detune; }
+            else if (cmd is TransposeCommand trc) { currentTranspose = trc.Transpose; }
+            else if (cmd is VoiceCommand vcmd) { currentFmVoiceId = vcmd.VoiceId; }
+            else if (cmd is PanCommand pcmd) { currentFmPan = pcmd.Pan; }
+            else if (cmd is FmVolumeCommand fvcmd) { currentFmVolume = fvcmd.Volume; }
+        }
+
+        return new ChannelState(
+            trackName,
+            currentOctave,
+            currentVolume,
+            currentEnvelopeId,
+            currentPitchEnvelopeId,
+            currentFmVoiceId,
+            currentFmPan,
+            currentFmVolume,
+            currentDetune,
+            currentTranspose
+        );
+    }
 }
+
+public record ChannelState(
+    string TrackName,
+    int Octave,
+    int Volume,
+    int EnvelopeId,
+    int PitchEnvelopeId,
+    int FmVoiceId,
+    int FmPan,
+    int FmVolume,
+    int Detune,
+    int Transpose
+);
+
