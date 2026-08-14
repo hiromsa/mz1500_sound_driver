@@ -31,7 +31,10 @@ public class MmlPlayerModel
         }
     }
 
-    private HashSet<string> _activeChannels = new HashSet<string>(new[] { "A", "B", "C", "D", "E", "F", "G", "H", "P" });
+    private HashSet<string> _activeChannels = new HashSet<string>(new[] { 
+        "A", "B", "C", "D", "E", "F", "G", "H", "P",
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"
+    });
     public HashSet<string> ActiveChannels
     {
         get => _activeChannels;

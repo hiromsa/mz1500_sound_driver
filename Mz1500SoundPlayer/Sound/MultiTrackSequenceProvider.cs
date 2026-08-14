@@ -21,7 +21,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<(string TrackName, ISampleProvider Provider)>();
-        YM2151 = new YM2151Manager(sampleRate);
+        YM2151 = new YM2151Manager(sampleRate, YM2151Manager.Clock4MHz);
 
         Console.WriteLine($"[MultiTrackSequenceProvider] Init with {trackBinaries.Count} tracks.");
 
