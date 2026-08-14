@@ -7,17 +7,33 @@ namespace Mz1500SoundPlayer.Sound
     /// </summary>
     public class YM2151Manager
     {
+        public const uint Clock4MHz = 4000000;   // 4.0 MHz (標準)
+        public const uint Clock358MHz = 3579545; // 3.58 MHz (切り替え可能)
+
         private readonly YM2151Core _core;
         private readonly int _sampleRate;
+        private uint _clock;
         private byte _addressRegister;
         private byte _statusRegister; // Bit 7: BUSY, Bit 1: Timer B, Bit 0: Timer A
 
-        public YM2151Manager(int sampleRate = 44100)
+        public uint Clock => _clock;
+
+        public YM2151Manager(int sampleRate = 44100, uint clock = Clock4MHz)
         {
             _sampleRate = sampleRate;
+            _clock = clock;
             _core = new YM2151Core();
-            _core.Start(0, (uint)sampleRate, 3579545); // MZ-1500のYM2151クロック(3.58MHz)
+            _core.Start(0, (uint)sampleRate, _clock);
             Reset();
+        }
+
+        /// <summary>
+        /// 動作クロック周波数を変更します (例: Clock4MHz, Clock358MHz)
+        /// </summary>
+        public void SetClock(uint clock)
+        {
+            _clock = clock;
+            _core.Start(0, (uint)_sampleRate, _clock);
         }
 
         public void Reset()
