@@ -215,4 +215,34 @@ public class FmOperatorViewModel : INotifyPropertyChanged
         Dt2 = other.Dt2;
         Ame = other.Ame;
     }
+
+    public string ToClipboardString()
+    {
+        return $"{Ar},{D1r},{D2r},{Rr},{D1l},{Tl},{Ks},{Mul},{Dt1},{Dt2},{Ame}";
+    }
+
+    public bool FromClipboardString(string str)
+    {
+        var parts = str.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 11)
+        {
+            try
+            {
+                Ar = int.Parse(parts[0].Trim());
+                D1r = int.Parse(parts[1].Trim());
+                D2r = int.Parse(parts[2].Trim());
+                Rr = int.Parse(parts[3].Trim());
+                D1l = int.Parse(parts[4].Trim());
+                Tl = int.Parse(parts[5].Trim());
+                Ks = int.Parse(parts[6].Trim());
+                Mul = int.Parse(parts[7].Trim());
+                Dt1 = int.Parse(parts[8].Trim());
+                Dt2 = int.Parse(parts[9].Trim());
+                Ame = int.Parse(parts[10].Trim());
+                return true;
+            }
+            catch { return false; }
+        }
+        return false;
+    }
 }

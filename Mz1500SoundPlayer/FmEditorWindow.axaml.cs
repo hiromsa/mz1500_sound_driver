@@ -104,6 +104,32 @@ public partial class FmEditorWindow : Window
         Close();
     }
 
+    private async void Copy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is FmOperatorViewModel op)
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            {
+                await clipboard.SetTextAsync(op.ToClipboardString());
+            }
+        }
+    }
+
+    private async void Paste_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is FmOperatorViewModel op)
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            {
+                var text = await clipboard.GetTextAsync();
+                if (!string.IsNullOrEmpty(text))
+                {
+                    op.FromClipboardString(text);
+                }
+            }
+        }
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
