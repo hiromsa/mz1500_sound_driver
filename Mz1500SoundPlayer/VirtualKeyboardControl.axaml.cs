@@ -99,8 +99,8 @@ public partial class VirtualKeyboardControl : UserControl
         int startOctave = _currentOctave - 2;
         double whiteKeyWidth = 1000.0 / (numOctaves * 7);
         double blackKeyWidth = whiteKeyWidth * 0.6;
-        double whiteKeyHeight = 145.0;
-        double blackKeyHeight = 90.0;
+        double whiteKeyHeight = 80.0;
+        double blackKeyHeight = 50.0;
 
         string[] whiteNoteNames = { "c", "d", "e", "f", "g", "a", "b" };
         int[] whiteNoteOffsets = { 0, 2, 4, 5, 7, 9, 11 };

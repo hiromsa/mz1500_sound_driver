@@ -16,10 +16,13 @@
       <Setter Property="FontWeight" Value="Bold"/>
       <Setter Property="ShowButtonSpinner" Value="False"/>
       <Setter Property="Width" Value="50"/>
-      <Setter Property="MinHeight" Value="20"/>
+      <Setter Property="MinHeight" Value="22"/>
       <Setter Property="Height" Value="22"/>
-      <Setter Property="Padding" Value="4,1"/>
+      <Setter Property="Padding" Value="4,0"/>
       <Setter Property="Margin" Value="0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="#606060"/>
+      <Setter Property="CornerRadius" Value="2"/>
     </Style>
     <Style Selector="TextBlock.label">
       <Setter Property="Foreground" Value="#888888"/>
@@ -67,7 +70,7 @@
           <Grid ColumnDefinitions="Auto, *">
             <!-- Left side: TL meter -->
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-              <local:TlMeterControl Value="{Binding Tl}" Height="130" ToolTip.Tip="トータルレベル: 音量 (0=最大, 127=無音)"/>
+              <local:TlMeterControl Value="{Binding Tl}" Height="130" ToolTip.Tip="Total Level [TL]: 音量 (0=最大, 127=無音)"/>
             </StackPanel>
             
             <!-- Right side: Params and Envelope -->
@@ -77,31 +80,31 @@
               <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="MUL"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="倍率: 0=1/2, 1=1倍, 2=2倍...15=15倍"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Multiply [MUL]: 倍率 0=1/2, 1=1倍, 2=2倍...15=15倍"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Mul}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="DT1"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="デチューン1: 微細な音程ずらし (0-7)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Detune 1 [DT1]: 微細な音程ずらし (0-7)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Dt1}" Minimum="0" Maximum="7" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="DT2"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="デチューン2: 大きな音程ずらし (0-3)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Detune 2 [DT2]: 大きな音程ずらし (0-3)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding Dt2}" Minimum="0" Maximum="3" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="KS"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="キースケーリング: 高音域の減衰速度 (0-3)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Key Scale [KS]: 高音域の減衰速度 (0-3)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Ks}" Minimum="0" Maximum="3" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="AME"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="AM変調有効: 0=OFF, 1=ON"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="AM Enable [AME]: AM変調有効 0=OFF, 1=ON"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding Ame}" Minimum="0" Maximum="1" FormatString="0" HorizontalAlignment="Center"/>
               </Grid>
@@ -111,31 +114,31 @@
               <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="AR"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="アタックレート: 音の立ち上がり速度 (0-31)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Attack Rate [AR]: 音の立ち上がり速度 (0-31)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Ar}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="D1R"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="第1減衰レート: ピーク後の減衰速度 (0-31)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 1 Rate [D1R]: ピーク後の減衰速度 (0-31)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding D1r}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="D2R"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="第2減衰レート: サステイン中の減衰速度 (0-31)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 2 Rate [D2R]: サステイン中の減衰速度 (0-31)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding D2r}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="RR"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="リリースレート: キーオフ後の消音速度 (0-15)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Release Rate [RR]: キーオフ後の消音速度 (0-15)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Rr}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center"/>
                 
                 <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center">
                   <TextBlock Classes="label" Text="D1L"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="第1減衰レベル: サステインレベル (0-15)"/>
+                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 1 Level [D1L]: サステインレベル (0-15)"/>
                 </StackPanel>
                 <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding D1l}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center"/>
               </Grid>
@@ -202,7 +205,7 @@
     <!-- Footer: Keyboard and Controls -->
     <Border Classes="panel" Grid.Row="2" Background="#2d2d30" Padding="8" Margin="10,0,10,10">
       <Grid RowDefinitions="Auto, Auto">
-        <local:VirtualKeyboardControl x:Name="KeyboardControl" Grid.Row="0" HorizontalAlignment="Stretch" Height="165" Margin="0,0,0,8"/>
+        <local:VirtualKeyboardControl x:Name="KeyboardControl" Grid.Row="0" HorizontalAlignment="Stretch" Height="100" Margin="0,0,0,8"/>
         
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
           <Button Content="キャンセル (Cancel)" Click="Cancel_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
