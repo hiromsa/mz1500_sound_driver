@@ -32,7 +32,7 @@ public partial class FmEditorWindow : Window
         // Initialize keyboard
         var state = new ChannelState($"F1", 4, 15, -1, fmNumber, 0, 3, 127, 0, 0);
         var mmlData = new MmlData();
-        var td = new FmToneData { Parameters = ParseParameters(mml) };
+        var td = new FmToneData { Parameters = ParseParameters(ViewModel.ToMml(fmNumber)) };
         td.KeyOnMask = 0x78; // Start fully unmuted
         mmlData.FmVoiceEnvelopes[fmNumber] = td;
         KeyboardControl.InitializeState(state, mmlData);

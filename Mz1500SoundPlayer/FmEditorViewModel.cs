@@ -64,6 +64,10 @@ public class FmEditorViewModel : INotifyPropertyChanged
         Op2.PropertyChanged += Operator_PropertyChanged;
         Op3.PropertyChanged += Operator_PropertyChanged;
         Op4.PropertyChanged += Operator_PropertyChanged;
+
+        // Default to a simple sine wave (Algorithm 0, Carrier OP4)
+        Alg = 0;
+        Op4.Tl = 0;
     }
 
     private void Operator_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -162,7 +166,7 @@ public class FmOperatorViewModel : INotifyPropertyChanged
     private int _d1l;
     public int D1l { get => _d1l; set { _d1l = value; OnPropertyChanged(); } }
 
-    private int _tl = 0; // 0 is max volume
+    private int _tl = 127; // 127 is silent, 0 is max volume
     public int Tl { get => _tl; set { _tl = value; OnPropertyChanged(); } }
 
     private int _ks;
