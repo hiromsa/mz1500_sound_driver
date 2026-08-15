@@ -47,8 +47,10 @@
             <MenuItem Name="MenuOpenVirtualKeyboard" Header="カーソル行のステートで簡易鍵盤を開く..." Click="OpenVirtualKeyboard_Click"/>
             <Separator/>
             <MenuItem Name="MenuEditEnvelope" Header="カーソル行のエンベロープを編集..." Click="EditEnvelope_Click"/>
+            <MenuItem Name="MenuEditFmVoice" Header="FM音色エディタを開く..." Click="EditFmVoice_Click"/>
             <MenuItem Name="MenuNewVolEnvelope" Header="新規音量エンベロープ(@v)の挿入..." Click="NewVolEnvelope_Click"/>
             <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
+            <MenuItem Name="MenuNewFmVoice" Header="新規FM音色(@FM)の挿入..." Click="NewFmVoice_Click"/>
             <Separator/>
             <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
             <MenuItem Header="選択範囲のMMLを整形 (フォーマッタ)..." Click="FormatMmlSelection_Click"/>

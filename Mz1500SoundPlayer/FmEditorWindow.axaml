@@ -1,0 +1,157 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Mz1500SoundPlayer"
+        x:Class="Mz1500SoundPlayer.FmEditorWindow"
+        x:DataType="local:FmEditorViewModel"
+        Title="FM音色エディタ"
+        Width="1050" Height="850"
+        MinWidth="900" MinHeight="750"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e" Foreground="#d4d4d4">
+  
+  <Window.Resources>
+    <!-- Operator Template -->
+    <DataTemplate x:Key="OpTemplate" x:DataType="local:FmOperatorViewModel">
+      <Border Margin="4" Padding="8" BorderBrush="#3e3e42" BorderThickness="1" CornerRadius="5">
+        <Border.Styles>
+          <Style Selector="Border">
+            <Setter Property="Background" Value="#252526" />
+          </Style>
+          <Style Selector="Border.carrier">
+            <Setter Property="Background" Value="#2D2D30" />
+          </Style>
+        </Border.Styles>
+        <Classes.carrier>
+          <MultiBinding Converter="{x:Static BoolConverters.And}">
+            <Binding Path="IsCarrier"/>
+          </MultiBinding>
+        </Classes.carrier>
+        
+        <StackPanel>
+          <!-- Title row with M/S buttons -->
+          <Grid ColumnDefinitions="*, Auto">
+            <TextBlock Grid.Column="0" Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#4ec9b0" Margin="0,0,0,6"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
+              <ToggleButton Content="M" IsChecked="{Binding IsMuted}" Width="28" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="3" />
+              <ToggleButton Content="S" IsChecked="{Binding IsSolo}" Width="28" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="3" />
+            </StackPanel>
+          </Grid>
+          
+          <Grid ColumnDefinitions="Auto, *">
+            <!-- Left side: TL slider -->
+            <StackPanel Grid.Column="0" Margin="0,0,10,0" Width="36">
+              <TextBlock Text="TL" HorizontalAlignment="Center" FontSize="11" Margin="0,0,0,3"/>
+              <Slider Minimum="0" Maximum="127" Value="{Binding Tl}" Orientation="Vertical" Height="120" HorizontalAlignment="Center" IsDirectionReversed="True"/>
+              <TextBlock Text="{Binding Tl}" HorizontalAlignment="Center" FontSize="11" Margin="0,3,0,0"/>
+            </StackPanel>
+            
+            <!-- Right side: Params and Envelope -->
+            <StackPanel Grid.Column="1" Spacing="6">
+              
+              <!-- Pitch Params Grid: label on top, value below -->
+              <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="MUL" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Mul}" Minimum="0" Maximum="15" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="DT1" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Dt1}" Minimum="0" Maximum="7" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="DT2" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding Dt2}" Minimum="0" Maximum="3" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="KS" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Ks}" Minimum="0" Maximum="3" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="AME" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding Ame}" Minimum="0" Maximum="1" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+              </Grid>
+              
+              <!-- Envelope Params Grid -->
+              <TextBlock Text="Envelope" FontWeight="Bold" Margin="0,4,0,1" Foreground="#aaaaaa" FontSize="11"/>
+              <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="AR" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Ar}" Minimum="0" Maximum="31" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="D1R" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding D1r}" Minimum="0" Maximum="31" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="D2R" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding D2r}" Minimum="0" Maximum="31" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="RR" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Rr}" Minimum="0" Maximum="15" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+                
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="D1L" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,1"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding D1l}" Minimum="0" Maximum="15" FontSize="11" FormatString="0" ShowButtonSpinner="False" HorizontalAlignment="Center" Width="56" Padding="4,2"/>
+              </Grid>
+              
+              <!-- Envelope Graph -->
+              <local:EnvelopeVisualizer Height="70" Margin="0,4,0,0"
+                Ar="{Binding Ar}" D1r="{Binding D1r}" D2r="{Binding D2r}"
+                Rr="{Binding Rr}" D1l="{Binding D1l}" Tl="{Binding Tl}"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </Window.Resources>
+  
+  <Grid RowDefinitions="Auto, *, Auto">
+    
+    <!-- Header: ALG and FB -->
+    <Border Grid.Row="0" Margin="10,10,10,5" Padding="8" Background="#2d2d30" CornerRadius="5">
+      <StackPanel Orientation="Horizontal" Spacing="20">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="Algorithm (ALG):" VerticalAlignment="Center" FontWeight="Bold"/>
+          <ListBox SelectedIndex="{Binding Alg}" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="2"/>
+                <Setter Property="Margin" Value="0,0,4,0"/>
+              </Style>
+            </ListBox.Styles>
+            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" /></StackPanel></ListBoxItem>
+          </ListBox>
+        </StackPanel>
+        
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="Feedback (FB):" VerticalAlignment="Center" FontWeight="Bold"/>
+          <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" Width="70" FormatString="0" ShowButtonSpinner="False" FontSize="14" Padding="6,3"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Operator Editor: 2x2 Grid -->
+    <Grid Grid.Row="1" Margin="10,5" ColumnDefinitions="*, *" RowDefinitions="*, *">
+      <ContentControl Grid.Row="0" Grid.Column="0" Content="{Binding Op1}" ContentTemplate="{StaticResource OpTemplate}"/>
+      <ContentControl Grid.Row="0" Grid.Column="1" Content="{Binding Op2}" ContentTemplate="{StaticResource OpTemplate}"/>
+      <ContentControl Grid.Row="1" Grid.Column="0" Content="{Binding Op3}" ContentTemplate="{StaticResource OpTemplate}"/>
+      <ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding Op4}" ContentTemplate="{StaticResource OpTemplate}"/>
+    </Grid>
+
+    <!-- Footer: Keyboard and Controls -->
+    <Border Grid.Row="2" Background="#2d2d30" Padding="8" CornerRadius="5" Margin="10,0,10,10">
+      <Grid RowDefinitions="Auto, Auto">
+        <local:VirtualKeyboardControl x:Name="KeyboardControl" Grid.Row="0" HorizontalAlignment="Stretch" Height="165" Margin="0,0,0,8"/>
+        
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+          <Button Content="キャンセル (Cancel)" Click="Cancel_Click" Background="#4e4e50" Foreground="White" Padding="12,6"/>
+          <Button Content="反映 (Apply)" Click="Apply_Click" Background="#a855f7" Foreground="White" FontWeight="Bold" Padding="12,6"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

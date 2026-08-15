@@ -109,6 +109,7 @@ public class Ym2151RegisterCommand : MmlCommand { public int Register { get; set
 public class FmToneData
 {
     public int[] Parameters { get; set; } = new int[46]; // ALG, FB + 44 ops params
+    public byte KeyOnMask { get; set; } = 0x78;
 }
 
 

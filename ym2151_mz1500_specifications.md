@@ -77,8 +77,8 @@ YM2151は8チャンネルのFM音源（4オペレータ）を持ちます。チ�
 
 > **アドレス計算方法:**
 > オペレータ固有のパラメータ（40h〜FFh）は `Base Address + (Operator Offset) + Channel` で指定します。
-> - Operator Offset: OP1(`00h`), OP2(`08h`), OP3(`10h`), OP4(`18h`)
-> - 例: チャンネル3 (03h) の OP2 の TL (Base 60h) ＝ `60h + 08h + 03h = 6Bh`
+> - Operator Offset: OP1/M1(`00h`), OP3/C1(`08h`), OP2/M2(`10h`), OP4/C2(`18h`)
+> - 例: チャンネル3 (03h) の OP2 の TL (Base 60h) ＝ `60h + 10h + 03h = 73h`
 
 ## 4. 初期化と発音までの基本フロー
 MMLプレーヤーでYM2151を初期化し、音を鳴らすための基本手順です。

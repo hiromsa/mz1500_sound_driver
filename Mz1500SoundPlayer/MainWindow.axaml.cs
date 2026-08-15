@@ -846,10 +846,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void MmlInput_ContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         var menuEditEnv = this.FindControl<MenuItem>("MenuEditEnvelope");
+        var menuEditFm = this.FindControl<MenuItem>("MenuEditFmVoice");
         var menuNewVolEnv = this.FindControl<MenuItem>("MenuNewVolEnvelope");
         var menuNewPitchEnv = this.FindControl<MenuItem>("MenuNewPitchEnvelope");
+        var menuNewFmVoice = this.FindControl<MenuItem>("MenuNewFmVoice");
 
-        if (menuEditEnv == null || menuNewVolEnv == null || menuNewPitchEnv == null) return;
+        if (menuEditEnv == null || menuEditFm == null || menuNewVolEnv == null || menuNewPitchEnv == null || menuNewFmVoice == null) return;
 
         // カーソル行のテキストを取得
         var document = MmlInput.Document;
@@ -861,23 +863,69 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         // エンベロープ定義行かどうかの判定 (簡便に)
         bool isEnvelopeLine = Regex.IsMatch(lineText, @"^@(v|EP)\d+\s*=");
+        // FM音色かどうかの判定 (複数行にまたがるケースも考慮して検索する)
+        bool isFmVoice = false;
+        
+        int startLineNum = line.LineNumber;
+        while (startLineNum > 0)
+        {
+            var testLine = document.GetLineByNumber(startLineNum);
+            string testLineText = document.GetText(testLine).Trim();
+            if (Regex.IsMatch(testLineText, @"^@FM\[?\d+\]?\s*="))
+            {
+                int startOffset = testLine.Offset;
+                int searchLen = Math.Min(2000, document.TextLength - startOffset);
+                string searchStr = document.GetText(startOffset, searchLen);
+                int openBrace = searchStr.IndexOf('{');
+                int closeBrace = searchStr.IndexOf('}');
+                if (openBrace != -1 && closeBrace != -1 && closeBrace > openBrace)
+                {
+                    if (caretOffset >= startOffset && caretOffset <= startOffset + closeBrace)
+                    {
+                        isFmVoice = true;
+                    }
+                }
+                break;
+            }
+            startLineNum--;
+        }
 
         if (isEnvelopeLine)
         {
             menuEditEnv.IsEnabled = true;
             menuEditEnv.Header = "カーソル行のエンベロープを編集...";
             
+            menuEditFm.IsEnabled = false;
+            menuEditFm.Header = "FM音色エディタを開く... (無効な行)";
+
             menuNewVolEnv.IsEnabled = false;
             menuNewPitchEnv.IsEnabled = false;
+            menuNewFmVoice.IsEnabled = false;
+        }
+        else if (isFmVoice)
+        {
+            menuEditEnv.IsEnabled = false;
+            menuEditEnv.Header = "カーソル行のエンベロープを編集... (無効な行)";
+            
+            menuEditFm.IsEnabled = true;
+            menuEditFm.Header = "カーソル行のFM音色を編集...";
+
+            menuNewVolEnv.IsEnabled = false;
+            menuNewPitchEnv.IsEnabled = false;
+            menuNewFmVoice.IsEnabled = false;
         }
         else if (string.IsNullOrEmpty(lineText))
         {
             // 空行なら新規作成可能
             menuEditEnv.IsEnabled = false;
             menuEditEnv.Header = "カーソル行のエンベロープを編集... (空行)";
+            
+            menuEditFm.IsEnabled = false;
+            menuEditFm.Header = "FM音色エディタを開く... (無効な行)";
 
             menuNewVolEnv.IsEnabled = true;
             menuNewPitchEnv.IsEnabled = true;
+            menuNewFmVoice.IsEnabled = true;
         }
         else
         {
@@ -885,8 +933,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             menuEditEnv.IsEnabled = false;
             menuEditEnv.Header = "カーソル行のエンベロープを編集... (無効な行)";
             
+            menuEditFm.IsEnabled = false;
+            menuEditFm.Header = "FM音色エディタを開く... (無効な行)";
+            
             menuNewVolEnv.IsEnabled = false;
             menuNewPitchEnv.IsEnabled = false;
+            menuNewFmVoice.IsEnabled = false;
         }
     }
 
@@ -982,6 +1034,79 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 doc.Replace(replaceOffset, replaceLength, result);
             }
         }
+    }
+
+    private async void EditFmVoice_Click(object? sender, RoutedEventArgs e)
+    {
+        var document = MmlInput.Document;
+        int caretOffset = MmlInput.CaretOffset;
+        
+        int startLineNum = document.GetLineByOffset(caretOffset).LineNumber;
+        while (startLineNum > 0)
+        {
+            var line = document.GetLineByNumber(startLineNum);
+            string lineText = document.GetText(line).Trim();
+            var match = Regex.Match(lineText, @"^@FM\[?(\d+)\]?\s*=");
+            if (match.Success)
+            {
+                int id = int.Parse(match.Groups[1].Value);
+                int startOffset = line.Offset;
+                int searchLen = Math.Min(2000, document.TextLength - startOffset);
+                string searchStr = document.GetText(startOffset, searchLen);
+                int closeBrace = searchStr.IndexOf('}');
+                
+                if (closeBrace != -1)
+                {
+                    string mmlBlock = searchStr.Substring(0, closeBrace + 1);
+                    // Extract just the inside part if needed, or pass the whole block
+                    // Wait, FmEditorWindow expects just the inner MML or the whole block?
+                    // Currently it uses match.Groups[2].Value which is just the rest of the line (e.g. "{ 4, 3 ... }")
+                    // Since FmEditorViewModel uses Regex to find "{([^}]+)}", we can pass the whole block.
+                    
+                    var editor = new FmEditorWindow(id, mmlBlock);
+                    editor.OnApply = (newMml) =>
+                    {
+                        document.Replace(startOffset, closeBrace + 1, newMml);
+                    };
+                    await editor.ShowDialog(this);
+                }
+                break;
+            }
+            startLineNum--;
+        }
+    }
+
+    private async void NewFmVoice_Click(object? sender, RoutedEventArgs e)
+    {
+        string text = MmlInput.Text ?? "";
+        var regex = new Regex(@"@FM\[?(\d+)\]?\s*=");
+        var matches = regex.Matches(text);
+        
+        var usedIds = new HashSet<int>();
+        foreach (Match m in matches)
+        {
+            if (int.TryParse(m.Groups[1].Value, out int testId))
+            {
+                usedIds.Add(testId);
+            }
+        }
+
+        int nextId = 0;
+        while (usedIds.Contains(nextId))
+        {
+            nextId++;
+        }
+
+        var document = MmlInput.Document;
+        var line = document.GetLineByOffset(MmlInput.CaretOffset);
+
+        // Pass empty block to create default
+        var editor = new FmEditorWindow(nextId, "{ }");
+        editor.OnApply = (newMml) =>
+        {
+            document.Insert(line.Offset, newMml + "\r\n");
+        };
+        await editor.ShowDialog(this);
     }
 
     private void OpenVirtualKeyboard_Click(object? sender, RoutedEventArgs e)

@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Mz1500SoundPlayer.VirtualKeyboardControl"
+             Background="#1e1e1e" Foreground="#d4d4d4">
+  <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="15">
+    <!-- Header / State Display -->
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+        <Border Background="#2d2d30" CornerRadius="4" Padding="8,4">
+          <TextBlock Name="StateInfoText" Text="Track: - | Vol: - | Voice: - | Octave: o4" Foreground="#4ec9b0" FontWeight="Bold"/>
+        </Border>
+      </StackPanel>
+      
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+        <TextBlock Text="オクターブ:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#cccccc"/>
+        <Button Name="OctaveDownButton" Content="&lt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveDown_Click"/>
+        <TextBlock Name="OctaveDisplayText" Text="o4" Width="30" TextAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#dcdcaa"/>
+        <Button Name="OctaveUpButton" Content="&gt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveUp_Click"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Piano Keys Canvas Container -->
+    <Border Grid.Row="1" Background="#111111" CornerRadius="6" Padding="10" Margin="0,0,0,15" BorderBrush="#333333" BorderThickness="1">
+      <Canvas Name="PianoCanvas" Width="860" Height="150" HorizontalAlignment="Center"/>
+    </Border>
+
+    <!-- MML Recording Controls -->
+    <Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto, Auto" Margin="0,0,0,10">
+      <CheckBox Grid.Column="0" Name="RecordCheckBox" Content="MMLを記録" IsChecked="False" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="0,0,10,0"/>
+      <TextBox Grid.Column="1" Name="RecordTextBox" Watermark="演奏された音名 (例: c d e f g) がここに記録されます" FontFamily="Consolas" Height="32" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
+      <Button Grid.Column="2" Name="ClearButton" Content="クリア" Click="ClearRecord_Click" Height="32" Margin="0,0,10,0"/>
+      <Button Grid.Column="3" Name="InsertButton" Content="メインエディタへ挿入" Classes="accent" Click="InsertToEditor_Click" Height="32" Background="#007acc" Foreground="White" FontWeight="Bold"/>
+    </Grid>
+  </Grid>
+</UserControl>
