@@ -6,7 +6,7 @@
     <!-- Header / State Display -->
     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
       <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-        <Border Background="#2d2d30" CornerRadius="4" Padding="8,4">
+        <Border Name="StateInfoBorder" Background="#2d2d30" CornerRadius="4" Padding="8,4">
           <TextBlock Name="StateInfoText" Text="Track: - | Vol: - | Voice: - | Octave: o4" Foreground="#4ec9b0" FontWeight="Bold"/>
         </Border>
       </StackPanel>
@@ -24,7 +24,7 @@
     </Border>
 
     <!-- MML Recording Controls -->
-    <Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto, Auto" Margin="0,0,0,10">
+    <Grid Name="MmlRecordingGrid" Grid.Row="2" ColumnDefinitions="Auto, *, Auto, Auto" Margin="0,0,0,10">
       <CheckBox Grid.Column="0" Name="RecordCheckBox" Content="MMLを記録" IsChecked="False" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="0,0,10,0"/>
       <TextBox Grid.Column="1" Name="RecordTextBox" Watermark="演奏された音名 (例: c d e f g) がここに記録されます" FontFamily="Consolas" Height="32" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
       <Button Grid.Column="2" Name="ClearButton" Content="クリア" Click="ClearRecord_Click" Height="32" Margin="0,0,10,0"/>

@@ -26,6 +26,16 @@ public partial class VirtualKeyboardControl : UserControl
 
     public Action<string>? OnInsertMml { get; set; }
 
+    public bool IsEditorMode
+    {
+        get => !StateInfoBorder.IsVisible;
+        set
+        {
+            StateInfoBorder.IsVisible = !value;
+            MmlRecordingGrid.IsVisible = !value;
+        }
+    }
+
     // Audio output components
     private YM2151Manager? _ym2151Manager;
     private SingleNoteProvider? _noteProvider;
