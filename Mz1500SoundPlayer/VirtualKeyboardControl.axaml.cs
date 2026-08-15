@@ -69,7 +69,6 @@ public partial class VirtualKeyboardControl : UserControl
     private void UpdateStateDisplay()
     {
         StateInfoText.Text = $"トラック: {_state.TrackName} | 音量 v{_state.Volume} | 音色 @{_state.FmVoiceId} | エンベロープ @v{_state.EnvelopeId}";
-        OctaveDisplayText.Text = $"o{_currentOctave}";
     }
 
     private void InitAudio()
@@ -96,7 +95,9 @@ public partial class VirtualKeyboardControl : UserControl
         _keys.Clear();
         _physicalKeyMap.Clear();
 
-        double whiteKeyWidth = 860.0 / 35.0; // 35 white keys for 5 octaves
+        int numOctaves = 6;
+        int startOctave = _currentOctave - 2;
+        double whiteKeyWidth = 1000.0 / (numOctaves * 7);
         double blackKeyWidth = whiteKeyWidth * 0.6;
         double whiteKeyHeight = 145.0;
         double blackKeyHeight = 90.0;
@@ -131,8 +132,11 @@ public partial class VirtualKeyboardControl : UserControl
 
         // 1. Build White Keys
         int whiteCount = 0;
-        for (int oct = 0; oct < 5; oct++)
+        for (int oct = 0; oct < numOctaves; oct++)
         {
+            int absOct = startOctave + oct;
+            bool isValidOctave = absOct >= 0 && absOct <= 7;
+
             for (int i = 0; i < 7; i++)
             {
                 double left = whiteCount * whiteKeyWidth;
@@ -141,10 +145,16 @@ public partial class VirtualKeyboardControl : UserControl
                 string physChar = physIndex < whitePhysicalChars.Length ? whitePhysicalChars[physIndex] : "";
                 Key physKey = physIndex < whitePhysicalKeys.Length ? whitePhysicalKeys[physIndex] : Key.None;
 
+                string keyLabel = physChar;
+                if (i == 0 && isValidOctave)
+                {
+                    keyLabel = $"o{absOct}\n{physChar}";
+                }
+
                 var textBlock = new TextBlock
                 {
-                    Text = physChar,
-                    FontSize = 11,
+                    Text = keyLabel,
+                    FontSize = (i == 0) ? 10 : 11,
                     FontWeight = FontWeight.Bold,
                     Foreground = Brushes.Gray,
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -159,7 +169,7 @@ public partial class VirtualKeyboardControl : UserControl
                 {
                     Width = whiteKeyWidth - 2,
                     Height = whiteKeyHeight,
-                    Background = Brushes.White,
+                    Background = isValidOctave ? Brushes.White : new SolidColorBrush(Color.Parse("#888888")),
                     BorderBrush = Brushes.Black,
                     BorderThickness = new Avalonia.Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(0, 0, 4, 4),
@@ -167,7 +177,7 @@ public partial class VirtualKeyboardControl : UserControl
                     Tag = new KeyInfo
                     {
                         NoteName = whiteNoteNames[i],
-                        OctaveOffset = oct,
+                        OctaveOffset = oct - 2,
                         NoteInOctave = whiteNoteOffsets[i],
                         IsBlack = false,
                         MmlName = whiteNoteNames[i],
@@ -202,8 +212,11 @@ public partial class VirtualKeyboardControl : UserControl
         int[] blackPositionsAfterWhite = { 0, 1, 3, 4, 5 };
 
         int blackCount = 0;
-        for (int oct = 0; oct < 5; oct++)
+        for (int oct = 0; oct < numOctaves; oct++)
         {
+            int absOct = startOctave + oct;
+            bool isValidOctave = absOct >= 0 && absOct <= 7;
+
             for (int i = 0; i < 5; i++)
             {
                 int whiteIdx = oct * 7 + blackPositionsAfterWhite[i];
@@ -231,7 +244,7 @@ public partial class VirtualKeyboardControl : UserControl
                 {
                     Width = blackKeyWidth,
                     Height = blackKeyHeight,
-                    Background = Brushes.Black,
+                    Background = isValidOctave ? Brushes.Black : new SolidColorBrush(Color.Parse("#444444")),
                     BorderBrush = Brushes.DarkGray,
                     BorderThickness = new Avalonia.Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(0, 0, 3, 3),
@@ -240,7 +253,7 @@ public partial class VirtualKeyboardControl : UserControl
                     Tag = new KeyInfo
                     {
                         NoteName = blackMmlNames[i],
-                        OctaveOffset = oct,
+                        OctaveOffset = oct - 2,
                         NoteInOctave = blackNoteOffsets[i],
                         IsBlack = true,
                         MmlName = blackMmlNames[i],
@@ -300,6 +313,9 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void SwitchToKey(KeyInfo key)
     {
+        int actualOctave = _currentOctave + key.OctaveOffset;
+        if (actualOctave < 0 || actualOctave > 7) return;
+
         if (_activeMouseKey != null)
         {
             _activeMouseKey.Control.Background = _activeMouseKey.IsBlack ? Brushes.Black : Brushes.White;
@@ -385,19 +401,21 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void OctaveDown_Click(object? sender, RoutedEventArgs e)
     {
-        if (_currentOctave > 1)
+        if (_currentOctave > 0)
         {
             _currentOctave--;
             UpdateStateDisplay();
+            BuildKeyboard();
         }
     }
 
     private void OctaveUp_Click(object? sender, RoutedEventArgs e)
     {
-        if (_currentOctave < 7)
+        if (_currentOctave < 8)
         {
             _currentOctave++;
             UpdateStateDisplay();
+            BuildKeyboard();
         }
     }
 

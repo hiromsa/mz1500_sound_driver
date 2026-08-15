@@ -14,7 +14,6 @@
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
         <TextBlock Text="オクターブ:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#cccccc"/>
         <Button Name="OctaveDownButton" Content="&lt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveDown_Click"/>
-        <TextBlock Name="OctaveDisplayText" Text="o4" Width="30" TextAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#dcdcaa"/>
         <Button Name="OctaveUpButton" Content="&gt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveUp_Click"/>
       </StackPanel>
     </Grid>
