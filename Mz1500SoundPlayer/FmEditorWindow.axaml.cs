@@ -172,13 +172,19 @@ public partial class FmEditorWindow : Window
         var match = System.Text.RegularExpressions.Regex.Match(mml, @"\{([^}]+)\}");
         if (match.Success)
         {
-            var parts = match.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length >= 46)
+            var lines = match.Groups[1].Value.Split('\n');
+            var cleanLines = System.Linq.Enumerable.Select(lines, l => {
+                int commentIdx = l.IndexOf("//");
+                return commentIdx >= 0 ? l.Substring(0, commentIdx) : l;
+            });
+            var cleanText = string.Join(" ", cleanLines);
+            var numbersMatches = System.Text.RegularExpressions.Regex.Matches(cleanText, @"\d+");
+            
+            if (numbersMatches.Count >= 46)
             {
                 var ret = new int[46];
                 for(int i = 0; i < 46; i++)
-                    if (int.TryParse(parts[i].Trim(), out int val))
-                        ret[i] = val;
+                    ret[i] = int.Parse(numbersMatches[i].Value);
                 return ret;
             }
         }

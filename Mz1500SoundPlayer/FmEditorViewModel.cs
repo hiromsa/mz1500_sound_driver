@@ -124,16 +124,22 @@ public class FmEditorViewModel : INotifyPropertyChanged
 
     public void ParseMml(string mml)
     {
-        // Example: @FM[1] = { 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... }
-        // 46 parameters
         var match = Regex.Match(mml, @"\{([^}]+)\}");
         if (match.Success)
         {
-            var parts = match.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 46)
+            var lines = match.Groups[1].Value.Split('\n');
+            var cleanLines = System.Linq.Enumerable.Select(lines, l => {
+                int commentIdx = l.IndexOf("//");
+                return commentIdx >= 0 ? l.Substring(0, commentIdx) : l;
+            });
+            var cleanText = string.Join(" ", cleanLines);
+            var numbersMatches = Regex.Matches(cleanText, @"\d+");
+            
+            if (numbersMatches.Count >= 46)
             {
-                Alg = int.Parse(parts[0].Trim());
-                Fb = int.Parse(parts[1].Trim());
+                var parts = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(numbersMatches, m => m.Value));
+                Alg = int.Parse(parts[0]);
+                Fb = int.Parse(parts[1]);
 
                 // MML Order: OP1, OP2, OP3, OP4
                 Op1.Parse(parts, 2 + 0 * 11);
@@ -147,16 +153,15 @@ public class FmEditorViewModel : INotifyPropertyChanged
     public string ToMml(int fmNumber)
     {
         var sb = new System.Text.StringBuilder();
-        sb.Append($"@FM[{fmNumber}] = {{ ");
-        sb.Append($"{Alg}, {Fb}, ");
-        sb.Append(Op1.ToMml());
-        sb.Append(", ");
-        sb.Append(Op2.ToMml());
-        sb.Append(", ");
-        sb.Append(Op3.ToMml());
-        sb.Append(", ");
-        sb.Append(Op4.ToMml());
-        sb.Append(" }");
+        sb.AppendLine($"@FM{fmNumber} = {{");
+        sb.AppendLine("  // ALG, FB");
+        sb.AppendLine($"     {Alg,3}, {Fb,2},");
+        sb.AppendLine("  //  AR, D1R, D2R,  RR, D1L,  TL,  KS, MUL, DT1, DT2, AME");
+        sb.AppendLine($"   {Op1.ToMml()}, // OP1 (M1)");
+        sb.AppendLine($"   {Op2.ToMml()}, // OP2 (C1)");
+        sb.AppendLine($"   {Op3.ToMml()}, // OP3 (M2)");
+        sb.AppendLine($"   {Op4.ToMml()}  // OP4 (C2)");
+        sb.Append("}");
         return sb.ToString();
     }
 }
@@ -302,7 +307,7 @@ public class FmOperatorViewModel : INotifyPropertyChanged
 
     public string ToMml()
     {
-        return $"{Ar}, {D1r}, {D2r}, {Rr}, {D1l}, {Tl}, {Ks}, {Mul}, {Dt1}, {Dt2}, {Ame}";
+        return $"  {Ar,3}, {D1r,3}, {D2r,3}, {Rr,3}, {D1l,3}, {Tl,3}, {Ks,3}, {Mul,3}, {Dt1,3}, {Dt2,3}, {Ame,3}";
     }
 
     public void CopyFrom(FmOperatorViewModel other)
