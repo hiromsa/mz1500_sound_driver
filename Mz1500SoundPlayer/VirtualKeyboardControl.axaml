@@ -12,7 +12,7 @@
       </StackPanel>
       
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-        <TextBlock Text="オクターブ:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#cccccc"/>
+        <TextBlock Text="キーアサイン:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#cccccc"/>
         <Button Name="OctaveDownButton" Content="&lt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveDown_Click"/>
         <Button Name="OctaveUpButton" Content="&gt;" Width="32" Height="28" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="OctaveUp_Click"/>
       </StackPanel>
@@ -20,7 +20,9 @@
 
     <!-- Piano Keys Canvas Container -->
     <Border Grid.Row="1" Background="#111111" CornerRadius="6" Padding="10" Margin="0,0,0,15" BorderBrush="#333333" BorderThickness="1">
-      <Canvas Name="PianoCanvas" Width="860" Height="85" HorizontalAlignment="Center"/>
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Canvas Name="PianoCanvas" Width="1344" Height="85" HorizontalAlignment="Left"/>
+      </ScrollViewer>
     </Border>
 
     <!-- MML Recording Controls -->
