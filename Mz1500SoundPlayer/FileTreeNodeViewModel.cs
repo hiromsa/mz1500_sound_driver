@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Mz1500SoundPlayer;
 
-public class FmVoiceNodeViewModel : INotifyPropertyChanged
+public class FileTreeNodeViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -23,5 +23,5 @@ public class FmVoiceNodeViewModel : INotifyPropertyChanged
         set { _isExpanded = value; OnPropertyChanged(); }
     }
     
-    public ObservableCollection<FmVoiceNodeViewModel> Children { get; } = new();
+    public ObservableCollection<FileTreeNodeViewModel> Children { get; } = new();
 }

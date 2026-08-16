@@ -1,0 +1,56 @@
+; New MML File
+
+
+@FM0 = {
+  // ALG, FB
+       4,  4,
+  //  AR, D1R, D2R,  RR, D1L,  TL,  KS, MUL, DT1, DT2, AME
+      27,  11,   0,  12,   0,  21,   0,   4,   0,   0,   0, // OP1 (M1)
+      24,   2,   0,  12,   6,  16,   0,   1,   0,   0,   0, // OP2 (C1)
+      27,  11,   0,  12,   0,  21,   0,   1,   0,   0,   0, // OP3 (M2)
+      26,   2,   0,  12,   6,   0,   0,   1,   0,   0,   0  // OP4 (C2)
+}
+
+F1,F2,F3 @t1,86
+
+F1 @0 @v0 o5 l8 q8 
+F2         o4 l8 @q2 
+F3 @0 v12 o3 l16 @q0
+ 
+F1 o4v15 
+F1 a+12r12a+12a+12a+12a+12a+12>c12d12c12r12<a+12>
+F1 f2r4d+12f12g12
+F1 f12r6a+4r12a12a+12a12f12d12
+F1 c2.r4
+F1 <b12r12b12b12b12b12b12>c+12d+12c+12<r12b12>
+F1 f+2r4g+12f+12e12
+F1 f+12r6g+12f+12e12f+12r12 e12d+12<b12g+12>
+F1 c+2<b4>d12r12d12
+F1 e2r12d12e12g12f+12d12
+F1 g12f+12d12e4f12r12f12
+F1 g4r12f12g12a+12a12f12
+F1 a+12a12f12g2f4
+
+F2 o3v15
+F2 d12d12d12d+12r6 d12d12d12d+12r6 
+F2 d12d12d12d+12r6 f12r6 a+4
+F2 a12r6 a+4a12r6 f12r6
+F2 d+12r6d+12r6f12r6f12r6
+F2 d+12d+12d+12e12r6 d+12d+12d+12e12r6
+F2 d+12d+12d+12e12r6 f+12r6b4
+F2 a+12r6b4a+12r6f+12r6
+F2 a+12r6a+12g+12a+12d+12r6r4
+F2 r4r4r4r4>d12d12<b12>c+4r4
+F2 r4r4r4f12f12d12e2c12<a12f12
+
+F3 o4v15
+F3 L<a+12a+12a+12>c12r6 <a+12a+12a+12>c12r6
+F3 <a+12a+12a+12>c12r6 d12r6 g4
+F3 f12r6g4f12r6d12r6
+F3 c12r6<g12r6a12g12a12g12r12f12>
+F3 <b12b12b12>c+12r6 <b12b12b12>c+12r6
+F3 <b12b12b12>c+12r6 d+12r6g+4
+F3 f+12r6g+4f+12r6d+12r6
+F3 f+12r6<f+12f+12f+12b12r6r4>
+F3 r4d12r12d12e12d12e12g12f+12d12b12a12g12a4r4
+F3 f12r12f12g12f12g12a+12a12f12>d6<a+12>c2<a12f12<f12>

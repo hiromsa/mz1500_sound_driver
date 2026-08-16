@@ -22,6 +22,8 @@ public class MultiTrackSequenceProvider : ISampleProvider
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<(string TrackName, ISampleProvider Provider)>();
         YM2151 = new YM2151Manager(sampleRate, YM2151Manager.Clock4MHz);
+        YM2151.OutPort(0x0708, 0x0F);
+        YM2151.OutPort(0x0709, 0x00); // Noise Disable
 
         Console.WriteLine($"[MultiTrackSequenceProvider] Init with {trackBinaries.Count} tracks.");
 
@@ -51,6 +53,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
         foreach (var item in _trackProviders)
         {
             if (item.Provider is MmlSequenceProvider m) vols[item.TrackName] = m.CurrentVolume;
+            else if (item.Provider is Ym2151SequenceProvider y) vols[item.TrackName] = y.CurrentVolume;
             else vols[item.TrackName] = 0;
         }
         return vols;

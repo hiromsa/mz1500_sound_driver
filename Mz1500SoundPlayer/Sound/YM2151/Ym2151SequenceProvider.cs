@@ -69,11 +69,15 @@ public class Ym2151SequenceProvider : ISampleProvider
                     }
                     // KEY ON/OFFとKCの書き込みを目立つようにログ出力
                     if (reg == 0x08)
-                        Console.WriteLine($"  [FM-VM] ** KEY {(val > 0 ? "ON " : "OFF")} ** reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                    {
+                        // Console.WriteLine($"  [FM-VM] ** KEY {(val > 0 ? "ON " : "OFF")} ** reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                        if (val > 0) CurrentVolume = 15;
+                        else CurrentVolume = 0;
+                    }
                     else if (reg >= 0x28 && reg <= 0x2F)
-                        Console.WriteLine($"  [FM-VM] KC  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                        ; // Console.WriteLine($"  [FM-VM] KC  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
                     else if (reg >= 0x30 && reg <= 0x37)
-                        Console.WriteLine($"  [FM-VM] KF  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
+                        ; // Console.WriteLine($"  [FM-VM] KF  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
                     break;
                 case MmlToZ80Compiler.CMD_LOOP_MARKER:
                     // Loops not fully implemented in simple version, ignore marker
@@ -91,6 +95,7 @@ public class Ym2151SequenceProvider : ISampleProvider
             }
         }
     }
+    public int CurrentVolume { get; private set; } = 0;
 
     public int Read(float[] buffer, int offset, int count)
     {
@@ -108,8 +113,14 @@ public class Ym2151SequenceProvider : ISampleProvider
                 }
                 if (_waitFrames == 0 && !_isEnd)
                 {
-                    Console.WriteLine($"[FM-VM] Frame boundary at sample {_totalSamplesProcessed + i}, calling ProcessVM (waitFrames was just decremented to 0)");
+                    // Console.WriteLine($"[FM-VM] Frame boundary at sample {_totalSamplesProcessed + i}, calling ProcessVM (waitFrames was just decremented to 0)");
                     ProcessVM();
+                }
+                
+                // Decay volume every frame
+                if (CurrentVolume > 0)
+                {
+                    CurrentVolume--;
                 }
             }
         }

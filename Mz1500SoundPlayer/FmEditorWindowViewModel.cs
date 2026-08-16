@@ -15,7 +15,7 @@ public class FmEditorWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public FmVoiceLibraryViewModel Library { get; } = new();
+    public FileTreeViewModel Library { get; } = new("fmvoices", "*.mml");
 
     public ObservableCollection<FmEditorTabViewModel> Tabs { get; } = new();
 

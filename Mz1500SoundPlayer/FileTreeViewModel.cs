@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace Mz1500SoundPlayer;
 
-public class FmVoiceLibraryViewModel : INotifyPropertyChanged
+public class FileTreeViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -16,17 +16,26 @@ public class FmVoiceLibraryViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public ObservableCollection<FmVoiceNodeViewModel> Nodes { get; } = new();
+    public ObservableCollection<FileTreeNodeViewModel> Nodes { get; } = new();
 
-    private string _rootPath = "fmvoices";
+    private string _rootPath = "";
     public string RootPath
     {
         get => _rootPath;
         set { _rootPath = value; OnPropertyChanged(); }
     }
 
-    public FmVoiceLibraryViewModel()
+    private string _searchPattern = "*.*";
+    public string SearchPattern
     {
+        get => _searchPattern;
+        set { _searchPattern = value; OnPropertyChanged(); }
+    }
+
+    public FileTreeViewModel(string rootPath, string searchPattern)
+    {
+        _rootPath = rootPath;
+        _searchPattern = searchPattern;
         Refresh();
     }
 
@@ -51,7 +60,7 @@ public class FmVoiceLibraryViewModel : INotifyPropertyChanged
         LoadDirectory(_rootPath, Nodes, expandedPaths);
     }
 
-    private void CaptureExpandedPaths(IEnumerable<FmVoiceNodeViewModel> nodes, HashSet<string> expandedPaths)
+    private void CaptureExpandedPaths(IEnumerable<FileTreeNodeViewModel> nodes, HashSet<string> expandedPaths)
     {
         foreach (var node in nodes)
         {
@@ -63,16 +72,16 @@ public class FmVoiceLibraryViewModel : INotifyPropertyChanged
         }
     }
 
-    private void LoadDirectory(string path, ObservableCollection<FmVoiceNodeViewModel> target, HashSet<string> expandedPaths)
+    private void LoadDirectory(string path, ObservableCollection<FileTreeNodeViewModel> target, HashSet<string> expandedPaths)
     {
         try
         {
             var dirs = Directory.GetDirectories(path).OrderBy(d => d).ToArray();
-            var files = Directory.GetFiles(path, "*.mml").OrderBy(f => f).ToArray();
+            var files = Directory.GetFiles(path, _searchPattern).OrderBy(f => f).ToArray();
 
             foreach (var dir in dirs)
             {
-                var node = new FmVoiceNodeViewModel
+                var node = new FileTreeNodeViewModel
                 {
                     Name = Path.GetFileName(dir),
                     FullPath = dir,
@@ -85,7 +94,7 @@ public class FmVoiceLibraryViewModel : INotifyPropertyChanged
 
             foreach (var file in files)
             {
-                target.Add(new FmVoiceNodeViewModel
+                target.Add(new FileTreeNodeViewModel
                 {
                     Name = Path.GetFileName(file),
                     FullPath = file,

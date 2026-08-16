@@ -659,10 +659,10 @@ namespace Mz1500SoundPlayer.Sound
 
 
         /* these variables stay here for speedup purposes only */
-        private static YM2151 PSG;
-        private static rint[] chanout = new rint[8] { new rint(), new rint(), new rint(), new rint(), new rint(), new rint(), new rint(), new rint() };
-        private static rint m2= new rint(), c1= new rint(), c2= new rint(); /* Phase Modulation input for operators 2,3,4 */
-        private static rint mem= new rint();     /* one sample delay memory */
+        private YM2151 PSG;
+        private rint[] chanout = new rint[8] { new rint(), new rint(), new rint(), new rint(), new rint(), new rint(), new rint(), new rint() };
+        private rint m2= new rint(), c1= new rint(), c2= new rint(); /* Phase Modulation input for operators 2,3,4 */
+        private rint mem= new rint();     /* one sample delay memory */
 
 
         /* save output as raw 16-bit sample */

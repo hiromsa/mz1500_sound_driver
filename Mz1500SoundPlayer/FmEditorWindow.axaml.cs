@@ -69,7 +69,7 @@ public partial class FmEditorWindow : Window
 
     private void TreeView_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (e.Source is Control c && c.DataContext is FmVoiceNodeViewModel node && !node.IsDirectory)
+        if (e.Source is Control c && c.DataContext is FileTreeNodeViewModel node && !node.IsDirectory)
         {
             OpenFile(node.FullPath);
         }
@@ -77,7 +77,7 @@ public partial class FmEditorWindow : Window
 
     private void TreeNode_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.ClickCount == 2 && sender is Control c && c.DataContext is FmVoiceNodeViewModel node && !node.IsDirectory)
+        if (e.ClickCount == 2 && sender is Control c && c.DataContext is FileTreeNodeViewModel node && !node.IsDirectory)
         {
             OpenFile(node.FullPath);
             e.Handled = true;
@@ -86,7 +86,7 @@ public partial class FmEditorWindow : Window
 
     private async void ContextNewFolder_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        if (sender is MenuItem item && item.DataContext is FileTreeNodeViewModel node)
         {
             string parentPath = node.IsDirectory ? node.FullPath : System.IO.Path.GetDirectoryName(node.FullPath) ?? ViewModel.Library.RootPath;
             
@@ -106,7 +106,7 @@ public partial class FmEditorWindow : Window
 
     private async void ContextNewFile_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        if (sender is MenuItem item && item.DataContext is FileTreeNodeViewModel node)
         {
             string parentPath = node.IsDirectory ? node.FullPath : System.IO.Path.GetDirectoryName(node.FullPath) ?? ViewModel.Library.RootPath;
             
@@ -128,7 +128,7 @@ public partial class FmEditorWindow : Window
 
     private async void ContextRename_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        if (sender is MenuItem item && item.DataContext is FileTreeNodeViewModel node)
         {
             var dialog = new InputDialog("名前の変更", "新しい名前を入力してください:", node.Name);
             var result = await dialog.ShowDialog<string?>(this);
@@ -167,7 +167,7 @@ public partial class FmEditorWindow : Window
 
     private async void ContextDelete_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        if (sender is MenuItem item && item.DataContext is FileTreeNodeViewModel node)
         {
             var dialog = new ConfirmDialog("削除の確認", $"本当に '{node.Name}' を削除しますか？");
             var result = await dialog.ShowDialog<bool>(this);

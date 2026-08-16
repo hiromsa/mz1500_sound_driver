@@ -137,9 +137,9 @@ public class MultiTrackMmlParser
     private FmToneData ParseFmToneData(string innerText)
     {
         var tone = new FmToneData();
-        // Remove comments
-        innerText = Regex.Replace(innerText, @";.*", "");
-        innerText = Regex.Replace(innerText, @"//.*", "");
+        // Remove comments block by block or line by line
+        innerText = Regex.Replace(innerText, @";[^\r\n]*", "");
+        innerText = Regex.Replace(innerText, @"//[^\r\n]*", "");
         var matches = Regex.Matches(innerText, @"-?\d+");
         int count = Math.Min(46, matches.Count);
         for (int i = 0; i < count; i++)
