@@ -39,7 +39,12 @@
   <Window.Resources>
     <!-- Operator Template -->
     <DataTemplate x:Key="OpTemplate" x:DataType="local:FmOperatorViewModel">
-      <Border Classes="panel" Margin="4" Padding="8" PointerPressed="OperatorPanel_PointerPressed">
+      <Border Classes="panel" Margin="4" Padding="8" 
+              PointerPressed="OperatorPanel_PointerPressed"
+              PointerMoved="OperatorPanel_PointerMoved"
+              PointerReleased="OperatorPanel_PointerReleased"
+              DragDrop.AllowDrop="True"
+              DragDrop.Drop="OperatorPanel_Drop">
         <Border.Styles>
           <Style Selector="Border">
             <Setter Property="Background" Value="#252526" />
@@ -80,9 +85,10 @@
           </Grid>
           
           <Grid ColumnDefinitions="Auto, *">
-            <!-- Left side: TL meter -->
+            <!-- Left side: TL meter and Numeric -->
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-              <local:TlMeterControl Value="{Binding Tl}" Height="130" ToolTip.Tip="Total Level [TL]: 音量 (0=最大, 127=無音)"/>
+              <local:TlMeterControl Value="{Binding Tl}" Height="100" ToolTip.Tip="Total Level [TL]: 音量 (0=最大, 127=無音)"/>
+              <NumericUpDown Value="{Binding Tl}" Minimum="0" Maximum="127" FormatString="0" Width="40" Margin="0,4,0,0" ToolTip.Tip="TL"/>
             </StackPanel>
             
             <!-- Right side: Params and Envelope -->
@@ -199,7 +205,8 @@
         
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="Feedback (FB):" VerticalAlignment="Center" FontWeight="Bold"/>
-          <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" FormatString="0" ToolTip.Tip="フィードバック: OP1の自己帰還量 (0-7)"/>
+          <local:FbMeterControl Value="{Binding Fb}" Width="100" Height="24" ToolTip.Tip="フィードバック: OP1の自己帰還量 (0-7)"/>
+          <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" FormatString="0" ToolTip.Tip="フィードバック (0-7)"/>
         </StackPanel>
       </StackPanel>
     </Border>

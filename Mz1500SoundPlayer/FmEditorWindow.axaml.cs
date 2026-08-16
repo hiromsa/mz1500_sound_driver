@@ -137,12 +137,14 @@ public partial class FmEditorWindow : Window
         KeyboardControl.DisposeAudio();
     }
 
+    private Avalonia.Point _dragStartPoint;
+    private bool _isPointerDown;
+    private FmOperatorViewModel? _dragOperator;
+
     private void OperatorPanel_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
         if (sender is Border border && border.DataContext is FmOperatorViewModel op)
         {
-            if (e.Handled) return;
-
             var visual = e.Source as Avalonia.Visual;
             while (visual != null && visual != sender)
             {
@@ -151,30 +153,87 @@ public partial class FmEditorWindow : Window
                     visual is NumericUpDown || 
                     visual is TextBox || 
                     visual is EnvelopeVisualizer ||
-                    visual is TlMeterControl)
+                    visual is TlMeterControl ||
+                    visual is FbMeterControl)
                 {
                     return; // Ignore clicks on interactive controls
                 }
                 visual = visual.GetVisualParent();
             }
 
+            _isPointerDown = true;
+            _dragStartPoint = e.GetPosition(border);
+            _dragOperator = op;
+        }
+    }
+
+    private async void OperatorPanel_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        if (!_isPointerDown || _dragOperator == null || sender is not Border border) return;
+
+        var currentPoint = e.GetPosition(border);
+        var diff = currentPoint - _dragStartPoint;
+
+        if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
+        {
+            _isPointerDown = false;
+            
+            var data = new Avalonia.Input.DataObject();
+            data.Set("FmOperatorViewModel", _dragOperator);
+
+            await Avalonia.Input.DragDrop.DoDragDrop(e, data, Avalonia.Input.DragDropEffects.Copy);
+        }
+    }
+
+    private void OperatorPanel_PointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        if (_isPointerDown && _dragOperator != null && sender is Border border)
+        {
+            _isPointerDown = false;
+            
             bool isShift = e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift);
 
             if (isShift)
             {
-                op.IsSelected = !op.IsSelected;
+                _dragOperator.IsSelected = !_dragOperator.IsSelected;
             }
             else
             {
-                ViewModel.Op1.IsSelected = false;
-                ViewModel.Op2.IsSelected = false;
-                ViewModel.Op3.IsSelected = false;
-                ViewModel.Op4.IsSelected = false;
+                var allOps = new[] { ViewModel.Op1, ViewModel.Op2, ViewModel.Op3, ViewModel.Op4 };
+                var selectedCount = System.Linq.Enumerable.Count(allOps, o => o.IsSelected);
 
-                op.IsSelected = true;
+                if (selectedCount == 1 && _dragOperator.IsSelected)
+                {
+                    _dragOperator.IsSelected = false; // toggle off
+                }
+                else
+                {
+                    foreach (var op in allOps)
+                    {
+                        op.IsSelected = (op == _dragOperator);
+                    }
+                }
             }
 
             e.Handled = true;
+        }
+        _dragOperator = null;
+        _isPointerDown = false;
+    }
+
+    private void OperatorPanel_Drop(object? sender, Avalonia.Input.DragEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is FmOperatorViewModel targetOp)
+        {
+            if (e.Data.Contains("FmOperatorViewModel"))
+            {
+                var sourceOp = e.Data.Get("FmOperatorViewModel") as FmOperatorViewModel;
+                if (sourceOp != null && sourceOp != targetOp)
+                {
+                    targetOp.FromClipboardString(sourceOp.ToClipboardString());
+                    e.Handled = true;
+                }
+            }
         }
     }
 }
