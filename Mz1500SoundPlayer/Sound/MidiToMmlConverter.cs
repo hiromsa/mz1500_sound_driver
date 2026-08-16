@@ -72,7 +72,7 @@ namespace Mz1500SoundPlayer.Sound
 
     public class MidiToMmlConverter
     {
-        private static readonly string[] AvailableChannels = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
+        private static readonly string[] AvailableChannels = { "P1", "P2", "P3", "N1", "P4", "P5", "P6", "N2", "B1", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8" };
 
         public string Convert(string midiFilePath)
         {

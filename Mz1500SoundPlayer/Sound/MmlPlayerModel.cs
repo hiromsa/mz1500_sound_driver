@@ -32,7 +32,7 @@ public class MmlPlayerModel
     }
 
     private HashSet<string> _activeChannels = new HashSet<string>(new[] { 
-        "A", "B", "C", "D", "E", "F", "G", "H", "P",
+        "P1", "P2", "P3", "N1", "P4", "P5", "P6", "N2", "B1",
         "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"
     });
     public HashSet<string> ActiveChannels
@@ -89,7 +89,7 @@ public class MmlPlayerModel
         };
         var compiler = new MmlToZ80Compiler();
         var bin = compiler.CompileTrack(demo, 0);
-        var dict = new Dictionary<string, byte[]> { { "A", bin } };
+        var dict = new Dictionary<string, byte[]> { { "P1", bin } };
         await PlayBytecodeDictAsync(dict, null!, null!);
     }
 
@@ -122,16 +122,16 @@ public class MmlPlayerModel
 
         // Extract Metronome Beat Timings purely from Track A if it exists
         var metronomeTimings = new List<double>();
-        if (tracks.ContainsKey("A") || tracks.ContainsKey("a"))
+        if (tracks.ContainsKey("P1") || tracks.ContainsKey("p1"))
         {
-            metronomeTimings = expander.ExtractBeatTimings(tracks.ContainsKey("A") ? tracks["A"] : tracks["a"]);
+            metronomeTimings = expander.ExtractBeatTimings(tracks.ContainsKey("P1") ? tracks["P1"] : tracks["p1"]);
         }
 
         // タイムラインの構築
         HighlightTimeline.Clear();
         foreach (var trackName in trackEventsMap.Keys)
         {
-            if (_activeChannels.Contains(trackName) || trackName.ToUpperInvariant() == "A") // Usually A is the master track for length
+            if (_activeChannels.Contains(trackName) || trackName.ToUpperInvariant() == "P1") // Usually P1 is the master track for length
             {
                 double currentMs = 0;
                 foreach (var ev in trackEventsMap[trackName])
@@ -155,14 +155,14 @@ public class MmlPlayerModel
             byte psgChannel = 0;
             switch (kvp.Key.ToUpperInvariant())
             {
-                case "A": case "E": psgChannel = 0; break;
-                case "B": case "F": psgChannel = 1; break;
-                case "C": case "G": psgChannel = 2; break;
-                case "D": case "H": psgChannel = 3; break; // Noise
-                case "P":           psgChannel = 0; break; // BEEP
+                case "P1": case "P4": psgChannel = 0; break;
+                case "P2": case "P5": psgChannel = 1; break;
+                case "P3": case "P6": psgChannel = 2; break;
+                case "N1": case "N2": psgChannel = 3; break; // Noise
+                case "B1":            psgChannel = 0; break; // BEEP
                 default: psgChannel = 0; break;
             }
-            bool isBeep = kvp.Key.ToUpperInvariant() == "P";
+            bool isBeep = kvp.Key.ToUpperInvariant() == "B1";
             bool isFm = kvp.Key.ToUpperInvariant().StartsWith("F") && kvp.Key.Length == 2;
             byte[] seqBin;
             if (isFm)
@@ -213,20 +213,20 @@ public class MmlPlayerModel
             byte ioPort = 0xF2;
             switch (kvp.Key.ToUpperInvariant())
             {
-                case "A": psgChannel = 0; ioPort = 0xF2; break;
-                case "B": psgChannel = 1; ioPort = 0xF2; break;
-                case "C": psgChannel = 2; ioPort = 0xF2; break;
-                case "D": psgChannel = 3; ioPort = 0xF2; break; // PSG1 Noise
-                case "E": psgChannel = 0; ioPort = 0xF3; break;
-                case "F": psgChannel = 1; ioPort = 0xF3; break;
-                case "G": psgChannel = 2; ioPort = 0xF3; break;
-                case "H": psgChannel = 3; ioPort = 0xF3; break; // PSG2 Noise
-                case "P": psgChannel = 0; ioPort = 0xE0; break; // BEEP
+                case "P1": psgChannel = 0; ioPort = 0xF2; break;
+                case "P2": psgChannel = 1; ioPort = 0xF2; break;
+                case "P3": psgChannel = 2; ioPort = 0xF2; break;
+                case "N1": psgChannel = 3; ioPort = 0xF2; break; // PSG1 Noise
+                case "P4": psgChannel = 0; ioPort = 0xF3; break;
+                case "P5": psgChannel = 1; ioPort = 0xF3; break;
+                case "P6": psgChannel = 2; ioPort = 0xF3; break;
+                case "N2": psgChannel = 3; ioPort = 0xF3; break; // PSG2 Noise
+                case "B1": psgChannel = 0; ioPort = 0xE0; break; // BEEP
                 default:  psgChannel = 0; ioPort = 0xF2; break;
             }
 
             var events = expander.Expand(kvp.Value);
-            bool isBeep = kvp.Key.ToUpperInvariant() == "P";
+            bool isBeep = kvp.Key.ToUpperInvariant() == "B1";
             bool isFm = kvp.Key.ToUpperInvariant().StartsWith("F") && kvp.Key.Length == 2;
             byte[] seqBin;
             if (isFm)

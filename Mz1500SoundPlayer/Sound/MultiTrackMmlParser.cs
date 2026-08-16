@@ -14,7 +14,7 @@ public class MultiTrackMmlParser
         var tracks = result.Tracks;
 
         int absoluteIndex = 0;
-        List<string> currentTrackNamesList = new List<string> { "A" };
+        List<string> currentTrackNamesList = new List<string> { "P1" };
         bool insideFmBlock = false;
         int currentFmId = -1;
         string currentFmData = "";
@@ -81,8 +81,16 @@ public class MultiTrackMmlParser
                 continue;
             }
 
+            // Check Macro Definition
+            var macroMatch = Regex.Match(trimmed, @"^\$([A-Za-z0-9_]+)\s*=\s*(.*)");
+            if (macroMatch.Success)
+            {
+                result.Macros[macroMatch.Groups[1].Value] = macroMatch.Groups[2].Value;
+                continue;
+            }
+
             // Check Track Definition
-            var trackMatch = Regex.Match(logicalLine, @"^\s*([A-Za-z0-9,]+)\s+(.*)");
+            var trackMatch = Regex.Match(logicalLine, @"^\s*([A-Za-z0-9]+(?:,[A-Za-z0-9]+)*)\s+(.*)");
             string mmlData = logicalLine;
             int dataOffsetInLine = 0;
 
@@ -117,18 +125,11 @@ public class MultiTrackMmlParser
     private List<string> ParseTrackNames(string rawTracks)
     {
         var list = new List<string>();
-        rawTracks = rawTracks.Replace(",", "");
-        for (int i = 0; i < rawTracks.Length; i++)
+        // Tokenize by looking for valid 2-char track prefixes (P1-P6, N1-N2, B1, F1-F8)
+        var matches = Regex.Matches(rawTracks, @"P[1-6]|N[1-2]|B1|F[1-8]");
+        foreach (Match match in matches)
         {
-            if (rawTracks[i] == 'F' && i + 1 < rawTracks.Length && rawTracks[i + 1] >= '1' && rawTracks[i + 1] <= '8')
-            {
-                list.Add(rawTracks.Substring(i, 2));
-                i++;
-            }
-            else
-            {
-                list.Add(rawTracks[i].ToString());
-            }
+            list.Add(match.Value);
         }
         return list;
     }
@@ -260,6 +261,22 @@ public class MultiTrackMmlParser
                         else
                         {
                             mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, 1, $"大文字の 'K' を使用してください。小文字の 'k' は使用できません。"));
+                        }
+                        break;
+                    case '$':
+                        int startId = i;
+                        while (i < data.Length && (char.IsLetterOrDigit(data[i]) || data[i] == '_'))
+                        {
+                            i++;
+                        }
+                        string macroName = data.Substring(startId, i - startId);
+                        if (mmlData.Macros.TryGetValue(macroName, out var macroMmlString))
+                        {
+                            ParseLineChunk(macroMmlString, absoluteDataOffset + cmdStartIdx, mmlData, cmds);
+                        }
+                        else
+                        {
+                            mmlData.Errors.Add(new MmlError(absoluteDataOffset + cmdStartIdx, macroName.Length + 1, $"未定義のマクロ '${macroName}' が呼び出されました。"));
                         }
                         break;
                     case '@':

@@ -29,24 +29,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly DispatcherTimer _validationTimer;
 
     // View Model Properties for UI binding
-    private int _currentVolumeA;
-    public int CurrentVolumeA { get => _currentVolumeA; set => SetProperty(ref _currentVolumeA, value); }
-    private int _currentVolumeB;
-    public int CurrentVolumeB { get => _currentVolumeB; set => SetProperty(ref _currentVolumeB, value); }
-    private int _currentVolumeC;
-    public int CurrentVolumeC { get => _currentVolumeC; set => SetProperty(ref _currentVolumeC, value); }
-    private int _currentVolumeD;
-    public int CurrentVolumeD { get => _currentVolumeD; set => SetProperty(ref _currentVolumeD, value); }
-    private int _currentVolumeE;
-    public int CurrentVolumeE { get => _currentVolumeE; set => SetProperty(ref _currentVolumeE, value); }
-    private int _currentVolumeF;
-    public int CurrentVolumeF { get => _currentVolumeF; set => SetProperty(ref _currentVolumeF, value); }
-    private int _currentVolumeG;
-    public int CurrentVolumeG { get => _currentVolumeG; set => SetProperty(ref _currentVolumeG, value); }
-    private int _currentVolumeH;
-    public int CurrentVolumeH { get => _currentVolumeH; set => SetProperty(ref _currentVolumeH, value); }
-    private int _currentVolumeP;
-    public int CurrentVolumeP { get => _currentVolumeP; set => SetProperty(ref _currentVolumeP, value); }
+    private int _currentVolumeB11;
+    public int CurrentVolumeB11 { get => _currentVolumeB11; set => SetProperty(ref _currentVolumeB11, value); }
+    private int _currentVolumeB12;
+    public int CurrentVolumeB12 { get => _currentVolumeB12; set => SetProperty(ref _currentVolumeB12, value); }
+    private int _currentVolumeB13;
+    public int CurrentVolumeB13 { get => _currentVolumeB13; set => SetProperty(ref _currentVolumeB13, value); }
+    private int _currentVolumeN1;
+    public int CurrentVolumeN1 { get => _currentVolumeN1; set => SetProperty(ref _currentVolumeN1, value); }
+    private int _currentVolumeB14;
+    public int CurrentVolumeB14 { get => _currentVolumeB14; set => SetProperty(ref _currentVolumeB14, value); }
+    private int _currentVolumeB15;
+    public int CurrentVolumeB15 { get => _currentVolumeB15; set => SetProperty(ref _currentVolumeB15, value); }
+    private int _currentVolumeB16;
+    public int CurrentVolumeB16 { get => _currentVolumeB16; set => SetProperty(ref _currentVolumeB16, value); }
+    private int _currentVolumeN2;
+    public int CurrentVolumeN2 { get => _currentVolumeN2; set => SetProperty(ref _currentVolumeN2, value); }
+    private int _currentVolumeB1;
+    public int CurrentVolumeB1 { get => _currentVolumeB1; set => SetProperty(ref _currentVolumeB1, value); }
 
     public new event PropertyChangedEventHandler? PropertyChanged;
     private void SetProperty<T>(ref T backingField, T value, [CallerMemberName] string? propertyName = null)
@@ -447,15 +447,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         // --- Volume Polling Section ---
         var volumes = _player.GetCurrentVolumes();
-        CurrentVolumeA = volumes.TryGetValue("A", out var va) ? va : 0;
-        CurrentVolumeB = volumes.TryGetValue("B", out var vb) ? vb : 0;
-        CurrentVolumeC = volumes.TryGetValue("C", out var vc) ? vc : 0;
-        CurrentVolumeD = volumes.TryGetValue("D", out var vd) ? vd : 0;
-        CurrentVolumeE = volumes.TryGetValue("E", out var ve) ? ve : 0;
-        CurrentVolumeF = volumes.TryGetValue("F", out var vf) ? vf : 0;
-        CurrentVolumeG = volumes.TryGetValue("G", out var vg) ? vg : 0;
-        CurrentVolumeH = volumes.TryGetValue("H", out var vh) ? vh : 0;
-        CurrentVolumeP = volumes.TryGetValue("P", out var vp) ? vp : 0;
+        CurrentVolumeB11 = volumes.TryGetValue("A", out var va) ? va : 0;
+        CurrentVolumeB12 = volumes.TryGetValue("B", out var vb) ? vb : 0;
+        CurrentVolumeB13 = volumes.TryGetValue("C", out var vc) ? vc : 0;
+        CurrentVolumeN1 = volumes.TryGetValue("D", out var vd) ? vd : 0;
+        CurrentVolumeB14 = volumes.TryGetValue("E", out var ve) ? ve : 0;
+        CurrentVolumeB15 = volumes.TryGetValue("F", out var vf) ? vf : 0;
+        CurrentVolumeB16 = volumes.TryGetValue("G", out var vg) ? vg : 0;
+        CurrentVolumeN2 = volumes.TryGetValue("H", out var vh) ? vh : 0;
+        CurrentVolumeB1 = volumes.TryGetValue("P", out var vp) ? vp : 0;
         // ------------------------------
 
         if (activeEvents.Any())
@@ -554,15 +554,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ResetVolumes()
     {
-        CurrentVolumeA = 0;
-        CurrentVolumeB = 0;
-        CurrentVolumeC = 0;
-        CurrentVolumeD = 0;
-        CurrentVolumeE = 0;
-        CurrentVolumeF = 0;
-        CurrentVolumeG = 0;
-        CurrentVolumeH = 0;
-        CurrentVolumeP = 0;
+        CurrentVolumeB11 = 0;
+        CurrentVolumeB12 = 0;
+        CurrentVolumeB13 = 0;
+        CurrentVolumeN1 = 0;
+        CurrentVolumeB14 = 0;
+        CurrentVolumeB15 = 0;
+        CurrentVolumeB16 = 0;
+        CurrentVolumeN2 = 0;
+        CurrentVolumeB1 = 0;
     }
 
     private void Window_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
@@ -731,31 +731,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private bool _isUpdatingCheckboxes = false;
-    private void ChkAll_Changed(object? sender, RoutedEventArgs e)
+    private void ChkB11ll_Changed(object? sender, RoutedEventArgs e)
     {
         if (_isUpdatingCheckboxes) return;
         _isUpdatingCheckboxes = true;
-        bool isChecked = ChkAll.IsChecked ?? false;
-        ChkA.IsChecked = isChecked;
-        ChkB.IsChecked = isChecked;
-        ChkC.IsChecked = isChecked;
-        ChkD.IsChecked = isChecked;
-        ChkE.IsChecked = isChecked;
-        ChkF.IsChecked = isChecked;
-        ChkG.IsChecked = isChecked;
-        ChkH.IsChecked = isChecked;
-        ChkP.IsChecked = isChecked;
+        bool isChecked = ChkB11ll.IsChecked ?? false;
+        ChkB11.IsChecked = isChecked;
+        ChkB12.IsChecked = isChecked;
+        ChkB13.IsChecked = isChecked;
+        ChkN1.IsChecked = isChecked;
+        ChkB14.IsChecked = isChecked;
+        ChkB15.IsChecked = isChecked;
+        ChkB16.IsChecked = isChecked;
+        ChkN2.IsChecked = isChecked;
+        ChkB1.IsChecked = isChecked;
         _isUpdatingCheckboxes = false;
         UpdateChannelMask();
     }
 
-    private void ChkChannel_Changed(object? sender, RoutedEventArgs e)
+    private void ChkB13hannel_Changed(object? sender, RoutedEventArgs e)
     {
         if (_isUpdatingCheckboxes) return;
         _isUpdatingCheckboxes = true;
         
-        bool allChecked = (ChkA.IsChecked == true) && (ChkB.IsChecked == true) && (ChkC.IsChecked == true) && (ChkD.IsChecked == true) && (ChkE.IsChecked == true) && (ChkF.IsChecked == true) && (ChkG.IsChecked == true) && (ChkH.IsChecked == true) && (ChkP.IsChecked == true);
-        ChkAll.IsChecked = allChecked;
+        bool allChecked = (ChkB11.IsChecked == true) && (ChkB12.IsChecked == true) && (ChkB13.IsChecked == true) && (ChkN1.IsChecked == true) && (ChkB14.IsChecked == true) && (ChkB15.IsChecked == true) && (ChkB16.IsChecked == true) && (ChkN2.IsChecked == true) && (ChkB1.IsChecked == true);
+        ChkB11ll.IsChecked = allChecked;
         
         _isUpdatingCheckboxes = false;
         UpdateChannelMask();
@@ -765,16 +765,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (_player == null) return;
         var activeChannels = new System.Collections.Generic.HashSet<string>();
-        if (ChkA.IsChecked == true) activeChannels.Add("A");
-        if (ChkB.IsChecked == true) activeChannels.Add("B");
-        if (ChkC.IsChecked == true) activeChannels.Add("C");
-        if (ChkD.IsChecked == true) activeChannels.Add("D");
-        if (ChkE.IsChecked == true) activeChannels.Add("E");
-        if (ChkF.IsChecked == true) activeChannels.Add("F");
-        if (ChkG.IsChecked == true) activeChannels.Add("G");
-        if (ChkH.IsChecked == true) activeChannels.Add("H");
-        if (ChkP.IsChecked == true) activeChannels.Add("P");
-        if (ChkAll.IsChecked == true) 
+        if (ChkB11.IsChecked == true) activeChannels.Add("P1");
+        if (ChkB12.IsChecked == true) activeChannels.Add("P2");
+        if (ChkB13.IsChecked == true) activeChannels.Add("P3");
+        if (ChkN1.IsChecked == true) activeChannels.Add("N1");
+        if (ChkB14.IsChecked == true) activeChannels.Add("P4");
+        if (ChkB15.IsChecked == true) activeChannels.Add("P5");
+        if (ChkB16.IsChecked == true) activeChannels.Add("P6");
+        if (ChkN2.IsChecked == true) activeChannels.Add("N2");
+        if (ChkB1.IsChecked == true) activeChannels.Add("B1");
+        if (ChkB11ll.IsChecked == true) 
         {
             activeChannels.Add("F1"); activeChannels.Add("F2"); activeChannels.Add("F3"); activeChannels.Add("F4");
             activeChannels.Add("F5"); activeChannels.Add("F6"); activeChannels.Add("F7"); activeChannels.Add("F8");
@@ -1153,4 +1153,4 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         keyboardWindow.Show(this);
     }
-}
+}

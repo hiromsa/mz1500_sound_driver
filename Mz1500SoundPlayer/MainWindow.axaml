@@ -105,7 +105,7 @@
 
         <!-- MML Editor -->
         <AvaloniaEdit:TextEditor Grid.Row="1" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Background="#1e1e1e" Foreground="#d4d4d4" BorderBrush="#333333" BorderThickness="0,0,1,0"
-                 Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r">
+                   Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;P1 P2 P3 N1 P4 t144&#x0d;&#x0a;&#x0d;&#x0a;P1 o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;P2 o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;P3 o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;N1 o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;P4 v14 o2 l1 b- a- g- f r">
           <AvaloniaEdit:TextEditor.ContextMenu>
             <ContextMenu Opening="MmlInput_ContextMenuOpening">
               <MenuItem Name="MenuOpenVirtualKeyboard" Header="カーソル行のステートで簡易鍵盤を開く..." Click="OpenVirtualKeyboard_Click"/>
@@ -180,74 +180,74 @@
               <Border Background="#1e1e1e" CornerRadius="4" Padding="10" BorderThickness="1" BorderBrush="#333333">
                 <StackPanel Spacing="4">
                   <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
-                    <ToggleButton Classes="mute" Name="ChkAll" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed" ToolTip.Tip="Toggle All Mute">
+                    <ToggleButton Classes="mute" Name="ChkB11ll" IsChecked="True" Checked="ChkB11ll_Changed" Unchecked="ChkB11ll_Changed" ToolTip.Tip="Toggle All Mute">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
                     <TextBlock Text="ALL CHANNELS" Foreground="#cccccc" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
                   </StackPanel>
 
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkA" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB11" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="A" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeA}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P1" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB11}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkB" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB12" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="B" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P2" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB12}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkC" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB13" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="C" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeC}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P3" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB13}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkD" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkN1" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="D" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeD}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
+                    <TextBlock Text="N1" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeN1}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkE" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB14" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="E" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeE}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P4" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB14}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkF" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB15" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="F" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeF}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P5" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB15}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkG" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB16" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="G" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeG}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                    <TextBlock Text="P6" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB16}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkH" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkN2" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="H" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeH}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
+                    <TextBlock Text="N2" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeN2}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
                   </Grid>
                   <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
-                    <ToggleButton Classes="mute" Name="ChkP" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                    <ToggleButton Classes="mute" Name="ChkB1" IsChecked="True" Checked="ChkB13hannel_Changed" Unchecked="ChkB13hannel_Changed" Grid.Column="0">
                       <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
                     </ToggleButton>
-                    <TextBlock Text="P" Foreground="#c586c0" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
-                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeP}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#c586c0" Background="#333333"/>
+                    <TextBlock Text="B1" Foreground="#c586c0" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB1}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#c586c0" Background="#333333"/>
                   </Grid>
                 </StackPanel>
               </Border>

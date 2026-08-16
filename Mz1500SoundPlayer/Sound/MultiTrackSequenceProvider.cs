@@ -8,7 +8,7 @@ namespace Mz1500SoundPlayer.Sound;
 public class MultiTrackSequenceProvider : ISampleProvider
 {
     public WaveFormat WaveFormat { get; }
-    public HashSet<string> ActiveChannels { get; set; } = new HashSet<string>(new[] { "A", "B", "C", "D", "E", "F", "G", "H", "P", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8" });
+    public HashSet<string> ActiveChannels { get; set; } = new HashSet<string>(new[] { "P1", "P2", "P3", "N1", "P4", "P5", "P6", "N2", "B1", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8" });
 
     // トラック毎の独立したシーケンスプロバイダを保持
     private readonly List<(string TrackName, ISampleProvider Provider)> _trackProviders;
@@ -29,7 +29,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
         {
             if (kvp.Value.Length > 0)
             {
-                bool isBeep = kvp.Key.ToUpperInvariant() == "P";
+                bool isBeep = kvp.Key.ToUpperInvariant() == "B1";
                 bool isFm = kvp.Key.ToUpperInvariant().StartsWith("F") && kvp.Key.Length == 2;
                 Console.WriteLine($"[MultiTrackSequenceProvider] Track {kvp.Key} has {kvp.Value.Length} bytes.");
                 

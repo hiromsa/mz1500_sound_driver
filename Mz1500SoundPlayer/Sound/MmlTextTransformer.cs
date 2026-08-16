@@ -47,10 +47,10 @@ public static class MmlTextTransformer
         try
         {
             var parser = new MultiTrackMmlParser();
-            var dummyData = parser.Parse("A " + prefixContext); // Force track A to gather context
-            if (dummyData.Tracks.ContainsKey("A"))
+            var dummyData = parser.Parse("P1 " + prefixContext); // Force track P1 to gather context
+            if (dummyData.Tracks.ContainsKey("P1"))
             {
-                var cmds = dummyData.Tracks["A"];
+                var cmds = dummyData.Tracks["P1"];
                 foreach (var cmd in cmds.Commands)
                 {
                     if (cmd is OctaveCommand oc) contextOctave = oc.Octave;

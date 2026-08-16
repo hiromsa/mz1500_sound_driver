@@ -42,15 +42,18 @@ namespace Mz1500SoundPlayer.Sound
             mml.AppendLine();
 
             // Mapping NES channels to MZ-1500
-            // ChannelType.Square1 -> A
-            // ChannelType.Square2 -> B
-            // ChannelType.Triangle -> C
-            // ChannelType.Noise -> D
-            var channelMap = new Dictionary<int, string>()
+            // ChannelType.Square1 -> P1
+            // ChannelType.Square2 -> P2
+            // ChannelType.Triangle -> P3
+            // ChannelType.Noise -> N1
+            // ChannelType.Dpcm -> F1
+            var channelMap = new Dictionary<int, string>
             {
-                { ChannelType.Square1, "A" },
-                { ChannelType.Square2, "B" },
-                { ChannelType.Triangle, "C" },
+                { ChannelType.Square1, "P1" },
+                { ChannelType.Square2, "P2" },
+                { ChannelType.Triangle, "P3" },
+                { ChannelType.Noise, "N1" },
+                { ChannelType.Dpcm, "F1" }
             };
 
             var rawTracks = new List<string>();

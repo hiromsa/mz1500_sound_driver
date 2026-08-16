@@ -33,6 +33,7 @@ public class EnvelopeData
 public class MmlData
 {
     public Dictionary<string, TrackData> Tracks { get; set; } = new();
+    public Dictionary<string, string> Macros { get; set; } = new();
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
     public Dictionary<int, FmToneData> FmVoiceEnvelopes { get; set; } = new();
