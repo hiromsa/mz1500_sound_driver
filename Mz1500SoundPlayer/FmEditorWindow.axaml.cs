@@ -1,336 +1,269 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
-using Mz1500SoundPlayer.Sound;
+using Avalonia.Input;
 using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Mz1500SoundPlayer;
 
 public partial class FmEditorWindow : Window
 {
-    public FmEditorViewModel ViewModel { get; }
+    public FmEditorWindowViewModel ViewModel { get; }
     public Action<string>? OnApply { get; set; }
-    
-    private readonly int _fmNumber;
+    private int _fmNumber = 1;
 
     public FmEditorWindow()
     {
         InitializeComponent();
-        ViewModel = new FmEditorViewModel();
+        ViewModel = new FmEditorWindowViewModel();
         DataContext = ViewModel;
-        _fmNumber = 1;
-        this.AddHandler(Avalonia.Input.InputElement.TextInputEvent, OnPreviewTextInput, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerMovedEvent, OnPreviewPointerMoved, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent, OnPreviewPointerReleased, RoutingStrategies.Tunnel);
     }
 
-    public FmEditorWindow(int fmNumber, string mml)
+    public FmEditorWindow(int fmNumber, string mml) : this()
     {
-        InitializeComponent();
-        ViewModel = new FmEditorViewModel();
-        DataContext = ViewModel;
         _fmNumber = fmNumber;
-
-        ViewModel.ParseMml(mml);
-        this.AddHandler(Avalonia.Input.InputElement.TextInputEvent, OnPreviewTextInput, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerMovedEvent, OnPreviewPointerMoved, RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent, OnPreviewPointerReleased, RoutingStrategies.Tunnel);
-        
-        // Initialize keyboard
-        var state = new ChannelState($"F1", 4, 15, -1, fmNumber, 0, 3, 127, 0, 0);
-        var mmlData = new MmlData();
-        var td = new FmToneData { Parameters = ParseParameters(ViewModel.ToMml(fmNumber)) };
-        td.KeyOnMask = 0x78; // Start fully unmuted
-        mmlData.FmVoiceEnvelopes[fmNumber] = td;
-        KeyboardControl.InitializeState(state, mmlData);
-
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.Op1.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.Op2.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.Op3.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.Op4.PropertyChanged += ViewModel_PropertyChanged;
+        var tab = new FmEditorTabViewModel
+        {
+            Title = $"FM{fmNumber} (トラッカー)",
+            FilePath = null
+        };
+        tab.Editor.ParseMml(mml);
+        tab.IsDirty = false;
+        ViewModel.Tabs.Add(tab);
+        ViewModel.SelectedTab = tab;
     }
 
-    private NumericUpDown? _valueDragTarget;
-    private Avalonia.Point _valueDragStartPoint;
-    private decimal _valueDragStartValue;
-    private bool _isDraggingValue;
-
-    private void OnPreviewPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private void OpenFolder_Click(object? sender, RoutedEventArgs e)
     {
-        var src = e.Source as Avalonia.Visual;
-        while (src != null)
+        string path = Path.GetFullPath(ViewModel.Library.RootPath);
+        if (!Directory.Exists(path)) return;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            if (src is NumericUpDown nud)
-            {
-                _valueDragTarget = nud;
-                _valueDragStartPoint = e.GetPosition(this);
-                _valueDragStartValue = nud.Value ?? 0;
-                _isDraggingValue = false;
-                break;
-            }
-            src = (Avalonia.Visual?)src.GetVisualParent();
+            Process.Start(new ProcessStartInfo("explorer", path) { UseShellExecute = true });
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Process.Start("open", path);
+        }
+        else
+        {
+            Process.Start("xdg-open", path);
         }
     }
 
-    private void OnPreviewPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    private void NewFile_Click(object? sender, RoutedEventArgs e)
     {
-        if (_valueDragTarget != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        var tab = new FmEditorTabViewModel
         {
-            var pos = e.GetPosition(this);
-            double deltaY = _valueDragStartPoint.Y - pos.Y;
+            Title = "Untitled",
+            FilePath = null
+        };
+        ViewModel.Tabs.Add(tab);
+        ViewModel.SelectedTab = tab;
+    }
+
+    private void TreeView_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Source is Control c && c.DataContext is FmVoiceNodeViewModel node && !node.IsDirectory)
+        {
+            OpenFile(node.FullPath);
+        }
+    }
+
+    private void TreeNode_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.ClickCount == 2 && sender is Control c && c.DataContext is FmVoiceNodeViewModel node && !node.IsDirectory)
+        {
+            OpenFile(node.FullPath);
+            e.Handled = true;
+        }
+    }
+
+    private void OpenFile(string path)
+    {
+        // Check if already open
+        var existingTab = ViewModel.Tabs.FirstOrDefault(t => t.FilePath == path);
+        if (existingTab != null)
+        {
+            ViewModel.SelectedTab = existingTab;
+            return;
+        }
+
+        try
+        {
+            string content = File.ReadAllText(path);
+            var tab = new FmEditorTabViewModel
+            {
+                Title = Path.GetFileName(path),
+                FilePath = path
+            };
+            tab.Editor.ParseMml(content);
+            tab.IsDirty = false;
             
-            if (!_isDraggingValue && Math.Abs(deltaY) > 5)
-            {
-                _isDraggingValue = true;
-                e.Pointer.Capture(_valueDragTarget);
-            }
-            
-            if (_isDraggingValue)
-            {
-                int steps = (int)(deltaY / 2.0); // 2 pixels per value step
-                decimal newValue = _valueDragStartValue + steps;
-                
-                if (newValue < _valueDragTarget.Minimum) newValue = _valueDragTarget.Minimum;
-                if (newValue > _valueDragTarget.Maximum) newValue = _valueDragTarget.Maximum;
-                
-                _valueDragTarget.Value = newValue;
-                e.Handled = true;
-            }
+            ViewModel.Tabs.Add(tab);
+            ViewModel.SelectedTab = tab;
         }
-        else if (_valueDragTarget != null && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        catch (Exception ex)
         {
-            _valueDragTarget = null;
-            _isDraggingValue = false;
+            Console.WriteLine($"Error reading file: {ex.Message}");
         }
     }
 
-    private void OnPreviewPointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    private async void CloseTab_Click(object? sender, RoutedEventArgs e)
     {
-        if (_valueDragTarget != null)
+        if (sender is Button btn && btn.DataContext is FmEditorTabViewModel tab)
         {
-            if (_isDraggingValue)
+            if (tab.IsDirty)
             {
-                e.Pointer.Capture(null);
-                e.Handled = true;
-            }
-            _valueDragTarget = null;
-            _isDraggingValue = false;
-        }
-    }
-
-    private void OnPreviewTextInput(object? sender, Avalonia.Input.TextInputEventArgs e)
-    {
-        if (!string.IsNullOrEmpty(e.Text))
-        {
-            foreach (char c in e.Text)
-            {
-                if (!char.IsDigit(c) && c != '-')
+                // Unsaved changes dialog
+                var result = await ShowMessageDialog("未保存の変更", $"'{tab.Title}' には未保存の変更があります。保存しますか？", true);
+                if (result == "Save")
                 {
-                    e.Handled = true;
+                    if (string.IsNullOrEmpty(tab.FilePath))
+                    {
+                        bool saved = await SaveAs(tab);
+                        if (!saved) return;
+                    }
+                    else
+                    {
+                        SaveFile(tab);
+                    }
+                }
+                else if (result == "Cancel")
+                {
                     return;
                 }
             }
-        }
-    }
-
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        UpdateKeyboardState();
-    }
-
-    private void UpdateKeyboardState()
-    {
-        var state = new ChannelState($"F1", 4, 15, -1, _fmNumber, 0, 3, 127, 0, 0);
-        var mmlData = new MmlData();
-        var td = new FmToneData { Parameters = ParseParameters(ViewModel.ToMml(_fmNumber)) };
-        
-        byte mask = 0x78;
-        if (ViewModel.Op1.IsMuted) mask &= unchecked((byte)~0x08);
-        if (ViewModel.Op2.IsMuted) mask &= unchecked((byte)~0x10);
-        if (ViewModel.Op3.IsMuted) mask &= unchecked((byte)~0x20);
-        if (ViewModel.Op4.IsMuted) mask &= unchecked((byte)~0x40);
-
-        bool hasSolo = ViewModel.Op1.IsSolo || ViewModel.Op2.IsSolo || ViewModel.Op3.IsSolo || ViewModel.Op4.IsSolo;
-        if (hasSolo) {
-            mask = 0;
-            if (ViewModel.Op1.IsSolo) mask |= 0x08;
-            if (ViewModel.Op2.IsSolo) mask |= 0x10;
-            if (ViewModel.Op3.IsSolo) mask |= 0x20;
-            if (ViewModel.Op4.IsSolo) mask |= 0x40;
-        }
-
-        td.KeyOnMask = mask;
-        mmlData.FmVoiceEnvelopes[_fmNumber] = td;
-        KeyboardControl.UpdateState(state, mmlData);
-    }
-
-    private int[] ParseParameters(string mml)
-    {
-        var match = System.Text.RegularExpressions.Regex.Match(mml, @"\{([^}]+)\}");
-        if (match.Success)
-        {
-            var lines = match.Groups[1].Value.Split('\n');
-            var cleanLines = System.Linq.Enumerable.Select(lines, l => {
-                int commentIdx = l.IndexOf("//");
-                return commentIdx >= 0 ? l.Substring(0, commentIdx) : l;
-            });
-            var cleanText = string.Join(" ", cleanLines);
-            var numbersMatches = System.Text.RegularExpressions.Regex.Matches(cleanText, @"\d+");
             
-            if (numbersMatches.Count >= 46)
-            {
-                var ret = new int[46];
-                for(int i = 0; i < 46; i++)
-                    ret[i] = int.Parse(numbersMatches[i].Value);
-                return ret;
-            }
+            ViewModel.Tabs.Remove(tab);
         }
-        return new int[46];
     }
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {
-        OnApply?.Invoke(ViewModel.ToMml(_fmNumber));
-        Close();
+        var tab = ViewModel.SelectedTab;
+        if (tab == null) return;
+        
+        string mml = tab.Editor.ToMml(_fmNumber);
+        OnApply?.Invoke(mml);
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    private async void CopyMml_Click(object? sender, RoutedEventArgs e)
     {
-        Close();
-    }
-
-    private async void Copy_Click(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.DataContext is FmOperatorViewModel op)
+        var tab = ViewModel.SelectedTab;
+        if (tab == null) return;
+        
+        string mml = tab.Editor.ToMml(1);
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
         {
-            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                await clipboard.SetTextAsync(op.ToClipboardString());
-            }
+            await clipboard.SetTextAsync(mml);
         }
     }
 
-    private async void Paste_Click(object? sender, RoutedEventArgs e)
+    private async void Save_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.DataContext is FmOperatorViewModel op)
+        var tab = ViewModel.SelectedTab;
+        if (tab == null) return;
+
+        if (string.IsNullOrEmpty(tab.FilePath))
         {
-            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                var text = await clipboard.GetTextAsync();
-                if (!string.IsNullOrEmpty(text))
-                {
-                    op.FromClipboardString(text);
-                }
-            }
+            await SaveAs(tab);
+        }
+        else
+        {
+            SaveFile(tab);
         }
     }
 
-    protected override void OnClosed(EventArgs e)
+    private async void SaveAs_Click(object? sender, RoutedEventArgs e)
     {
-        base.OnClosed(e);
-        KeyboardControl.DisposeAudio();
+        var tab = ViewModel.SelectedTab;
+        if (tab == null) return;
+
+        await SaveAs(tab);
     }
 
-    private Avalonia.Point _dragStartPoint;
-    private bool _isPointerDown;
-    private FmOperatorViewModel? _dragOperator;
-
-    private void OperatorPanel_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private async Task<bool> SaveAs(FmEditorTabViewModel tab)
     {
-        if (sender is Border border && border.DataContext is FmOperatorViewModel op)
+        var dialog = new SaveFileDialog
         {
-            var visual = e.Source as Avalonia.Visual;
-            while (visual != null && visual != sender)
-            {
-                if (visual is Avalonia.Controls.Primitives.ToggleButton || 
-                    visual is Button ||
-                    visual is NumericUpDown || 
-                    visual is TextBox || 
-                    visual is EnvelopeVisualizer ||
-                    visual is TlMeterControl ||
-                    visual is FbMeterControl)
-                {
-                    return; // Ignore clicks on interactive controls
-                }
-                visual = visual.GetVisualParent();
-            }
+            Title = "別名で保存",
+            DefaultExtension = "mml",
+            InitialFileName = tab.Title == "Untitled" ? "new_voice.mml" : tab.Title,
+            Directory = Path.GetFullPath(ViewModel.Library.RootPath)
+        };
+        dialog.Filters.Add(new FileDialogFilter { Name = "MML Files", Extensions = { "mml" } });
 
-            _isPointerDown = true;
-            _dragStartPoint = e.GetPosition(border);
-            _dragOperator = op;
+        var result = await dialog.ShowAsync(this);
+        if (!string.IsNullOrEmpty(result))
+        {
+            tab.FilePath = result;
+            tab.Title = Path.GetFileName(result);
+            SaveFile(tab);
+            ViewModel.Library.Refresh();
+            return true;
+        }
+        return false;
+    }
+
+    private void SaveFile(FmEditorTabViewModel tab)
+    {
+        if (string.IsNullOrEmpty(tab.FilePath)) return;
+
+        try
+        {
+            string mml = tab.Editor.ToMml(1);
+            File.WriteAllText(tab.FilePath, mml);
+            tab.IsDirty = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving file: {ex.Message}");
         }
     }
 
-    private async void OperatorPanel_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    private async Task<string> ShowMessageDialog(string title, string message, bool showCancel)
     {
-        if (!_isPointerDown || _dragOperator == null || sender is not Border border) return;
-
-        var currentPoint = e.GetPosition(border);
-        var diff = currentPoint - _dragStartPoint;
-
-        if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
+        var dialog = new Window
         {
-            _isPointerDown = false;
-            
-            var data = new Avalonia.Input.DataObject();
-            data.Set("FmOperatorViewModel", _dragOperator);
+            Title = title,
+            Width = 400,
+            Height = 150,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
 
-            await Avalonia.Input.DragDrop.DoDragDrop(e, data, Avalonia.Input.DragDropEffects.Copy);
-        }
-    }
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(20), Spacing = 20 };
+        panel.Children.Add(new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
 
-    private void OperatorPanel_PointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
-    {
-        if (_isPointerDown && _dragOperator != null && sender is Border border)
+        var btnPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Spacing = 10 };
+        
+        var tcs = new TaskCompletionSource<string>();
+
+        var btnSave = new Button { Content = "保存 (Save)" };
+        btnSave.Click += (_, _) => { tcs.SetResult("Save"); dialog.Close(); };
+        btnPanel.Children.Add(btnSave);
+
+        var btnDiscard = new Button { Content = "破棄 (Discard)" };
+        btnDiscard.Click += (_, _) => { tcs.SetResult("Discard"); dialog.Close(); };
+        btnPanel.Children.Add(btnDiscard);
+
+        if (showCancel)
         {
-            _isPointerDown = false;
-            
-            bool isShift = e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift);
-
-            if (isShift)
-            {
-                _dragOperator.IsSelected = !_dragOperator.IsSelected;
-            }
-            else
-            {
-                var allOps = new[] { ViewModel.Op1, ViewModel.Op2, ViewModel.Op3, ViewModel.Op4 };
-                var selectedCount = System.Linq.Enumerable.Count(allOps, o => o.IsSelected);
-
-                if (selectedCount == 1 && _dragOperator.IsSelected)
-                {
-                    _dragOperator.IsSelected = false; // toggle off
-                }
-                else
-                {
-                    foreach (var op in allOps)
-                    {
-                        op.IsSelected = (op == _dragOperator);
-                    }
-                }
-            }
-
-            e.Handled = true;
+            var btnCancel = new Button { Content = "キャンセル (Cancel)" };
+            btnCancel.Click += (_, _) => { tcs.SetResult("Cancel"); dialog.Close(); };
+            btnPanel.Children.Add(btnCancel);
         }
-        _dragOperator = null;
-        _isPointerDown = false;
-    }
 
-    private void OperatorPanel_Drop(object? sender, Avalonia.Input.DragEventArgs e)
-    {
-        if (sender is Border border && border.DataContext is FmOperatorViewModel targetOp)
-        {
-            if (e.Data.Contains("FmOperatorViewModel"))
-            {
-                var sourceOp = e.Data.Get("FmOperatorViewModel") as FmOperatorViewModel;
-                if (sourceOp != null && sourceOp != targetOp)
-                {
-                    targetOp.FromClipboardString(sourceOp.ToClipboardString());
-                    e.Handled = true;
-                }
-            }
-        }
+        panel.Children.Add(btnPanel);
+        dialog.Content = panel;
+
+        await dialog.ShowDialog(this);
+        return await tcs.Task;
     }
 }

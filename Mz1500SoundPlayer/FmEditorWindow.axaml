@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Mz1500SoundPlayer"
         x:Class="Mz1500SoundPlayer.FmEditorWindow"
-        x:DataType="local:FmEditorViewModel"
+        x:DataType="local:FmEditorWindowViewModel"
         Title="FM音色エディタ"
         Width="1050" Height="850"
         MinWidth="900" MinHeight="750"
@@ -10,232 +10,84 @@
         Background="#1e1e1e" Foreground="#d4d4d4">
   
   <Window.Styles>
-    <Style Selector="NumericUpDown">
-      <Setter Property="Background" Value="#181818"/>
-      <Setter Property="Foreground" Value="#E0E0E0"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="ShowButtonSpinner" Value="False"/>
-      <Setter Property="Width" Value="50"/>
-      <Setter Property="MinHeight" Value="26"/>
+    <Style Selector="TreeViewItem">
       <Setter Property="Padding" Value="4,2"/>
-      <Setter Property="Margin" Value="0"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="BorderBrush" Value="#606060"/>
-      <Setter Property="CornerRadius" Value="2"/>
-      <Setter Property="HorizontalContentAlignment" Value="Right"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
-    <Style Selector="TextBlock.label">
-      <Setter Property="Foreground" Value="#888888"/>
-      <Setter Property="FontSize" Value="10"/>
-      <Setter Property="HorizontalAlignment" Value="Center"/>
-      <Setter Property="Margin" Value="0,0,0,1"/>
+    <Style Selector="TabControl">
+      <Setter Property="Background" Value="#1e1e1e"/>
+      <Setter Property="Padding" Value="0"/>
     </Style>
-    <Style Selector="Border.panel">
-      <Setter Property="BorderBrush" Value="#404040"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="2"/>
+    <Style Selector="TabItem">
+      <Setter Property="Background" Value="#2d2d30"/>
+      <Setter Property="Foreground" Value="#d4d4d4"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Margin" Value="0,0,1,0"/>
+      <Setter Property="Padding" Value="10,6"/>
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="Background" Value="#1e1e1e"/>
+      <Setter Property="Foreground" Value="#ffffff"/>
+      <Setter Property="BorderBrush" Value="#007ACC"/>
+      <Setter Property="BorderThickness" Value="0,2,0,0"/>
     </Style>
   </Window.Styles>
 
-  <Window.Resources>
-    <!-- Operator Template -->
-    <DataTemplate x:Key="OpTemplate" x:DataType="local:FmOperatorViewModel">
-      <Border Classes="panel" Margin="4" Padding="8" 
-              PointerPressed="OperatorPanel_PointerPressed"
-              PointerMoved="OperatorPanel_PointerMoved"
-              PointerReleased="OperatorPanel_PointerReleased"
-              DragDrop.AllowDrop="True"
-              DragDrop.Drop="OperatorPanel_Drop">
-        <Border.Styles>
-          <Style Selector="Border">
-            <Setter Property="Background" Value="#252526" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-          </Style>
-          <Style Selector="Border.carrier">
-            <Setter Property="Background" Value="#2D2D30" />
-          </Style>
-          <Style Selector="Border.selected">
-            <Setter Property="BorderBrush" Value="#007ACC" />
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="Background" Value="#2A303A" />
-          </Style>
-        </Border.Styles>
-        <Classes.carrier>
-          <MultiBinding Converter="{x:Static BoolConverters.And}">
-            <Binding Path="IsCarrier"/>
-          </MultiBinding>
-        </Classes.carrier>
-        <Classes.selected>
-          <MultiBinding Converter="{x:Static BoolConverters.And}">
-            <Binding Path="IsSelected"/>
-          </MultiBinding>
-        </Classes.selected>
-        
-        <StackPanel>
-          <!-- Title row with M/S buttons and Copy/Paste -->
-          <Grid ColumnDefinitions="*, Auto">
-            <TextBlock Grid.Column="0" Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#4ec9b0" Margin="0,0,0,6"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
-              <ToggleButton Content="選択" IsChecked="{Binding IsSelected}" Width="36" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" Margin="0,0,10,0" ToolTip.Tip="複数選択してパラメータを連動編集します"/>
-              <Button Content="📋" Click="Copy_Click" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="11" CornerRadius="2" Background="#333333" Foreground="#cccccc" ToolTip.Tip="パラメータをコピー"/>
-              <Button Content="📎" Click="Paste_Click" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="11" CornerRadius="2" Background="#333333" Foreground="#cccccc" ToolTip.Tip="パラメータを貼り付け" Margin="0,0,10,0"/>
-              <ToggleButton Content="M" IsChecked="{Binding IsMuted}" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" />
-              <ToggleButton Content="S" IsChecked="{Binding IsSolo}" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" />
+  <Grid ColumnDefinitions="250, 4, *">
+    
+    <!-- Sidebar -->
+    <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto" Background="#252526">
+      <!-- Sidebar Header -->
+      <Border Grid.Row="0" BorderBrush="#333333" BorderThickness="0,0,0,1" Padding="10">
+        <Grid ColumnDefinitions="*, Auto">
+          <TextBlock Grid.Column="0" Text="VOICES" FontWeight="Bold" FontSize="11" Foreground="#cccccc" VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+            <Button Content="➕" Click="NewFile_Click" Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="12" Background="Transparent" ToolTip.Tip="新規ファイル作成"/>
+            <Button Content="📂" Click="OpenFolder_Click" Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="12" Background="Transparent" ToolTip.Tip="エクスプローラーで開く"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+      
+      <!-- TreeView -->
+      <TreeView Grid.Row="1" ItemsSource="{Binding Library.Nodes}" Background="Transparent" DoubleTapped="TreeView_DoubleTapped" Margin="0,5,0,0">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="local:FmVoiceNodeViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" PointerPressed="TreeNode_PointerPressed">
+              <TextBlock Text="{Binding Name}" Foreground="#cccccc" />
             </StackPanel>
-          </Grid>
-          
-          <Grid ColumnDefinitions="Auto, *">
-            <!-- Left side: TL meter and Numeric -->
-            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-              <local:TlMeterControl Value="{Binding Tl}" Height="100" ToolTip.Tip="Total Level [TL]: 音量 (0=最大, 127=無音)"/>
-              <NumericUpDown Value="{Binding Tl}" Minimum="0" Maximum="127" FormatString="0" Width="40" Margin="0,4,0,0" ToolTip.Tip="TL"/>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+    </Grid>
+
+    <GridSplitter Grid.Column="1" Background="#333333" ResizeDirection="Columns"/>
+
+    <!-- Editor Area -->
+    <Grid Grid.Column="2" RowDefinitions="*, Auto">
+      <TabControl Grid.Row="0" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
+        <TabControl.ItemTemplate>
+          <DataTemplate x:DataType="local:FmEditorTabViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding DisplayTitle}" VerticalAlignment="Center"/>
+              <Button Content="✕" Click="CloseTab_Click" DataContext="{Binding}" Width="16" Height="16" Padding="0" FontSize="10" Background="Transparent" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
             </StackPanel>
-            
-            <!-- Right side: Params and Envelope -->
-            <StackPanel Grid.Column="1" Spacing="6">
-              
-              <!-- Pitch Params Grid -->
-              <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="MUL"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Multiply [MUL]: 倍率 0=1/2, 1=1倍, 2=2倍...15=15倍"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Mul}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="DT1"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Detune 1 [DT1]: 微細な音程ずらし (0-7)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Dt1}" Minimum="0" Maximum="7" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="DT2"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Detune 2 [DT2]: 大きな音程ずらし (0-3)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding Dt2}" Minimum="0" Maximum="3" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="KS"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Key Scale [KS]: 高音域の減衰速度 (0-3)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Ks}" Minimum="0" Maximum="3" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="AME"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="AM Enable [AME]: AM変調有効 0=OFF, 1=ON"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding Ame}" Minimum="0" Maximum="1" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-              </Grid>
-              
-              <!-- Envelope Params Grid -->
-              <TextBlock Text="Envelope" FontWeight="Bold" Margin="0,4,0,1" Foreground="#aaaaaa" FontSize="11"/>
-              <Grid ColumnDefinitions="*, *, *, *, *" RowDefinitions="Auto, Auto">
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="AR"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Attack Rate [AR]: 音の立ち上がり速度 (0-31)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="0" Value="{Binding Ar}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="D1R"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 1 Rate [D1R]: ピーク後の減衰速度 (0-31)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding D1r}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="D2R"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 2 Rate [D2R]: サステイン中の減衰速度 (0-31)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding D2r}" Minimum="0" Maximum="31" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="RR"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Release Rate [RR]: キーオフ後の消音速度 (0-15)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding Rr}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-                
-                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center">
-                  <TextBlock Classes="label" Text="D1L"/>
-                  <TextBlock Classes="label" Text="?" Foreground="#555" Margin="2,0,0,0" ToolTip.Tip="Decay 1 Level [D1L]: サステインレベル (0-15)"/>
-                </StackPanel>
-                <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding D1l}" Minimum="0" Maximum="15" FormatString="0" HorizontalAlignment="Center" Margin="0,2"/>
-              </Grid>
-              
-              <!-- Envelope Graph -->
-              <local:EnvelopeVisualizer Height="110" Margin="0,4,0,0"
-                Ar="{Binding Ar}" D1r="{Binding D1r}" D2r="{Binding D2r}"
-                Rr="{Binding Rr}" D1l="{Binding D1l}" Tl="{Binding Tl}"/>
-            </StackPanel>
-          </Grid>
+          </DataTemplate>
+        </TabControl.ItemTemplate>
+        <TabControl.ContentTemplate>
+          <DataTemplate x:DataType="local:FmEditorTabViewModel">
+            <local:FmEditorControl DataContext="{Binding Editor}" />
+          </DataTemplate>
+        </TabControl.ContentTemplate>
+      </TabControl>
+
+      <Border Grid.Row="1" Background="#2d2d30" Padding="10" BorderBrush="#333333" BorderThickness="0,1,0,0">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+          <Button Content="クリップボードにコピー" Click="CopyMml_Click" Background="#333333" Foreground="White" Padding="12,6" CornerRadius="2"/>
+          <Button Content="トラッカーに反映 (Apply)" Click="Apply_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
+          <Button Content="上書き保存 (Save)" Click="Save_Click" Background="#007ACC" Foreground="White" Padding="12,6" CornerRadius="2"/>
+          <Button Content="別名で保存 (Save As)" Click="SaveAs_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
         </StackPanel>
       </Border>
-    </DataTemplate>
-  </Window.Resources>
-  
-  <Grid RowDefinitions="Auto, *, Auto">
-    
-    <!-- Header: ALG and FB -->
-    <Border Classes="panel" Grid.Row="0" Margin="10,10,10,5" Padding="8" Background="#2d2d30">
-      <StackPanel Orientation="Horizontal" Spacing="20">
-        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <TextBlock Text="Algorithm (ALG):" VerticalAlignment="Center" FontWeight="Bold"/>
-          <ListBox SelectedIndex="{Binding Alg}" Background="Transparent" BorderThickness="0">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel Orientation="Horizontal" />
-              </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-            <ListBox.Styles>
-              <Style Selector="ListBoxItem">
-                <Setter Property="Padding" Value="2"/>
-                <Setter Property="Margin" Value="0,0,4,0"/>
-                <Setter Property="CornerRadius" Value="2"/>
-              </Style>
-            </ListBox.Styles>
-            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-          </ListBox>
-        </StackPanel>
-        
-        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <TextBlock Text="Feedback (FB):" VerticalAlignment="Center" FontWeight="Bold"/>
-          <StackPanel Orientation="Vertical" Spacing="2">
-            <local:FbMeterControl Value="{Binding Fb}" Width="100" Height="24" ToolTip.Tip="フィードバック: OP1の自己帰還量 (0-7)"/>
-            <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" FormatString="0" ToolTip.Tip="フィードバック (0-7)"/>
-          </StackPanel>
-        </StackPanel>
-      </StackPanel>
-    </Border>
-
-    <!-- Operator Editor: 2x2 Grid with ScrollViewer -->
-    <ScrollViewer Grid.Row="1" Margin="10,5">
-      <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
-        <ContentControl Grid.Row="0" Grid.Column="0" Content="{Binding Op1}" ContentTemplate="{StaticResource OpTemplate}"/>
-        <ContentControl Grid.Row="0" Grid.Column="1" Content="{Binding Op2}" ContentTemplate="{StaticResource OpTemplate}"/>
-        <ContentControl Grid.Row="1" Grid.Column="0" Content="{Binding Op3}" ContentTemplate="{StaticResource OpTemplate}"/>
-        <ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding Op4}" ContentTemplate="{StaticResource OpTemplate}"/>
-      </Grid>
-    </ScrollViewer>
-
-    <!-- Footer: Keyboard and Controls -->
-    <Border Classes="panel" Grid.Row="2" Background="#2d2d30" Padding="8" Margin="10,0,10,10">
-      <Grid RowDefinitions="Auto, Auto">
-        <local:VirtualKeyboardControl x:Name="KeyboardControl" Grid.Row="0" HorizontalAlignment="Stretch" Margin="0,0,0,8" IsEditorMode="True"/>
-        
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-          <Button Content="キャンセル (Cancel)" Click="Cancel_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
-          <Button Content="反映 (Apply)" Click="Apply_Click" Background="#007ACC" Foreground="White" FontWeight="Bold" Padding="12,6" CornerRadius="2"/>
-        </StackPanel>
-      </Grid>
-    </Border>
+    </Grid>
 
   </Grid>
 </Window>
