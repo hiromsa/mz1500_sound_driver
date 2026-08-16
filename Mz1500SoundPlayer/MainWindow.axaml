@@ -3,12 +3,70 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Mz1500SoundPlayer"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="Mz1500SoundPlayer.MainWindow"
         x:DataType="local:MainWindow"
         xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         Title="Mz1500SoundPlayer"
         Background="#1e1e1e" Foreground="#d4d4d4">
+  
+  <Window.Resources>
+    <FontFamily x:Key="CodiconFont">avares://Mz1500SoundPlayer/Assets/codicon.ttf#codicon</FontFamily>
+  </Window.Resources>
+
+  <Window.Styles>
+    <!-- Mute ToggleButton Style -->
+    <Style Selector="ToggleButton.mute">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="#d4d4d4"/>
+      <Setter Property="Padding" Value="4"/>
+      <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+    <Style Selector="ToggleButton.mute:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#333333"/>
+    </Style>
+    <Style Selector="ToggleButton.mute:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#007acc"/>
+    </Style>
+    <Style Selector="ToggleButton.mute:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#333333"/>
+      <Setter Property="Foreground" Value="#007acc"/>
+    </Style>
+    
+    <!-- Flat Button -->
+    <Style Selector="Button.flat">
+      <Setter Property="Background" Value="#333333"/>
+      <Setter Property="Foreground" Value="#cccccc"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+    <Style Selector="Button.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#444444"/>
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#0e639c"/>
+      <Setter Property="Foreground" Value="#ffffff"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1177bb"/>
+    </Style>
+
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="#8c2f2f"/>
+      <Setter Property="Foreground" Value="#ffffff"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#a63636"/>
+    </Style>
+  </Window.Styles>
+
   <DockPanel>
     <!-- Top Menu -->
     <Menu DockPanel.Dock="Top" Background="#333333">
@@ -28,123 +86,198 @@
       </MenuItem>
     </Menu>
 
-    <!-- 2-Column layout: Left for Editor, Right for Controls -->
-    <TextBox Name="LogTextBox" DockPanel.Dock="Bottom" Height="100" 
-             IsReadOnly="True" TextWrapping="Wrap" 
-             FontFamily="Consolas, Courier New, monospace" FontSize="12" 
-             Background="#1E1E1E" Foreground="#D4D4D4" Margin="0,5,0,0"/>
-    <Grid Margin="15" ColumnDefinitions="*, 250" RowDefinitions="Auto, *">
+    <Grid ColumnDefinitions="*, 300">
       
-      <!-- LEFT PANEL -->
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="MZ-1500 Sound Player" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5" Foreground="#cccccc"/>
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="MMLを入力してPlayボタンを押してください:" Margin="5,25,0,5" Foreground="#858585"/>
-
-      <AvaloniaEdit:TextEditor Grid.Row="1" Grid.Column="0" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Margin="0,0,15,5"
-               Background="#1e1e1e" Foreground="#d4d4d4"
-               Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r">
-        <AvaloniaEdit:TextEditor.ContextMenu>
-          <ContextMenu Opening="MmlInput_ContextMenuOpening">
-            <MenuItem Name="MenuOpenVirtualKeyboard" Header="カーソル行のステートで簡易鍵盤を開く..." Click="OpenVirtualKeyboard_Click"/>
-            <Separator/>
-            <MenuItem Name="MenuEditEnvelope" Header="カーソル行のエンベロープを編集..." Click="EditEnvelope_Click"/>
-            <MenuItem Name="MenuEditFmVoice" Header="FM音色エディタを開く..." Click="EditFmVoice_Click"/>
-            <MenuItem Name="MenuNewVolEnvelope" Header="新規音量エンベロープ(@v)の挿入..." Click="NewVolEnvelope_Click"/>
-            <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
-            <MenuItem Name="MenuNewFmVoice" Header="新規FM音色(@FM)の挿入..." Click="NewFmVoice_Click"/>
-            <Separator/>
-            <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
-            <MenuItem Header="選択範囲のMMLを整形 (フォーマッタ)..." Click="FormatMmlSelection_Click"/>
-          </ContextMenu>
-        </AvaloniaEdit:TextEditor.ContextMenu>
-      </AvaloniaEdit:TextEditor>
-
-      <!-- RIGHT PANEL: Controls wrapped in ScrollViewer -->
-      <ScrollViewer Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="10" Margin="5,0,0,5" Background="#252526">
-          
-          <!-- Playback Group -->
-          <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-            <StackPanel Spacing="5">
-              <TextBlock Text="▶️ Playback" FontWeight="Bold" Foreground="#cccccc" Margin="0,0,0,5"/>
-              <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,0,5" HorizontalAlignment="Center">
-                <TextBlock Text="Vol:" VerticalAlignment="Center" Foreground="#cccccc"/>
-                <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="140" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
+      <!-- LEFT PANEL: Editor & Log -->
+      <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto, 140">
+        
+        <!-- Editor Tab Header -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#333333" BorderThickness="0,0,1,1">
+          <StackPanel Orientation="Horizontal">
+            <Border Background="#1e1e1e" BorderBrush="#007acc" BorderThickness="0,2,0,0" Padding="15,6">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="&#xea7b;" FontFamily="{StaticResource CodiconFont}" Foreground="#4ec9b0" VerticalAlignment="Center"/>
+                <TextBlock Text="untitled.mml" Foreground="#d4d4d4" FontSize="13" VerticalAlignment="Center"/>
               </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- MML Editor -->
+        <AvaloniaEdit:TextEditor Grid.Row="1" Name="MmlInput" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" WordWrap="True" FontFamily="Consolas" ShowLineNumbers="True" Background="#1e1e1e" Foreground="#d4d4d4" BorderBrush="#333333" BorderThickness="0,0,1,0"
+                 Text="; ZELDA OP (Converted from MZSoundDriverProject VB source)&#x0d;&#x0a;; Note: Noise commands (zt/zs) and Pitch Envelopes (EP) are currently unsupported and have been removed.&#x0d;&#x0a;&#x0d;&#x0a;@v0 = {12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;@v1 = {13, 13, 10, 10, 11, 12, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10}&#x0d;&#x0a;&#x0d;&#x0a;ABCDE t144&#x0d;&#x0a;&#x0d;&#x0a;A o4 @v0 l8 b-2 r f f b- a-16 g-16 a-8^4 r2 b-2 r g- g- b- a16 g16 a8^4 r2 r&#x0d;&#x0a;B o3 @v1 l4 &lt;b-&gt; r r2 &lt;a-&gt; r r2 &lt;g-&gt; r r2 &lt;f&gt; r r2 r&#x0d;&#x0a;C o4 @v0 l8 d2^8 d d d c16 c16 c8^2^8 r c+2^8 c+ c+ c+ c16 c16 c8^2^4 r&#x0d;&#x0a;D o3 @v1 l4 &lt;r&gt; f b-2 &lt;r&gt; e- a-2 &lt;r&gt; d- g-2 &lt;r&gt; c f2 r&#x0d;&#x0a;E v14 o2 l1 b- a- g- f r">
+          <AvaloniaEdit:TextEditor.ContextMenu>
+            <ContextMenu Opening="MmlInput_ContextMenuOpening">
+              <MenuItem Name="MenuOpenVirtualKeyboard" Header="カーソル行のステートで簡易鍵盤を開く..." Click="OpenVirtualKeyboard_Click"/>
+              <Separator/>
+              <MenuItem Name="MenuEditEnvelope" Header="カーソル行のエンベロープを編集..." Click="EditEnvelope_Click"/>
+              <MenuItem Name="MenuEditFmVoice" Header="FM音色エディタを開く..." Click="EditFmVoice_Click"/>
+              <MenuItem Name="MenuNewVolEnvelope" Header="新規音量エンベロープ(@v)の挿入..." Click="NewVolEnvelope_Click"/>
+              <MenuItem Name="MenuNewPitchEnvelope" Header="新規音高エンベロープ(@EP)の挿入..." Click="NewPitchEnvelope_Click"/>
+              <MenuItem Name="MenuNewFmVoice" Header="新規FM音色(@FM)の挿入..." Click="NewFmVoice_Click"/>
+              <Separator/>
+              <MenuItem Header="選択範囲のMMLを編集 (Ctrl+E)" Click="EditMmlSelection_Click"/>
+              <MenuItem Header="選択範囲のMMLを整形 (フォーマッタ)..." Click="FormatMmlSelection_Click"/>
+            </ContextMenu>
+          </AvaloniaEdit:TextEditor.ContextMenu>
+        </AvaloniaEdit:TextEditor>
+
+        <!-- Terminal Header -->
+        <Border Grid.Row="2" Background="#1e1e1e" BorderBrush="#333333" BorderThickness="0,1,1,1" Padding="15,6">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="TERMINAL" Foreground="#e7e7e7" FontSize="11" FontWeight="Bold"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Log Panel -->
+        <TextBox Grid.Row="3" Name="LogTextBox" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas, Courier New, monospace" FontSize="12" Background="#1e1e1e" Foreground="#cccccc" BorderThickness="0,0,1,0"/>
+      </Grid>
+
+      <!-- RIGHT PANEL: Sidebar -->
+      <Border Grid.Column="1" Background="#252526" BorderBrush="#333333" BorderThickness="0">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="0">
+            
+            <!-- Playback Section Header -->
+            <Border Background="#2d2d2d" Padding="10,6" BorderBrush="#333333" BorderThickness="0,0,0,1">
+              <TextBlock Text="PLAYBACK" FontSize="11" FontWeight="Bold" Foreground="#cccccc"/>
+            </Border>
+
+            <!-- Playback Content -->
+            <StackPanel Spacing="15" Margin="15">
               
-              <CheckBox Name="ChkMetronome" Content="Metronome (Sync Tr.A)" IsChecked="False" Checked="ChkMetronome_Changed" Unchecked="ChkMetronome_Changed" Margin="0,0,0,5" Foreground="#cccccc"/>
+              <!-- Buttons -->
+              <Grid ColumnDefinitions="*, *">
+                <Button Classes="primary" Name="PlayMmlButton" Click="PlayMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0" Margin="0,0,4,0" Padding="0,6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xeb2c;" FontFamily="{StaticResource CodiconFont}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Play" VerticalAlignment="Center" FontWeight="Bold"/>
+                  </StackPanel>
+                </Button>
+                <Button Classes="danger" Name="StopButton" Click="StopButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1" Margin="4,0,0,0" Padding="0,6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xead7;" FontFamily="{StaticResource CodiconFont}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Stop" VerticalAlignment="Center" FontWeight="Bold"/>
+                  </StackPanel>
+                </Button>
+              </Grid>
 
-              <StackPanel Orientation="Vertical" Spacing="2" Margin="0,0,0,10">
-                <CheckBox Name="ChkAll" Content="ALL" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed" Foreground="#d4d4d4" Margin="0,0,0,5"/>
+              <!-- Master Vol & Metronome -->
+              <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="&#xeb75;" FontFamily="{StaticResource CodiconFont}" VerticalAlignment="Center" Foreground="#cccccc"/>
+                  <TextBlock Text="Vol" VerticalAlignment="Center" Foreground="#cccccc" Width="25"/>
+                  <Slider Name="MasterVolumeSlider" Minimum="0" Maximum="1" Value="0.5" Width="170" VerticalAlignment="Center" ValueChanged="MasterVolumeSlider_ValueChanged"/>
+                </StackPanel>
                 
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkA" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="A ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeA}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkB" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="B ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkC" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="C ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeC}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkD" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="D 🥁" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeD}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="DarkOrange"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkE" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="E ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeE}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkF" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="F ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeF}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkG" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="G ♬" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeG}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="LimeGreen"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkH" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="H 🥁" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeH}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="DarkOrange"/>
-                </Grid>
-                <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,0,0,2">
-                  <CheckBox Name="ChkP" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0"/>
-                  <TextBlock Text="P 📢" Foreground="White" VerticalAlignment="Center" Margin="5,0,15,0" Grid.Column="1"/>
-                  <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeP}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,20,0" Grid.Column="2" Foreground="MediumOrchid"/>
-                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="&#xea82;" FontFamily="{StaticResource CodiconFont}" VerticalAlignment="Center" Foreground="#cccccc"/>
+                  <CheckBox Name="ChkMetronome" Content="Metronome (Sync A)" IsChecked="False" Checked="ChkMetronome_Changed" Unchecked="ChkMetronome_Changed" Foreground="#cccccc" FontSize="13"/>
+                </StackPanel>
               </StackPanel>
 
-              <Button Name="PlayMmlButton" Content="Play" Click="PlayMmlButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#0e639c" Foreground="#ffffff" FontWeight="Bold" Margin="0,5,0,0"/>
-              <Button Name="StopButton" Content="Stop" Click="StopButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#8c2f2f" Foreground="#ffffff"/>
-            </StackPanel>
-          </Border>
+              <!-- Channels -->
+              <Border Background="#1e1e1e" CornerRadius="4" Padding="10" BorderThickness="1" BorderBrush="#333333">
+                <StackPanel Spacing="4">
+                  <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
+                    <ToggleButton Classes="mute" Name="ChkAll" IsChecked="True" Checked="ChkAll_Changed" Unchecked="ChkAll_Changed" ToolTip.Tip="Toggle All Mute">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="ALL CHANNELS" Foreground="#cccccc" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                  </StackPanel>
 
-          <!-- PCG Image Group -->
-          <Border BorderBrush="#3c3c3c" BorderThickness="1" CornerRadius="4" Padding="10">
-            <StackPanel Spacing="5">
-              <TextBlock Text="PCG Image (320x200 8color)" Foreground="#cccccc" FontWeight="Bold" Margin="0,0,0,5"/>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkA" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="A" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeA}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkB" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="B" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeB}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkC" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="C" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeC}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkD" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="D" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeD}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkE" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="E" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeE}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkF" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="F" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeF}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkG" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="G" Foreground="#d4d4d4" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeG}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#4ec9b0" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkH" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="H" Foreground="#dcb67a" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeH}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#dcb67a" Background="#333333"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,2">
+                    <ToggleButton Classes="mute" Name="ChkP" IsChecked="True" Checked="ChkChannel_Changed" Unchecked="ChkChannel_Changed" Grid.Column="0">
+                      <TextBlock Text="&#xeab2;" FontFamily="{StaticResource CodiconFont}" FontSize="14"/>
+                    </ToggleButton>
+                    <TextBlock Text="P" Foreground="#c586c0" VerticalAlignment="Center" Margin="5,0,10,0" Grid.Column="1" Width="15" TextAlignment="Center"/>
+                    <ProgressBar MinWidth="0" Minimum="0" Maximum="15" Value="{Binding CurrentVolumeP}" Height="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="2" Foreground="#c586c0" Background="#333333"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+
+            <!-- PCG Image Section Header -->
+            <Border Background="#2d2d2d" Padding="10,6" BorderBrush="#333333" BorderThickness="0,1,0,1">
+              <TextBlock Text="PCG IMAGE" FontSize="11" FontWeight="Bold" Foreground="#cccccc"/>
+            </Border>
+
+            <!-- PCG Image Content -->
+            <StackPanel Spacing="10" Margin="15">
+              <TextBlock Text="(320x200 8color)" Foreground="#858585" FontSize="11" Margin="0,-5,0,0"/>
               <Grid ColumnDefinitions="*, *, Auto">
-                <Button Name="LoadPcgImageButton" Content="Load File..." Click="LoadPcgImageButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0" Margin="0,0,5,0"/>
-                <Button Name="PastePcgImageButton" Content="Paste" Click="PastePcgImageButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1" Margin="0,0,5,0"/>
-                <Button Name="ClearPcgImageButton" Content="Clear" Click="ClearPcgImageButton_Click" Grid.Column="2"/>
+                <Button Classes="flat" Name="LoadPcgImageButton" Content="Load" Click="LoadPcgImageButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0" Margin="0,0,5,0" Padding="0,4"/>
+                <Button Classes="flat" Name="PastePcgImageButton" Content="Paste" Click="PastePcgImageButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1" Margin="0,0,5,0" Padding="0,4"/>
+                <Button Classes="flat" Name="ClearPcgImageButton" Click="ClearPcgImageButton_Click" Grid.Column="2" Padding="6,4">
+                  <TextBlock Text="&#xeabf;" FontFamily="{StaticResource CodiconFont}" Foreground="#cccccc" VerticalAlignment="Center"/>
+                </Button>
               </Grid>
-              <Border Background="#1e1e1e" BorderBrush="#333333" BorderThickness="1" CornerRadius="2" Margin="0,5,0,0" Height="140" HorizontalAlignment="Stretch">
+              <Border Background="#1e1e1e" BorderBrush="#333333" BorderThickness="1" CornerRadius="2" Margin="0" Height="140" HorizontalAlignment="Stretch">
                 <Image Name="PcgImagePreview" Stretch="Uniform"/>
               </Border>
             </StackPanel>
-          </Border>
 
-        </StackPanel>
-      </ScrollViewer>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
     </Grid>
   </DockPanel>
 </Window>

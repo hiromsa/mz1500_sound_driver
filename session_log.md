@@ -66,8 +66,13 @@
 7. **アルゴリズム画像上の選択OPハイライト**
    - オペレーター（OP1〜OP4）を選択した際、対応するアルゴリズム画像内のアイコンも連動して青色枠でハイライトされるように改善。
 
-## 2026-08-16 Update
-- Added Codicons for file/folder.
-- Preserved tree view expansion state.
-- Fixed FM keyboard audio by correctly applying KeyOnMask.
-- Fixed PSG release buzzer by implementing pointer capture and envelope decay.
+## 2026-08-16 追加分
+- ファイル/フォルダ用にCodiconを追加。
+- ツリービューの展開状態が保持されるように修正。
+- FM仮想キーボードの発音バグを修正（KeyOnMaskの適用漏れを修正）。
+- PSG（DCSG）でキーを離した後にノイズが鳴り続けるバグを修正（Pointer Captureとエンベロープ減衰の実装）。
+- ファイル/フォルダ削除時の確認を「yes」手入力から、シンプルな「はい」「いいえ」ダイアログ(`ConfirmDialog`)へ変更。
+- `AlgVisualizer`（アルゴリズム表示）について、現在選択されているアルゴリズムにのみ「キャリア＝オレンジ、モジュレータ＝枠のみ」の色を適用し、非選択のものは白・グレーになるよう修正。
+- アルゴリズム図との対応をわかりやすくするため、OP1等のタイトルの左側に四角いアイコン（[1]、[2]など）を追加。
+- MMLエディタ（メイン画面）のUIをVSCode風に刷新：不要な説明テキストを削除し、エディタタブ風のヘッダーや、Codiconを用いたアイコンボタン、スリムな音量メーター、ダークテーマのフラットデザインを適用。
+- MMLエディタ上でCodiconのアイコンが正しく表示されない（文字コードの誤りにより別のアイコンになっていた）不具合を修正。
