@@ -46,11 +46,10 @@ namespace Mz1500SoundPlayer
             if (w < 8 || h < 30) return;
 
             double labelH = 14; // "TL" label at top
-            double valueH = 14; // value display at bottom
             double barX = 4;
             double barW = w - 8;
             double barY = labelH + 2;
-            double barH = h - labelH - valueH - 4;
+            double barH = h - labelH - 4; // Use full height minus margins
 
             // Label "TL"
             var typeface = new Typeface("Segoe UI");
@@ -74,11 +73,7 @@ namespace Mz1500SoundPlayer
                 context.DrawRectangle(new SolidColorBrush(AccentColor), null, fillRect);
             }
 
-            // Value text
-            var valueBrush = new SolidColorBrush(TextColor);
-            var vt = new FormattedText(Value.ToString(), CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, typeface, 11, valueBrush);
-            context.DrawText(vt, new Point((w - vt.Width) / 2, h - valueH));
+            // Value text removed as per user request
         }
 
         protected override void OnPointerPressed(PointerPressedEventArgs e)

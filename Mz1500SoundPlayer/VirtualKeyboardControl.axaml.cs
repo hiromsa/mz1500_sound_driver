@@ -59,10 +59,31 @@ public partial class VirtualKeyboardControl : UserControl
     public VirtualKeyboardControl()
     {
         InitializeComponent();
-        this.AddHandler(InputElement.KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
-    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(this);
+        if (topLevel != null)
+        {
+            topLevel.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, OnGlobalKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            topLevel.AddHandler(Avalonia.Input.InputElement.KeyUpEvent, OnGlobalKeyUp, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(this);
+        if (topLevel != null)
+        {
+            topLevel.RemoveHandler(Avalonia.Input.InputElement.KeyDownEvent, OnGlobalKeyDown);
+            topLevel.RemoveHandler(Avalonia.Input.InputElement.KeyUpEvent, OnGlobalKeyUp);
+        }
+    }
+
+    private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Left)
         {
@@ -79,6 +100,27 @@ public partial class VirtualKeyboardControl : UserControl
                 KeyboardScrollViewer.Offset = new Avalonia.Vector(KeyboardScrollViewer.Offset.X + 50, KeyboardScrollViewer.Offset.Y);
                 e.Handled = true;
             }
+        }
+        else
+        {
+            if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo) && !_pressedPhysicalKeys.Contains(e.Key))
+            {
+                _pressedPhysicalKeys.Add(e.Key);
+                keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
+                PlayNote(keyInfo);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnGlobalKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo))
+        {
+            _pressedPhysicalKeys.Remove(e.Key);
+            keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.Black : Brushes.White;
+            StopNote();
+            e.Handled = true;
         }
     }
 
@@ -280,26 +322,22 @@ public partial class VirtualKeyboardControl : UserControl
 
         Key[] whitePhysicalKeys = {
             Key.Z, Key.X, Key.C, Key.V, Key.B, Key.N, Key.M,
-            Key.OemComma, Key.OemPeriod, Key.OemQuestion, Key.Q, Key.W, Key.E, Key.R,
-            Key.T, Key.Y, Key.U, Key.I, Key.O, Key.P, Key.OemOpenBrackets
+            Key.OemComma, Key.OemPeriod, Key.OemQuestion
         };
 
         string[] whitePhysicalChars = {
             "Z", "X", "C", "V", "B", "N", "M",
-            ",", ".", "/", "Q", "W", "E", "R",
-            "T", "Y", "U", "I", "O", "P", "["
+            ",", ".", "/"
         };
 
         Key[] blackPhysicalKeys = {
             Key.S, Key.D, Key.G, Key.H, Key.J,
-            Key.L, Key.OemSemicolon, Key.D2, Key.D3, Key.D5,
-            Key.D6, Key.D7, Key.D9, Key.D0, Key.OemMinus
+            Key.L, Key.OemSemicolon
         };
 
         string[] blackPhysicalChars = {
             "S", "D", "G", "H", "J",
-            "L", ";", "2", "3", "5",
-            "6", "7", "9", "0", "-"
+            "L", ";"
         };
 
         foreach (var key in _keys)
@@ -309,7 +347,7 @@ public partial class VirtualKeyboardControl : UserControl
             if (!key.IsBlack)
             {
                 int octOffset = key.AbsoluteOctave - _currentOctave;
-                if (octOffset >= 0 && octOffset < 3)
+                if (octOffset >= 0 && octOffset < 2)
                 {
                     int physIndex = octOffset * 7 + key.IsWhiteIndex;
                     if (physIndex < whitePhysicalChars.Length)
@@ -326,7 +364,7 @@ public partial class VirtualKeyboardControl : UserControl
             else
             {
                 int octOffset = key.AbsoluteOctave - _currentOctave;
-                if (octOffset >= 0 && octOffset < 3)
+                if (octOffset >= 0 && octOffset < 2)
                 {
                     int physIndex = octOffset * 5 + key.IsBlackIndex;
                     if (physIndex < blackPhysicalChars.Length)
@@ -384,30 +422,7 @@ public partial class VirtualKeyboardControl : UserControl
         PlayNote(key);
     }
 
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
-        
-        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo) && !_pressedPhysicalKeys.Contains(e.Key))
-        {
-            _pressedPhysicalKeys.Add(e.Key);
-            keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
-            PlayNote(keyInfo);
-            e.Handled = true;
-        }
-    }
-
-    protected override void OnKeyUp(KeyEventArgs e)
-    {
-        base.OnKeyUp(e);
-        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo))
-        {
-            _pressedPhysicalKeys.Remove(e.Key);
-            keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.Black : Brushes.White;
-            StopNote();
-            e.Handled = true;
-        }
-    }
+    // Removed redundant OnKeyDown and OnKeyUp since they are now handled globally.
 
     private int _lastPlayedOctave = -1;
 

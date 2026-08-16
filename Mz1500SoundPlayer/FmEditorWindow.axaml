@@ -22,6 +22,8 @@
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="BorderBrush" Value="#606060"/>
       <Setter Property="CornerRadius" Value="2"/>
+      <Setter Property="HorizontalContentAlignment" Value="Right"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="TextBlock.label">
       <Setter Property="Foreground" Value="#888888"/>
@@ -205,8 +207,10 @@
         
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="Feedback (FB):" VerticalAlignment="Center" FontWeight="Bold"/>
-          <local:FbMeterControl Value="{Binding Fb}" Width="100" Height="24" ToolTip.Tip="フィードバック: OP1の自己帰還量 (0-7)"/>
-          <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" FormatString="0" ToolTip.Tip="フィードバック (0-7)"/>
+          <StackPanel Orientation="Vertical" Spacing="2">
+            <local:FbMeterControl Value="{Binding Fb}" Width="100" Height="24" ToolTip.Tip="フィードバック: OP1の自己帰還量 (0-7)"/>
+            <NumericUpDown Value="{Binding Fb}" Minimum="0" Maximum="7" FormatString="0" ToolTip.Tip="フィードバック (0-7)"/>
+          </StackPanel>
         </StackPanel>
       </StackPanel>
     </Border>

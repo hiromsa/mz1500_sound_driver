@@ -19,6 +19,10 @@ public partial class FmEditorWindow : Window
         ViewModel = new FmEditorViewModel();
         DataContext = ViewModel;
         _fmNumber = 1;
+        this.AddHandler(Avalonia.Input.InputElement.TextInputEvent, OnPreviewTextInput, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerMovedEvent, OnPreviewPointerMoved, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent, OnPreviewPointerReleased, RoutingStrategies.Tunnel);
     }
 
     public FmEditorWindow(int fmNumber, string mml)
@@ -29,6 +33,10 @@ public partial class FmEditorWindow : Window
         _fmNumber = fmNumber;
 
         ViewModel.ParseMml(mml);
+        this.AddHandler(Avalonia.Input.InputElement.TextInputEvent, OnPreviewTextInput, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerMovedEvent, OnPreviewPointerMoved, RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent, OnPreviewPointerReleased, RoutingStrategies.Tunnel);
         
         // Initialize keyboard
         var state = new ChannelState($"F1", 4, 15, -1, fmNumber, 0, 3, 127, 0, 0);
@@ -43,6 +51,89 @@ public partial class FmEditorWindow : Window
         ViewModel.Op2.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Op3.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Op4.PropertyChanged += ViewModel_PropertyChanged;
+    }
+
+    private NumericUpDown? _valueDragTarget;
+    private Avalonia.Point _valueDragStartPoint;
+    private decimal _valueDragStartValue;
+    private bool _isDraggingValue;
+
+    private void OnPreviewPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        var src = e.Source as Avalonia.Visual;
+        while (src != null)
+        {
+            if (src is NumericUpDown nud)
+            {
+                _valueDragTarget = nud;
+                _valueDragStartPoint = e.GetPosition(this);
+                _valueDragStartValue = nud.Value ?? 0;
+                _isDraggingValue = false;
+                break;
+            }
+            src = (Avalonia.Visual?)src.GetVisualParent();
+        }
+    }
+
+    private void OnPreviewPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        if (_valueDragTarget != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            var pos = e.GetPosition(this);
+            double deltaY = _valueDragStartPoint.Y - pos.Y;
+            
+            if (!_isDraggingValue && Math.Abs(deltaY) > 5)
+            {
+                _isDraggingValue = true;
+                e.Pointer.Capture(_valueDragTarget);
+            }
+            
+            if (_isDraggingValue)
+            {
+                int steps = (int)(deltaY / 2.0); // 2 pixels per value step
+                decimal newValue = _valueDragStartValue + steps;
+                
+                if (newValue < _valueDragTarget.Minimum) newValue = _valueDragTarget.Minimum;
+                if (newValue > _valueDragTarget.Maximum) newValue = _valueDragTarget.Maximum;
+                
+                _valueDragTarget.Value = newValue;
+                e.Handled = true;
+            }
+        }
+        else if (_valueDragTarget != null && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _valueDragTarget = null;
+            _isDraggingValue = false;
+        }
+    }
+
+    private void OnPreviewPointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        if (_valueDragTarget != null)
+        {
+            if (_isDraggingValue)
+            {
+                e.Pointer.Capture(null);
+                e.Handled = true;
+            }
+            _valueDragTarget = null;
+            _isDraggingValue = false;
+        }
+    }
+
+    private void OnPreviewTextInput(object? sender, Avalonia.Input.TextInputEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(e.Text))
+        {
+            foreach (char c in e.Text)
+            {
+                if (!char.IsDigit(c) && c != '-')
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
