@@ -548,7 +548,11 @@ public class SingleNoteProvider : ISampleProvider
                     
                     for (int op = 0; op < 4; op++)
                     {
-                        int opOffset = op * 8;
+                        int slotNum = op;
+                        if (op == 1) slotNum = 2; // OP2 -> Slot 3 (C1)
+                        else if (op == 2) slotNum = 1; // OP3 -> Slot 2 (M2)
+
+                        int opOffset = slotNum * 8;
                         int pd = 2 + (op * 11);
                         _ym2151.OutPort(0x0708, (byte)(0x40 + opOffset + _fmChannel));
                         _ym2151.OutPort(0x0709, (byte)(((p[pd+8]&7)<<4) | (p[pd+7]&15)));

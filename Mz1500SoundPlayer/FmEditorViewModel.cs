@@ -54,8 +54,8 @@ public class FmEditorViewModel : INotifyPropertyChanged
     }
 
     public FmOperatorViewModel Op1 { get; } = new("OP1 (M1)");
-    public FmOperatorViewModel Op2 { get; } = new("OP2 (M2)");
-    public FmOperatorViewModel Op3 { get; } = new("OP3 (C1)");
+    public FmOperatorViewModel Op2 { get; } = new("OP2 (C1)");
+    public FmOperatorViewModel Op3 { get; } = new("OP3 (M2)");
     public FmOperatorViewModel Op4 { get; } = new("OP4 (C2)");
 
     public FmEditorViewModel()

@@ -496,7 +496,11 @@ public class MmlToZ80Compiler
                     
                     for (int op = 0; op < 4; op++)
                     {
-                        int opOffset = op * 8;
+                        int slotNum = op;
+                        if (op == 1) slotNum = 2; // OP2 -> Slot 3 (C1)
+                        else if (op == 2) slotNum = 1; // OP3 -> Slot 2 (M2)
+
+                        int opOffset = slotNum * 8;
                         int pd = 2 + (op * 11); 
                         emitReg((byte)(0x40 + opOffset + fmChannel), (byte)(((p[pd+8]&7)<<4) | (p[pd+7]&15)));
                         emitReg((byte)(0x60 + opOffset + fmChannel), (byte)(p[pd+5] & 127));
