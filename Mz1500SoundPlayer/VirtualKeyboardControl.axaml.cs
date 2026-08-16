@@ -59,6 +59,27 @@ public partial class VirtualKeyboardControl : UserControl
     public VirtualKeyboardControl()
     {
         InitializeComponent();
+        this.AddHandler(InputElement.KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Left)
+        {
+            if (KeyboardScrollViewer != null)
+            {
+                KeyboardScrollViewer.Offset = new Avalonia.Vector(Math.Max(0, KeyboardScrollViewer.Offset.X - 50), KeyboardScrollViewer.Offset.Y);
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == Key.Right)
+        {
+            if (KeyboardScrollViewer != null)
+            {
+                KeyboardScrollViewer.Offset = new Avalonia.Vector(KeyboardScrollViewer.Offset.X + 50, KeyboardScrollViewer.Offset.Y);
+                e.Handled = true;
+            }
+        }
     }
 
     public void InitializeState(ChannelState state, MmlData? mmlData)
@@ -367,24 +388,7 @@ public partial class VirtualKeyboardControl : UserControl
     {
         base.OnKeyDown(e);
         
-        if (e.Key == Key.Left)
-        {
-            if (KeyboardScrollViewer != null)
-            {
-                KeyboardScrollViewer.Offset = new Avalonia.Vector(Math.Max(0, KeyboardScrollViewer.Offset.X - 50), KeyboardScrollViewer.Offset.Y);
-                e.Handled = true;
-            }
-        }
-        else if (e.Key == Key.Right)
-        {
-            if (KeyboardScrollViewer != null)
-            {
-                // Max scroll is limited by ScrollViewer's layout, setting it larger will just clamp.
-                KeyboardScrollViewer.Offset = new Avalonia.Vector(KeyboardScrollViewer.Offset.X + 50, KeyboardScrollViewer.Offset.Y);
-                e.Handled = true;
-            }
-        }
-        else if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo) && !_pressedPhysicalKeys.Contains(e.Key))
+        if (_physicalKeyMap.TryGetValue(e.Key, out var keyInfo) && !_pressedPhysicalKeys.Contains(e.Key))
         {
             _pressedPhysicalKeys.Add(e.Key);
             keyInfo.Control.Background = keyInfo.IsBlack ? Brushes.DeepSkyBlue : Brushes.LightSkyBlue;
