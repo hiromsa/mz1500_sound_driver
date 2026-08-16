@@ -65,3 +65,9 @@
    - `NumericUpDown` 上でマウスドラッグ（上下）を行うことで、数値を直感的に増減できる機能を追加。
 7. **アルゴリズム画像上の選択OPハイライト**
    - オペレーター（OP1〜OP4）を選択した際、対応するアルゴリズム画像内のアイコンも連動して青色枠でハイライトされるように改善。
+
+## 2026-08-16 Update
+- Added Codicons for file/folder.
+- Preserved tree view expansion state.
+- Fixed FM keyboard audio by correctly applying KeyOnMask.
+- Fixed PSG release buzzer by implementing pointer capture and envelope decay.

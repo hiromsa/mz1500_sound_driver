@@ -28,7 +28,7 @@ public partial class FmEditorWindow : Window
         _fmNumber = fmNumber;
         var tab = new FmEditorTabViewModel
         {
-            Title = $"FM{fmNumber} (トラッカー)",
+            Title = "Untitled",
             FilePath = null
         };
         tab.Editor.ParseMml(mml);
@@ -81,6 +81,121 @@ public partial class FmEditorWindow : Window
         {
             OpenFile(node.FullPath);
             e.Handled = true;
+        }
+    }
+
+    private async void ContextNewFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        {
+            string parentPath = node.IsDirectory ? node.FullPath : System.IO.Path.GetDirectoryName(node.FullPath) ?? ViewModel.Library.RootPath;
+            
+            var dialog = new InputDialog("新規フォルダ作成", "フォルダ名を入力してください:");
+            var result = await dialog.ShowDialog<string?>(this);
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                string newPath = System.IO.Path.Combine(parentPath, result);
+                if (!System.IO.Directory.Exists(newPath))
+                {
+                    System.IO.Directory.CreateDirectory(newPath);
+                    ViewModel.Library.Refresh();
+                }
+            }
+        }
+    }
+
+    private async void ContextNewFile_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        {
+            string parentPath = node.IsDirectory ? node.FullPath : System.IO.Path.GetDirectoryName(node.FullPath) ?? ViewModel.Library.RootPath;
+            
+            var dialog = new InputDialog("新規ファイル作成", "ファイル名を入力してください (*.mml):", "Untitled.mml");
+            var result = await dialog.ShowDialog<string?>(this);
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                if (!result.EndsWith(".mml", StringComparison.OrdinalIgnoreCase)) result += ".mml";
+                string newPath = System.IO.Path.Combine(parentPath, result);
+                if (!System.IO.File.Exists(newPath))
+                {
+                    System.IO.File.WriteAllText(newPath, "@FM1 = {\n// ALG, FB\n0, 0,\n// AR, D1R, D2R, RR, D1L, TL, KS, MUL, DT1, DT2, AME\n31,0,0,15,0,0,0,1,0,0,0,\n31,0,0,15,0,0,0,1,0,0,0,\n31,0,0,15,0,0,0,1,0,0,0,\n31,0,0,15,0,0,0,1,0,0,0\n}");
+                    ViewModel.Library.Refresh();
+                    OpenFile(newPath);
+                }
+            }
+        }
+    }
+
+    private async void ContextRename_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        {
+            var dialog = new InputDialog("名前の変更", "新しい名前を入力してください:", node.Name);
+            var result = await dialog.ShowDialog<string?>(this);
+            if (!string.IsNullOrWhiteSpace(result) && result != node.Name)
+            {
+                string parentPath = System.IO.Path.GetDirectoryName(node.FullPath) ?? ViewModel.Library.RootPath;
+                string newPath = System.IO.Path.Combine(parentPath, result);
+                
+                try
+                {
+                    if (node.IsDirectory)
+                    {
+                        System.IO.Directory.Move(node.FullPath, newPath);
+                    }
+                    else
+                    {
+                        System.IO.File.Move(node.FullPath, newPath);
+                        // Update open tabs if any
+                        var openTab = ViewModel.Tabs.FirstOrDefault(t => t.FilePath == node.FullPath);
+                        if (openTab != null)
+                        {
+                            openTab.FilePath = newPath;
+                            openTab.Title = System.IO.Path.GetFileName(newPath);
+                        }
+                    }
+                    ViewModel.Library.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    // Handle error silently or log
+                    Console.WriteLine($"Rename failed: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private async void ContextDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && item.DataContext is FmVoiceNodeViewModel node)
+        {
+            var dialog = new ConfirmDialog("削除の確認", $"本当に '{node.Name}' を削除しますか？");
+            var result = await dialog.ShowDialog<bool>(this);
+            
+            if (result == true)
+            {
+                try
+                {
+                    if (node.IsDirectory)
+                    {
+                        System.IO.Directory.Delete(node.FullPath, true);
+                    }
+                    else
+                    {
+                        System.IO.File.Delete(node.FullPath);
+                        var openTab = ViewModel.Tabs.FirstOrDefault(t => t.FilePath == node.FullPath);
+                        if (openTab != null)
+                        {
+                            ViewModel.Tabs.Remove(openTab);
+                        }
+                    }
+                    ViewModel.Library.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Delete failed: {ex.Message}");
+                }
+            }
         }
     }
 

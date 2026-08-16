@@ -15,5 +15,13 @@ public class FmVoiceNodeViewModel : INotifyPropertyChanged
     public string Name { get; set; } = "";
     public string FullPath { get; set; } = "";
     public bool IsDirectory { get; set; }
+    
+    private bool _isExpanded;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set { _isExpanded = value; OnPropertyChanged(); }
+    }
+    
     public ObservableCollection<FmVoiceNodeViewModel> Children { get; } = new();
 }

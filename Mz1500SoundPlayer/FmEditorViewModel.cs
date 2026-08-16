@@ -50,13 +50,20 @@ public class FmEditorViewModel : INotifyPropertyChanged
     public int Fb
     {
         get => _fb;
-        set { _fb = value; OnPropertyChanged(); }
+        set { _fb = value; OnPropertyChanged(); IsDirty = true; }
     }
 
-    public FmOperatorViewModel Op1 { get; } = new("OP1 (M1)");
-    public FmOperatorViewModel Op2 { get; } = new("OP2 (C1)");
-    public FmOperatorViewModel Op3 { get; } = new("OP3 (M2)");
-    public FmOperatorViewModel Op4 { get; } = new("OP4 (C2)");
+    public FmOperatorViewModel Op1 { get; } = new(1, "OP1 (M1)");
+    public FmOperatorViewModel Op2 { get; } = new(2, "OP2 (C1)");
+    public FmOperatorViewModel Op3 { get; } = new(3, "OP3 (M2)");
+    public FmOperatorViewModel Op4 { get; } = new(4, "OP4 (C2)");
+
+    private bool _isDirty;
+    public bool IsDirty
+    {
+        get => _isDirty;
+        set { _isDirty = value; OnPropertyChanged(); }
+    }
 
     public FmEditorViewModel()
     {
@@ -73,6 +80,7 @@ public class FmEditorViewModel : INotifyPropertyChanged
         // Default to a simple sine wave (Algorithm 0, Carrier OP4)
         Alg = 0;
         Op4.ApplyValueDirectly(nameof(FmOperatorViewModel.Tl), 0);
+        IsDirty = false;
     }
 
     private bool TryApplyDelta(FmOperatorViewModel sender, string propertyName, int delta, int requestedValue)
@@ -119,7 +127,12 @@ public class FmEditorViewModel : INotifyPropertyChanged
 
     private void Operator_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // When any operator parameter changes, we can trigger an event or command if needed
+        if (e.PropertyName != nameof(FmOperatorViewModel.IsSelected) && 
+            e.PropertyName != nameof(FmOperatorViewModel.IsMuted) &&
+            e.PropertyName != nameof(FmOperatorViewModel.IsSolo))
+        {
+            IsDirty = true;
+        }
     }
 
     public void ParseMml(string mml)
@@ -148,6 +161,7 @@ public class FmEditorViewModel : INotifyPropertyChanged
                 Op4.Parse(parts, 2 + 3 * 11);
             }
         }
+        IsDirty = false;
     }
 
     public string ToMml(int fmNumber)
@@ -179,6 +193,7 @@ public class FmOperatorViewModel : INotifyPropertyChanged
     }
 
     public string Title { get; }
+    public int OpNum { get; }
 
     private bool _isCarrier;
     public bool IsCarrier { get => _isCarrier; set { _isCarrier = value; OnPropertyChanged(); } }
@@ -192,8 +207,9 @@ public class FmOperatorViewModel : INotifyPropertyChanged
     private bool _isSelected;
     public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
 
-    public FmOperatorViewModel(string title)
+    public FmOperatorViewModel(int opNum, string title)
     {
+        OpNum = opNum;
         Title = title;
     }
 

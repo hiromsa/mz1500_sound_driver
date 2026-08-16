@@ -20,19 +20,17 @@ namespace Mz1500SoundPlayer
         public static readonly StyledProperty<bool> IsOp2SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp2Selected), false);
         public static readonly StyledProperty<bool> IsOp3SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp3Selected), false);
         public static readonly StyledProperty<bool> IsOp4SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp4Selected), false);
+        public static readonly StyledProperty<bool> IsAlgSelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsAlgSelected), false);
 
         public bool IsOp1Selected { get => GetValue(IsOp1SelectedProperty); set => SetValue(IsOp1SelectedProperty, value); }
         public bool IsOp2Selected { get => GetValue(IsOp2SelectedProperty); set => SetValue(IsOp2SelectedProperty, value); }
         public bool IsOp3Selected { get => GetValue(IsOp3SelectedProperty); set => SetValue(IsOp3SelectedProperty, value); }
         public bool IsOp4Selected { get => GetValue(IsOp4SelectedProperty); set => SetValue(IsOp4SelectedProperty, value); }
+        public bool IsAlgSelected { get => GetValue(IsAlgSelectedProperty); set => SetValue(IsAlgSelectedProperty, value); }
 
         static AlgVisualizer()
         {
-            AffectsRender<AlgVisualizer>(AlgProperty);
-            AffectsRender<AlgVisualizer>(IsOp1SelectedProperty);
-            AffectsRender<AlgVisualizer>(IsOp2SelectedProperty);
-            AffectsRender<AlgVisualizer>(IsOp3SelectedProperty);
-            AffectsRender<AlgVisualizer>(IsOp4SelectedProperty);
+            AffectsRender<AlgVisualizer>(AlgProperty, IsOp1SelectedProperty, IsOp2SelectedProperty, IsOp3SelectedProperty, IsOp4SelectedProperty, IsAlgSelectedProperty);
         }
 
         protected override Size MeasureOverride(Size availableSize)
@@ -57,12 +55,13 @@ namespace Mz1500SoundPlayer
         {
             base.Render(context);
 
-            var pen = new Pen(new SolidColorBrush(Color.Parse("#cccccc")), 1);
+            var pen = new Pen(new SolidColorBrush(Color.Parse("#ccc")), 1);
             var linePen = new Pen(new SolidColorBrush(Color.Parse("#cccccc")), 1.5);
-            var carrierBrush = new SolidColorBrush(Color.Parse("#444444")); // Muted fill for carrier
             var selectedPen = new Pen(new SolidColorBrush(Color.Parse("#007ACC")), 2);
             var selectedBrush = new SolidColorBrush(Color.Parse("#2A303A"));
-            var textBrush = new SolidColorBrush(Color.Parse("#cccccc"));
+            var carrierBrush = new SolidColorBrush(IsAlgSelected ? Color.Parse("#dcb67a") : Color.Parse("#555555"));
+            var textBrush = new SolidColorBrush(IsAlgSelected ? Color.Parse("#1e1e1e") : Color.Parse("#ccc"));
+            var inactiveTextBrush = new SolidColorBrush(Color.Parse("#ccc"));
             var typeface = new Typeface("Arial");
 
             int alg = Alg;
@@ -96,7 +95,7 @@ namespace Mz1500SoundPlayer
 
                 if (isSelected)
                 {
-                    context.DrawRectangle(selectedBrush, selectedPen, rect);
+                    context.DrawRectangle(IsAlgSelected ? selectedBrush : null, IsAlgSelected ? selectedPen : pen, rect);
                 }
                 else if (isCarrier[opNum - 1])
                 {
@@ -108,7 +107,9 @@ namespace Mz1500SoundPlayer
                 }
 
                 // Draw number
-                var ft = new FormattedText(opNum.ToString(), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 10, textBrush);
+                var brush = (isSelected && IsAlgSelected) ? new SolidColorBrush(Color.Parse("#ccc")) : 
+                            (isCarrier[opNum - 1] && IsAlgSelected) ? textBrush : inactiveTextBrush;
+                var ft = new FormattedText(opNum.ToString(), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 10, brush);
                 double tx = x + (bx - ft.Width) / 2;
                 double ty = y + (by - ft.Height) / 2;
                 context.DrawText(ft, new Point(tx, ty));

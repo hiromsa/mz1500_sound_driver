@@ -4,6 +4,35 @@
              x:Class="Mz1500SoundPlayer.FmEditorControl"
              x:DataType="local:FmEditorViewModel">
 
+  <UserControl.Styles>
+    <Style Selector="NumericUpDown">
+      <Setter Property="Background" Value="#181818"/>
+      <Setter Property="Foreground" Value="#E0E0E0"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="ShowButtonSpinner" Value="False"/>
+      <Setter Property="Width" Value="50"/>
+      <Setter Property="MinHeight" Value="26"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="Margin" Value="0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="#606060"/>
+      <Setter Property="CornerRadius" Value="2"/>
+      <Setter Property="HorizontalContentAlignment" Value="Right"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#888888"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,0,0,1"/>
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="BorderBrush" Value="#404040"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+  </UserControl.Styles>
+
   <UserControl.Resources>
     <!-- Operator Template -->
     <DataTemplate x:Key="OpTemplate" x:DataType="local:FmOperatorViewModel">
@@ -27,6 +56,20 @@
             <Setter Property="BorderThickness" Value="2" />
             <Setter Property="Background" Value="#2A303A" />
           </Style>
+          <Style Selector="Border.icon">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#dcb67a" />
+            <Setter Property="BorderThickness" Value="1" />
+          </Style>
+          <Style Selector="Border.icon.carrier">
+            <Setter Property="Background" Value="#dcb67a" />
+          </Style>
+          <Style Selector="TextBlock.iconText">
+            <Setter Property="Foreground" Value="#dcb67a" />
+          </Style>
+          <Style Selector="Border.icon.carrier TextBlock.iconText">
+            <Setter Property="Foreground" Value="#1e1e1e" />
+          </Style>
         </Border.Styles>
         <Classes.carrier>
           <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -42,7 +85,17 @@
         <StackPanel>
           <!-- Title row with M/S buttons and Copy/Paste -->
           <Grid ColumnDefinitions="*, Auto">
-            <TextBlock Grid.Column="0" Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#4ec9b0" Margin="0,0,0,6"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+              <Border Classes="icon" Width="16" Height="16" CornerRadius="1" VerticalAlignment="Center">
+                <Classes.carrier>
+                  <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsCarrier"/>
+                  </MultiBinding>
+                </Classes.carrier>
+                <TextBlock Classes="iconText" Text="{Binding OpNum}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#4ec9b0" VerticalAlignment="Center"/>
+            </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
               <ToggleButton Content="選択" IsChecked="{Binding IsSelected}" Width="36" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" Margin="0,0,10,0" ToolTip.Tip="複数選択してパラメータを連動編集します"/>
               <Button Content="📋" Click="Copy_Click" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="11" CornerRadius="2" Background="#333333" Foreground="#cccccc" ToolTip.Tip="パラメータをコピー"/>
@@ -160,14 +213,14 @@
                 <Setter Property="CornerRadius" Value="2"/>
               </Style>
             </ListBox.Styles>
-            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" IsAlgSelected="{Binding $parent[ListBoxItem].IsSelected}" /></StackPanel></ListBoxItem>
           </ListBox>
         </StackPanel>
         

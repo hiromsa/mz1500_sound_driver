@@ -10,8 +10,9 @@
         Background="#1e1e1e" Foreground="#d4d4d4">
   
   <Window.Styles>
-    <Style Selector="TreeViewItem">
+    <Style Selector="TreeViewItem" x:DataType="local:FmVoiceNodeViewModel">
       <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
     </Style>
     <Style Selector="TabControl">
       <Setter Property="Background" Value="#1e1e1e"/>
@@ -52,7 +53,17 @@
         <TreeView.ItemTemplate>
           <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="local:FmVoiceNodeViewModel">
             <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" PointerPressed="TreeNode_PointerPressed">
-              <TextBlock Text="{Binding Name}" Foreground="#cccccc" />
+              <StackPanel.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="新規フォルダ" Click="ContextNewFolder_Click"/>
+                  <MenuItem Header="新規ファイル" Click="ContextNewFile_Click"/>
+                  <MenuItem Header="名前の変更" Click="ContextRename_Click"/>
+                  <MenuItem Header="削除" Click="ContextDelete_Click"/>
+                </ContextMenu>
+              </StackPanel.ContextMenu>
+                <TextBlock FontFamily="{StaticResource CodiconFont}" Text="&#xea83;" Foreground="#dcb67a" VerticalAlignment="Center" FontSize="16" IsVisible="{Binding IsDirectory}" />
+                <TextBlock FontFamily="{StaticResource CodiconFont}" Text="&#xea7b;" Foreground="#cccccc" VerticalAlignment="Center" FontSize="16" IsVisible="{Binding !IsDirectory}" />
+                <TextBlock Text="{Binding Name}" Foreground="#cccccc" VerticalAlignment="Center" />
             </StackPanel>
           </TreeDataTemplate>
         </TreeView.ItemTemplate>
@@ -79,14 +90,23 @@
         </TabControl.ContentTemplate>
       </TabControl>
 
-      <Border Grid.Row="1" Background="#2d2d30" Padding="10" BorderBrush="#333333" BorderThickness="0,1,0,0">
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-          <Button Content="クリップボードにコピー" Click="CopyMml_Click" Background="#333333" Foreground="White" Padding="12,6" CornerRadius="2"/>
-          <Button Content="トラッカーに反映 (Apply)" Click="Apply_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
-          <Button Content="上書き保存 (Save)" Click="Save_Click" Background="#007ACC" Foreground="White" Padding="12,6" CornerRadius="2"/>
-          <Button Content="別名で保存 (Save As)" Click="SaveAs_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
-        </StackPanel>
-      </Border>
+        <Border Grid.Row="1" Background="#2d2d30" Padding="10" BorderBrush="#333333" BorderThickness="0,1,0,0">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+              <Button Content="上書き保存 (Save)" Click="Save_Click" Background="#007ACC" Foreground="White" Padding="12,6" CornerRadius="2"/>
+              <Button Content="別名で保存 (Save As)" Click="SaveAs_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+              <Button Content="クリップボードにコピー" Click="CopyMml_Click" Background="#333333" Foreground="White" Padding="12,6" CornerRadius="2"/>
+              <Button Content="トラッカーに反映 (Apply)" Click="Apply_Click" Background="#4e4e50" Foreground="White" Padding="12,6" CornerRadius="2"/>
+            </StackPanel>
+          </Grid>
+        </Border>
     </Grid>
 
   </Grid>

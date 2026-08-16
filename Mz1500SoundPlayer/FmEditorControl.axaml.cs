@@ -123,11 +123,13 @@ public partial class FmEditorControl : UserControl
         UpdateKeyboardState();
     }
 
+    private bool _isKeyboardInitialized = false;
+
     private void UpdateKeyboardState()
     {
         if (ViewModel == null) return;
         
-        var state = new ChannelState($"F1", 4, 15, -1, 1, 0, 3, 127, 0, 0);
+        var state = new ChannelState($"F1", 4, 15, -1, -1, 1, 3, 127, 0, 0);
         var mmlData = new MmlData();
         var td = new FmToneData { Parameters = ParseParameters(ViewModel.ToMml(1)) };
         
@@ -148,7 +150,16 @@ public partial class FmEditorControl : UserControl
 
         td.KeyOnMask = mask;
         mmlData.FmVoiceEnvelopes[1] = td;
-        KeyboardControl.UpdateState(state, mmlData);
+
+        if (!_isKeyboardInitialized)
+        {
+            KeyboardControl.InitializeState(state, mmlData);
+            _isKeyboardInitialized = true;
+        }
+        else
+        {
+            KeyboardControl.UpdateState(state, mmlData);
+        }
     }
 
     private int[] ParseParameters(string mml)

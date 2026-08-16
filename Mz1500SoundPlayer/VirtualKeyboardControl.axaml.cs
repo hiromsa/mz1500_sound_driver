@@ -36,10 +36,7 @@ public partial class VirtualKeyboardControl : UserControl
         }
     }
 
-    // Audio output components
-    private YM2151Manager? _ym2151Manager;
     private SingleNoteProvider? _noteProvider;
-    private WasapiOut? _waveOut;
 
     private class KeyInfo
     {
@@ -150,20 +147,13 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void InitAudio()
     {
-        try
-        {
-            if (_waveOut != null) return;
-            
-            _ym2151Manager = new YM2151Manager(44100);
-            _noteProvider = new SingleNoteProvider(_ym2151Manager);
-            _waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 40);
-            _waveOut.Init(_noteProvider);
-            _waveOut.Play();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to init audio for VirtualKeyboard: {ex.Message}");
-        }
+        SharedAudioEngine.Acquire();
+        _noteProvider = SharedAudioEngine.NoteProvider;
+    }
+
+    public void DisposeAudio()
+    {
+        SharedAudioEngine.Release();
     }
 
     private void BuildKeyboard()
@@ -384,6 +374,7 @@ public partial class VirtualKeyboardControl : UserControl
         if (sender is Border b && b.Tag is KeyInfo key)
         {
             _isMouseDown = true;
+            e.Pointer.Capture(b);
             SwitchToKey(key);
         }
     }
@@ -399,6 +390,7 @@ public partial class VirtualKeyboardControl : UserControl
     private void Key_PointerReleased(object? sender, PointerEventArgs e)
     {
         _isMouseDown = false;
+        e.Pointer.Capture(null);
         if (_activeMouseKey != null)
         {
             _activeMouseKey.Control.Background = _activeMouseKey.IsBlack ? Brushes.Black : Brushes.White;
@@ -505,16 +497,6 @@ public partial class VirtualKeyboardControl : UserControl
         }
     }
 
-    public void DisposeAudio()
-    {
-        try
-        {
-            _waveOut?.Stop();
-            _waveOut?.Dispose();
-            _waveOut = null;
-        }
-        catch { }
-    }
 }
 
 /// <summary>
@@ -535,6 +517,7 @@ public class SingleNoteProvider : ISampleProvider
     private double _psgFreq = 0;
     private float _psgVolume = 0f;
     private bool _psgActive = false;
+    private float _psgEnvelope = 0f;
 
     public SingleNoteProvider(YM2151Manager ym2151)
     {
@@ -606,6 +589,7 @@ public class SingleNoteProvider : ISampleProvider
             _psgFreq = freq;
             _psgVolume = (Math.Max(1, state.Volume) / 15.0f) * 0.25f;
             _psgActive = true;
+            _psgEnvelope = 1.0f;
         }
     }
 
@@ -646,15 +630,28 @@ public class SingleNoteProvider : ISampleProvider
                 buffer[offset + i] = (_intBuffer[0][i] + _intBuffer[1][i]) * 0.5f * ym2151VolumeScale;
             }
         }
-        else if (_psgActive && _psgFreq > 0)
+        else if (!_isFm && _psgFreq > 0)
         {
             // Square wave synthesis for PSG
             double phaseInc = _psgFreq / WaveFormat.SampleRate;
             for (int i = 0; i < count; i++)
             {
-                buffer[offset + i] = _psgPhase < 0.5 ? _psgVolume : -_psgVolume;
-                _psgPhase += phaseInc;
-                if (_psgPhase >= 1.0) _psgPhase -= 1.0;
+                if (_psgActive)
+                {
+                    _psgEnvelope = 1.0f;
+                }
+                else
+                {
+                    _psgEnvelope *= 0.999f; // fast release
+                }
+                
+                if (_psgEnvelope > 0.001f)
+                {
+                    float currentVol = _psgVolume * _psgEnvelope;
+                    buffer[offset + i] = _psgPhase < 0.5 ? currentVol : -currentVol;
+                    _psgPhase += phaseInc;
+                    if (_psgPhase >= 1.0) _psgPhase -= 1.0;
+                }
             }
         }
 

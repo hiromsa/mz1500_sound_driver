@@ -53,3 +53,6 @@ UIはMVVMパターンに基づき、以下の3つのセクションで構成す�
 ## 5. 内部ロジックおよび実装時の注意事項
 *   **UIとロジックの完全分離 (MVVM):** 46個のプロパティと通知イベントを持つViewModelを構築し、XAML（見た目）とデータ処理（裏側）を完全に分離すること。
 *   **波形プレビュー（オシロスコープ）の除外:** 合成波形のCanvas描画機能はスコープ外。エンベロープ形状のグラフ化と高速なレスポンスに注力する。
+## Icon Policy
+- All icons in the UI should utilize Codicons (downloaded via Assets/codicon.ttf).
+- Use the {StaticResource CodiconFont} FontFamily to render icons in TextBlocks.
