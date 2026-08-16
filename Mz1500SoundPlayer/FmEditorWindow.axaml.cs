@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Mz1500SoundPlayer.Sound;
 using System;
 
@@ -134,5 +135,46 @@ public partial class FmEditorWindow : Window
     {
         base.OnClosed(e);
         KeyboardControl.DisposeAudio();
+    }
+
+    private void OperatorPanel_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is FmOperatorViewModel op)
+        {
+            if (e.Handled) return;
+
+            var visual = e.Source as Avalonia.Visual;
+            while (visual != null && visual != sender)
+            {
+                if (visual is Avalonia.Controls.Primitives.ToggleButton || 
+                    visual is Button ||
+                    visual is NumericUpDown || 
+                    visual is TextBox || 
+                    visual is EnvelopeVisualizer ||
+                    visual is TlMeterControl)
+                {
+                    return; // Ignore clicks on interactive controls
+                }
+                visual = visual.GetVisualParent();
+            }
+
+            bool isShift = e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift);
+
+            if (isShift)
+            {
+                op.IsSelected = !op.IsSelected;
+            }
+            else
+            {
+                ViewModel.Op1.IsSelected = false;
+                ViewModel.Op2.IsSelected = false;
+                ViewModel.Op3.IsSelected = false;
+                ViewModel.Op4.IsSelected = false;
+
+                op.IsSelected = true;
+            }
+
+            e.Handled = true;
+        }
     }
 }

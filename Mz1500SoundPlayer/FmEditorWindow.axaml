@@ -39,7 +39,7 @@
   <Window.Resources>
     <!-- Operator Template -->
     <DataTemplate x:Key="OpTemplate" x:DataType="local:FmOperatorViewModel">
-      <Border Classes="panel" Margin="4" Padding="8">
+      <Border Classes="panel" Margin="4" Padding="8" PointerPressed="OperatorPanel_PointerPressed">
         <Border.Styles>
           <Style Selector="Border">
             <Setter Property="Background" Value="#252526" />
