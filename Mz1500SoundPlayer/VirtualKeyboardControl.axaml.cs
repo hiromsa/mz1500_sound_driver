@@ -48,8 +48,12 @@ public partial class VirtualKeyboardControl : UserControl
         public int NoteInOctave { get; set; } // 0..11
         public bool IsBlack { get; set; }
         public Border Control { get; set; } = null!;
+        public TextBlock LabelBlock { get; set; } = null!;
         public string MmlName { get; set; } = "";
         public string PhysicalChar { get; set; } = "";
+        public int AbsoluteOctave { get; set; }
+        public int IsWhiteIndex { get; set; }
+        public int IsBlackIndex { get; set; }
     }
 
     public VirtualKeyboardControl()
@@ -103,19 +107,156 @@ public partial class VirtualKeyboardControl : UserControl
     {
         PianoCanvas.Children.Clear();
         _keys.Clear();
-        _physicalKeyMap.Clear();
 
-        int numOctaves = 6;
-        int startOctave = _currentOctave - 2;
-        double whiteKeyWidth = 1000.0 / (numOctaves * 7);
+        int numOctaves = 8;
+        int startOctave = 1;
+        double whiteKeyWidth = 24.0;
         double blackKeyWidth = whiteKeyWidth * 0.6;
         double whiteKeyHeight = 80.0;
         double blackKeyHeight = 50.0;
+        
+        PianoCanvas.Width = numOctaves * 7 * whiteKeyWidth;
 
         string[] whiteNoteNames = { "c", "d", "e", "f", "g", "a", "b" };
         int[] whiteNoteOffsets = { 0, 2, 4, 5, 7, 9, 11 };
 
-        // Physical Keyboard Mappings
+        // 1. Build White Keys
+        int whiteCount = 0;
+        for (int oct = 0; oct < numOctaves; oct++)
+        {
+            int absOct = startOctave + oct;
+
+            for (int i = 0; i < 7; i++)
+            {
+                double left = whiteCount * whiteKeyWidth;
+
+                var textBlock = new TextBlock
+                {
+                    Text = (i == 0) ? $"o{absOct}" : "",
+                    FontSize = (i == 0) ? 10 : 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = Brushes.Gray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Avalonia.Thickness(0, 0, 0, 6)
+                };
+
+                var grid = new Grid();
+                grid.Children.Add(textBlock);
+
+                var border = new Border
+                {
+                    Width = whiteKeyWidth - 2,
+                    Height = whiteKeyHeight,
+                    Background = Brushes.White,
+                    BorderBrush = Brushes.Black,
+                    BorderThickness = new Avalonia.Thickness(1),
+                    CornerRadius = new Avalonia.CornerRadius(0, 0, 4, 4),
+                    Child = grid,
+                    Tag = new KeyInfo
+                    {
+                        NoteName = whiteNoteNames[i],
+                        OctaveOffset = 0, // will be computed in PlayNote
+                        NoteInOctave = whiteNoteOffsets[i],
+                        IsBlack = false,
+                        MmlName = whiteNoteNames[i],
+                        AbsoluteOctave = absOct,
+                        IsWhiteIndex = i
+                    }
+                };
+
+                Canvas.SetLeft(border, left);
+                Canvas.SetTop(border, 0);
+
+                var keyInfo = (KeyInfo)border.Tag;
+                keyInfo.Control = border;
+                keyInfo.LabelBlock = textBlock;
+                _keys.Add(keyInfo);
+
+                border.PointerPressed += Key_PointerPressed;
+                border.PointerEntered += Key_PointerEntered;
+                border.PointerReleased += Key_PointerReleased;
+
+                PianoCanvas.Children.Add(border);
+                whiteCount++;
+            }
+        }
+
+        // 2. Build Black Keys
+        int[] blackNoteOffsets = { 1, 3, 6, 8, 10 };
+        string[] blackMmlNames = { "c+", "d+", "f+", "g+", "a+" };
+        int[] blackPositionsAfterWhite = { 0, 1, 3, 4, 5 };
+
+        int blackCount = 0;
+        for (int oct = 0; oct < numOctaves; oct++)
+        {
+            int absOct = startOctave + oct;
+
+            for (int i = 0; i < 5; i++)
+            {
+                int whiteIdx = oct * 7 + blackPositionsAfterWhite[i];
+                double left = (whiteIdx + 1) * whiteKeyWidth - (blackKeyWidth / 2.0);
+
+                var textBlock = new TextBlock
+                {
+                    Text = "",
+                    FontSize = 10,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = Brushes.LightGray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Avalonia.Thickness(0, 0, 0, 4)
+                };
+
+                var grid = new Grid();
+                grid.Children.Add(textBlock);
+
+                var border = new Border
+                {
+                    Width = blackKeyWidth,
+                    Height = blackKeyHeight,
+                    Background = Brushes.Black,
+                    BorderBrush = Brushes.DarkGray,
+                    BorderThickness = new Avalonia.Thickness(1),
+                    CornerRadius = new Avalonia.CornerRadius(0, 0, 3, 3),
+                    ZIndex = 10,
+                    Child = grid,
+                    Tag = new KeyInfo
+                    {
+                        NoteName = blackMmlNames[i],
+                        OctaveOffset = 0,
+                        NoteInOctave = blackNoteOffsets[i],
+                        IsBlack = true,
+                        MmlName = blackMmlNames[i],
+                        AbsoluteOctave = absOct,
+                        IsBlackIndex = i
+                    }
+                };
+
+                Canvas.SetLeft(border, left);
+                Canvas.SetTop(border, 0);
+
+                var keyInfo = (KeyInfo)border.Tag;
+                keyInfo.Control = border;
+                keyInfo.LabelBlock = textBlock;
+                _keys.Add(keyInfo);
+
+                border.PointerPressed += Key_PointerPressed;
+                border.PointerEntered += Key_PointerEntered;
+                border.PointerReleased += Key_PointerReleased;
+
+                PianoCanvas.Children.Add(border);
+                blackCount++;
+            }
+        }
+        
+        UpdateKeyAssignments();
+    }
+
+    private void UpdateKeyAssignments()
+    {
+        _physicalKeyMap.Clear();
+
         Key[] whitePhysicalKeys = {
             Key.Z, Key.X, Key.C, Key.V, Key.B, Key.N, Key.M,
             Key.OemComma, Key.OemPeriod, Key.OemQuestion, Key.Q, Key.W, Key.E, Key.R,
@@ -140,155 +281,41 @@ public partial class VirtualKeyboardControl : UserControl
             "6", "7", "9", "0", "-"
         };
 
-        // 1. Build White Keys
-        int whiteCount = 0;
-        for (int oct = 0; oct < numOctaves; oct++)
+        foreach (var key in _keys)
         {
-            int absOct = startOctave + oct;
-            bool isValidOctave = absOct >= 0 && absOct <= 7;
-
-            for (int i = 0; i < 7; i++)
+            key.PhysicalChar = "";
+            
+            if (!key.IsBlack)
             {
-                double left = whiteCount * whiteKeyWidth;
-                int physIndex = oct * 7 + i;
-
-                string physChar = physIndex < whitePhysicalChars.Length ? whitePhysicalChars[physIndex] : "";
-                Key physKey = physIndex < whitePhysicalKeys.Length ? whitePhysicalKeys[physIndex] : Key.None;
-
-                string keyLabel = physChar;
-                if (i == 0 && isValidOctave)
+                int octOffset = key.AbsoluteOctave - _currentOctave;
+                if (octOffset >= 0 && octOffset < 3)
                 {
-                    keyLabel = $"o{absOct}\n{physChar}";
-                }
-
-                var textBlock = new TextBlock
-                {
-                    Text = keyLabel,
-                    FontSize = (i == 0) ? 10 : 11,
-                    FontWeight = FontWeight.Bold,
-                    Foreground = Brushes.Gray,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                    Margin = new Avalonia.Thickness(0, 0, 0, 6)
-                };
-
-                var grid = new Grid();
-                grid.Children.Add(textBlock);
-
-                var border = new Border
-                {
-                    Width = whiteKeyWidth - 2,
-                    Height = whiteKeyHeight,
-                    Background = isValidOctave ? Brushes.White : new SolidColorBrush(Color.Parse("#888888")),
-                    BorderBrush = Brushes.Black,
-                    BorderThickness = new Avalonia.Thickness(1),
-                    CornerRadius = new Avalonia.CornerRadius(0, 0, 4, 4),
-                    Child = grid,
-                    Tag = new KeyInfo
+                    int physIndex = octOffset * 7 + key.IsWhiteIndex;
+                    if (physIndex < whitePhysicalChars.Length)
                     {
-                        NoteName = whiteNoteNames[i],
-                        OctaveOffset = oct - 2,
-                        NoteInOctave = whiteNoteOffsets[i],
-                        IsBlack = false,
-                        MmlName = whiteNoteNames[i],
-                        PhysicalChar = physChar
+                        key.PhysicalChar = whitePhysicalChars[physIndex];
+                        _physicalKeyMap[whitePhysicalKeys[physIndex]] = key;
                     }
-                };
-
-                Canvas.SetLeft(border, left);
-                Canvas.SetTop(border, 0);
-
-                var keyInfo = (KeyInfo)border.Tag;
-                keyInfo.Control = border;
-                _keys.Add(keyInfo);
-
-                if (physKey != Key.None)
-                {
-                    _physicalKeyMap[physKey] = keyInfo;
                 }
-
-                border.PointerPressed += Key_PointerPressed;
-                border.PointerEntered += Key_PointerEntered;
-                border.PointerReleased += Key_PointerReleased;
-
-                PianoCanvas.Children.Add(border);
-                whiteCount++;
+                
+                string label = key.PhysicalChar;
+                if (key.IsWhiteIndex == 0) label = $"o{key.AbsoluteOctave}\n{label}";
+                key.LabelBlock.Text = label;
             }
-        }
-
-        // 2. Build Black Keys
-        int[] blackNoteOffsets = { 1, 3, 6, 8, 10 };
-        string[] blackMmlNames = { "c+", "d+", "f+", "g+", "a+" };
-        int[] blackPositionsAfterWhite = { 0, 1, 3, 4, 5 };
-
-        int blackCount = 0;
-        for (int oct = 0; oct < numOctaves; oct++)
-        {
-            int absOct = startOctave + oct;
-            bool isValidOctave = absOct >= 0 && absOct <= 7;
-
-            for (int i = 0; i < 5; i++)
+            else
             {
-                int whiteIdx = oct * 7 + blackPositionsAfterWhite[i];
-                double left = (whiteIdx + 1) * whiteKeyWidth - (blackKeyWidth / 2.0);
-                int physIndex = blackCount;
-
-                string physChar = physIndex < blackPhysicalChars.Length ? blackPhysicalChars[physIndex] : "";
-                Key physKey = physIndex < blackPhysicalKeys.Length ? blackPhysicalKeys[physIndex] : Key.None;
-
-                var textBlock = new TextBlock
+                int octOffset = key.AbsoluteOctave - _currentOctave;
+                if (octOffset >= 0 && octOffset < 3)
                 {
-                    Text = physChar,
-                    FontSize = 10,
-                    FontWeight = FontWeight.Bold,
-                    Foreground = Brushes.LightGray,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                    Margin = new Avalonia.Thickness(0, 0, 0, 4)
-                };
-
-                var grid = new Grid();
-                grid.Children.Add(textBlock);
-
-                var border = new Border
-                {
-                    Width = blackKeyWidth,
-                    Height = blackKeyHeight,
-                    Background = isValidOctave ? Brushes.Black : new SolidColorBrush(Color.Parse("#444444")),
-                    BorderBrush = Brushes.DarkGray,
-                    BorderThickness = new Avalonia.Thickness(1),
-                    CornerRadius = new Avalonia.CornerRadius(0, 0, 3, 3),
-                    ZIndex = 10,
-                    Child = grid,
-                    Tag = new KeyInfo
+                    int physIndex = octOffset * 5 + key.IsBlackIndex;
+                    if (physIndex < blackPhysicalChars.Length)
                     {
-                        NoteName = blackMmlNames[i],
-                        OctaveOffset = oct - 2,
-                        NoteInOctave = blackNoteOffsets[i],
-                        IsBlack = true,
-                        MmlName = blackMmlNames[i],
-                        PhysicalChar = physChar
+                        key.PhysicalChar = blackPhysicalChars[physIndex];
+                        _physicalKeyMap[blackPhysicalKeys[physIndex]] = key;
                     }
-                };
-
-                Canvas.SetLeft(border, left);
-                Canvas.SetTop(border, 0);
-
-                var keyInfo = (KeyInfo)border.Tag;
-                keyInfo.Control = border;
-                _keys.Add(keyInfo);
-
-                if (physKey != Key.None)
-                {
-                    _physicalKeyMap[physKey] = keyInfo;
                 }
-
-                border.PointerPressed += Key_PointerPressed;
-                border.PointerEntered += Key_PointerEntered;
-                border.PointerReleased += Key_PointerReleased;
-
-                PianoCanvas.Children.Add(border);
-                blackCount++;
+                
+                key.LabelBlock.Text = key.PhysicalChar;
             }
         }
     }
@@ -323,8 +350,8 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void SwitchToKey(KeyInfo key)
     {
-        int actualOctave = _currentOctave + key.OctaveOffset;
-        if (actualOctave < 0 || actualOctave > 7) return;
+        int actualOctave = key.AbsoluteOctave;
+        if (actualOctave < 1 || actualOctave > 8) return;
 
         if (_activeMouseKey != null)
         {
@@ -364,7 +391,7 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void PlayNote(KeyInfo key)
     {
-        int actualOctave = _currentOctave + key.OctaveOffset;
+        int actualOctave = key.AbsoluteOctave;
         int noteIndex = actualOctave * 12 + key.NoteInOctave;
         double freq = 440.0 * Math.Pow(2.0, (noteIndex - 57) / 12.0);
 
@@ -411,21 +438,19 @@ public partial class VirtualKeyboardControl : UserControl
 
     private void OctaveDown_Click(object? sender, RoutedEventArgs e)
     {
-        if (_currentOctave > 0)
+        if (_currentOctave > 1)
         {
             _currentOctave--;
-            UpdateStateDisplay();
-            BuildKeyboard();
+            UpdateKeyAssignments();
         }
     }
 
     private void OctaveUp_Click(object? sender, RoutedEventArgs e)
     {
-        if (_currentOctave < 8)
+        if (_currentOctave < 6)
         {
             _currentOctave++;
-            UpdateStateDisplay();
-            BuildKeyboard();
+            UpdateKeyAssignments();
         }
     }
 
