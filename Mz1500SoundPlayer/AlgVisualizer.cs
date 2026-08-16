@@ -16,9 +16,23 @@ namespace Mz1500SoundPlayer
             set => SetValue(AlgProperty, value);
         }
 
+        public static readonly StyledProperty<bool> IsOp1SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp1Selected), false);
+        public static readonly StyledProperty<bool> IsOp2SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp2Selected), false);
+        public static readonly StyledProperty<bool> IsOp3SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp3Selected), false);
+        public static readonly StyledProperty<bool> IsOp4SelectedProperty = AvaloniaProperty.Register<AlgVisualizer, bool>(nameof(IsOp4Selected), false);
+
+        public bool IsOp1Selected { get => GetValue(IsOp1SelectedProperty); set => SetValue(IsOp1SelectedProperty, value); }
+        public bool IsOp2Selected { get => GetValue(IsOp2SelectedProperty); set => SetValue(IsOp2SelectedProperty, value); }
+        public bool IsOp3Selected { get => GetValue(IsOp3SelectedProperty); set => SetValue(IsOp3SelectedProperty, value); }
+        public bool IsOp4Selected { get => GetValue(IsOp4SelectedProperty); set => SetValue(IsOp4SelectedProperty, value); }
+
         static AlgVisualizer()
         {
             AffectsRender<AlgVisualizer>(AlgProperty);
+            AffectsRender<AlgVisualizer>(IsOp1SelectedProperty);
+            AffectsRender<AlgVisualizer>(IsOp2SelectedProperty);
+            AffectsRender<AlgVisualizer>(IsOp3SelectedProperty);
+            AffectsRender<AlgVisualizer>(IsOp4SelectedProperty);
         }
 
         protected override Size MeasureOverride(Size availableSize)
@@ -46,6 +60,8 @@ namespace Mz1500SoundPlayer
             var pen = new Pen(new SolidColorBrush(Color.Parse("#cccccc")), 1);
             var linePen = new Pen(new SolidColorBrush(Color.Parse("#cccccc")), 1.5);
             var carrierBrush = new SolidColorBrush(Color.Parse("#444444")); // Muted fill for carrier
+            var selectedPen = new Pen(new SolidColorBrush(Color.Parse("#007ACC")), 2);
+            var selectedBrush = new SolidColorBrush(Color.Parse("#2A303A"));
             var textBrush = new SolidColorBrush(Color.Parse("#cccccc"));
             var typeface = new Typeface("Arial");
 
@@ -73,8 +89,16 @@ namespace Mz1500SoundPlayer
             void DrawOp(int opNum, double x, double y)
             {
                 var rect = new Rect(x, y, bx, by);
-                // Fill if carrier
-                if (isCarrier[opNum - 1])
+                bool isSelected = opNum == 1 ? IsOp1Selected : 
+                                  opNum == 2 ? IsOp2Selected : 
+                                  opNum == 3 ? IsOp3Selected : 
+                                  opNum == 4 ? IsOp4Selected : false;
+
+                if (isSelected)
+                {
+                    context.DrawRectangle(selectedBrush, selectedPen, rect);
+                }
+                else if (isCarrier[opNum - 1])
                 {
                     context.DrawRectangle(carrierBrush, pen, rect);
                 }

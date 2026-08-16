@@ -194,14 +194,14 @@
                 <Setter Property="CornerRadius" Value="2"/>
               </Style>
             </ListBox.Styles>
-            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" /></StackPanel></ListBoxItem>
-            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="0" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="0" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="1" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="1" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="2" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="2" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="3" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="3" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="4" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="4" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="5" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="5" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="6" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="6" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel><TextBlock Text="7" HorizontalAlignment="Center" FontSize="11"/><local:AlgVisualizer Alg="7" IsOp1Selected="{Binding Op1.IsSelected}" IsOp2Selected="{Binding Op2.IsSelected}" IsOp3Selected="{Binding Op3.IsSelected}" IsOp4Selected="{Binding Op4.IsSelected}" /></StackPanel></ListBoxItem>
           </ListBox>
         </StackPanel>
         
