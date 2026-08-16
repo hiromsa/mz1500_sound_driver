@@ -20,8 +20,8 @@
 
     <!-- Piano Keys Canvas Container -->
     <Border Grid.Row="1" Background="#111111" CornerRadius="6" Padding="10" Margin="0,0,0,15" BorderBrush="#333333" BorderThickness="1">
-      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-        <Canvas Name="PianoCanvas" Width="1344" Height="85" HorizontalAlignment="Left"/>
+      <ScrollViewer Name="KeyboardScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Canvas Name="PianoCanvas" Width="1344" Height="85" HorizontalAlignment="Left" Margin="0,0,0,20"/>
       </ScrollViewer>
     </Border>
 
