@@ -43,9 +43,16 @@
         <Border.Styles>
           <Style Selector="Border">
             <Setter Property="Background" Value="#252526" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="1" />
           </Style>
           <Style Selector="Border.carrier">
             <Setter Property="Background" Value="#2D2D30" />
+          </Style>
+          <Style Selector="Border.selected">
+            <Setter Property="BorderBrush" Value="#007ACC" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Background" Value="#2A303A" />
           </Style>
         </Border.Styles>
         <Classes.carrier>
@@ -53,12 +60,18 @@
             <Binding Path="IsCarrier"/>
           </MultiBinding>
         </Classes.carrier>
+        <Classes.selected>
+          <MultiBinding Converter="{x:Static BoolConverters.And}">
+            <Binding Path="IsSelected"/>
+          </MultiBinding>
+        </Classes.selected>
         
         <StackPanel>
           <!-- Title row with M/S buttons and Copy/Paste -->
           <Grid ColumnDefinitions="*, Auto">
             <TextBlock Grid.Column="0" Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#4ec9b0" Margin="0,0,0,6"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
+              <ToggleButton Content="選択" IsChecked="{Binding IsSelected}" Width="36" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" Margin="0,0,10,0" ToolTip.Tip="複数選択してパラメータを連動編集します"/>
               <Button Content="📋" Click="Copy_Click" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="11" CornerRadius="2" Background="#333333" Foreground="#cccccc" ToolTip.Tip="パラメータをコピー"/>
               <Button Content="📎" Click="Paste_Click" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="11" CornerRadius="2" Background="#333333" Foreground="#cccccc" ToolTip.Tip="パラメータを貼り付け" Margin="0,0,10,0"/>
               <ToggleButton Content="M" IsChecked="{Binding IsMuted}" Width="26" Height="22" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="10" CornerRadius="2" />
