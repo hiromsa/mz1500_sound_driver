@@ -41,7 +41,13 @@ public class MultiTrackSequenceProvider : ISampleProvider
                 }
                 else
                 {
-                    _trackProviders.Add((kvp.Key.ToUpperInvariant(), new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate, isBeep)));
+                    int psgChannel = 0;
+                    if (kvp.Key.ToUpperInvariant() == "P1") psgChannel = 0;
+                    else if (kvp.Key.ToUpperInvariant() == "P2") psgChannel = 1;
+                    else if (kvp.Key.ToUpperInvariant() == "P3") psgChannel = 2;
+                    else if (kvp.Key.ToUpperInvariant() == "N1") psgChannel = 2; // Noise channel (uses ch3 freq usually)
+                    
+                    _trackProviders.Add((kvp.Key.ToUpperInvariant(), new MmlSequenceProvider(kvp.Value, envelopes, hwPitchEnvelopes, sampleRate, isBeep, psgChannel)));
                 }
             }
         }

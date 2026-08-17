@@ -17,6 +17,8 @@ public class MmlSequenceProvider : ISampleProvider
     
     // SN76489 VM State
     private int _hwVolume = 15; // 0=Max, 15=Silent (Hardware logic)
+    private float _currentVol = 0.15f;
+    private int _psgChannel = 0; // 10-bit value
     private ushort _hwFreqRaw = 0; // 10-bit value
     private double _phase = 0;
     private double _phaseIncrement = 0;
@@ -60,7 +62,7 @@ public class MmlSequenceProvider : ISampleProvider
         0.0631f, 0.0501f, 0.0398f, 0.0000f
     };
 
-    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<Z80SequenceCompiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false)
+    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<Z80SequenceCompiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false, int psgChannel = 0)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _bytecode = bytecode;
@@ -68,6 +70,7 @@ public class MmlSequenceProvider : ISampleProvider
         _hwPitchEnvelopes = hwPitchEnvelopes ?? new List<Z80SequenceCompiler.HwPitchEnvData>();
         _samplesPerFrame = WaveFormat.SampleRate / 60.0;
         _isBeep = isBeep;
+        _psgChannel = psgChannel;
         
         Reset();
     }
