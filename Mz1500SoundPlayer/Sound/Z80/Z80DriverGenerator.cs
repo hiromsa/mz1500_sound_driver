@@ -21,10 +21,10 @@ public class Z80DriverGenerator
 {
     public List<Channel> ChannelList { get; } = new();
     
-    // MmlPlayerModelから渡されるエンベロープ定義データ (EnvId -> ボリューム配列)
+    // MmlPlayerModelから渡されるエンベロープ定義チE�Eタ (EnvId -> ボリューム配�E)
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     
-    // HwPitchEnvデータ
+    // HwPitchEnvチE�Eタ
     public List<Z80SequenceCompiler.HwPitchEnvData> HwPitchEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
@@ -76,14 +76,14 @@ public class Z80DriverGenerator
 
         assembler.IM1();
 
-        // 割り込みベクタの設定
+        // 割り込みベクタの設宁E
         assembler.LD(assembler.HL, 0x1039);
         assembler.LD(assembler.DE, assembler.LabelRef("sound:"));
         assembler.LD(assembler.HLref, assembler.E);
         assembler.INC(assembler.HL);
         assembler.LD(assembler.HLref, assembler.D);
 
-        // 8253タイマー設定 (割り込み周期)
+        // 8253タイマ�E設宁E(割り込み周朁E
         assembler.LD(assembler.HL, 0xE007);
         assembler.LD(assembler.HLref, 0xB0); // CH2 Mode0
         assembler.LD(assembler.HLref, 0x74); // CH1 Mode2
@@ -98,24 +98,24 @@ public class Z80DriverGenerator
         assembler.LD(assembler.A, 0x05);
         assembler.LD(0xE003, assembler.A);
 
-        // MZ-700音源(BEEP)初期化 (SN76489のダミーか互換用？)
+        // MZ-700音溁EBEEP)初期匁E(SN76489のダミ�Eか互換用�E�E
         assembler.LD(assembler.A, 0x01);
         assembler.LD(assembler.HL, 0xE008);
         assembler.LD(assembler.HLref, assembler.A);
         assembler.LD(assembler.HL, 0xE007);
         assembler.LD(assembler.HLref, 0x36);
 
-        // --- VRAMクリアとテスト描画 (フリーズ(無反応)しているように見えないための対策) ---
+        // --- VRAMクリアとチE��ト描画 (フリーズ(無反忁EしてぁE��ように見えなぁE��め�E対筁E ---
         if (pcgData == null)
         {
-            // VRAM(0xD000〜0xD3E7)をクリア
+            // VRAM(0xD000、ExD3E7)をクリア
             assembler.LD(assembler.HL, 0xD000);
             assembler.LD(assembler.DE, 0xD001);
             assembler.LD(assembler.BC, 0x03FF);
             assembler.LD(assembler.HLref, 0x00); // 0x00 (Space or Empty)
             assembler.LDIR();
 
-            // 画面左上(0xD000)に 'PLAYING' をMZ-1500のアスキー文字（画面表示コード）で直書き
+            // 画面左丁E0xD000)に 'PLAYING' をMZ-1500のアスキー斁E��（画面表示コード）で直書ぁE
             assembler.LD(assembler.HL, 0xD000);
             assembler.LD(assembler.HLref, 0x10); assembler.INC(assembler.HL); // P = 16 = 0x10
             assembler.LD(assembler.HLref, 0x0C); assembler.INC(assembler.HL); // L = 12 = 0x0C
@@ -129,7 +129,7 @@ public class Z80DriverGenerator
 
         assembler.EI();
 
-        // 無限ループ (メイン処理は割り込みに任せる)
+        // 無限ルーチE(メイン処琁E�E割り込みに任せる)
         assembler.Label("loop:");
         assembler.JP(assembler.LabelRef("loop:"));
 
@@ -140,7 +140,7 @@ public class Z80DriverGenerator
         assembler.PUSH(assembler.DE);
         assembler.PUSH(assembler.HL);
         
-        // 8253タイマ再設定
+        // 8253タイマ�E設宁E
         assembler.LD(assembler.HL, 0xE006);
         assembler.LD(assembler.HLref, 0x83);
         assembler.LD(assembler.HLref, 0x00);
@@ -159,19 +159,44 @@ public class Z80DriverGenerator
         assembler.RET();
 
 
-        // ===== チャンネルごとの処理ルーチン =====
+        // ===== チャンネルごとの処琁E��ーチン =====
         foreach (var ch in ChannelList)
         {
             AppendPlayChannelSource(ch.Name, assembler, ch.IOPort);
         }
 
-        // ===== チャンネル独立のシーケンスデータ配置 =====
+        
+        // ----- 生�Eした周波数チE�Eブルの追加 -----
+        assembler.Label("DataPsgFreqTable");
+        for (int i = 0; i < 96; i++) {
+            double freq = 440.0 * Math.Pow(2.0, (i - 57) / 12.0);
+            int baseReg = (int)Math.Round(111860.0 / freq);
+            baseReg = Math.Clamp(baseReg, 0, 1023);
+            ushort regU = (ushort)baseReg;
+            // Byte1: 0000ffff, Byte2: 00ffffff
+            byte c1 = (byte)(regU & 0x0F);
+            byte c2 = (byte)((regU >> 4) & 0x3F);
+            assembler.DB(c1);
+            assembler.DB(c2);
+        }
+
+        assembler.Label("DataBeepFreqTable");
+        for (int i = 0; i < 96; i++) {
+            double freq = 440.0 * Math.Pow(2.0, (i - 57) / 12.0);
+            double baseReg = 894886.0 / freq;
+            int reg = (int)Math.Round(baseReg);
+            reg = Math.Clamp(reg, 0, 65535);
+            assembler.DB((byte)(reg & 0xFF));
+            assembler.DB((byte)((reg >> 8) & 0xFF));
+        }
+
+        // ===== チャンネル独立�EシーケンスチE�Eタ配置 =====
         foreach (var ch in ChannelList)
         {
             assembler.Label(ch.Name + "_" + nameof(Labels.DataSong));
             assembler.DB(ch.SequenceData);
             assembler.Label(ch.Name + "_data_song_end");
-            assembler.DB(0xFF); // 安全用の終端マーカー (L省略時にここにジャンプして停止し続ける)
+            assembler.DB(0xFF); // 安�E用の終端マ�Eカー (L省略時にここにジャンプして停止し続けめE
         }
 
         return assembler.Build();
@@ -181,7 +206,7 @@ public class Z80DriverGenerator
     {
         asm.Label(prefix);
         
-        // 1. レングス(Duration)の減少と判定
+        // 1. レングス(Duration)の減少と判宁E
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
@@ -201,70 +226,113 @@ public class Z80DriverGenerator
         asm.Label(prefix + "_dec_dur_lower");
         asm.DEC(asm.HLref);
 
-        // 2. ゲート(Gate)の処理 (簡易実装: Duration中にGateが切れたら音量を無音にするなどの処理が必要だがまずは無視するか要調整)
+        // 2. ゲーチEGate)の処琁E(簡易実裁E Duration中にGateが�Eれたら音量を無音にするなどの処琁E��忁E��だがまず�E無視するか要調整)
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
-        // 3. 次のコマンドを読む処理
-        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
+        
+        // 3. 次のコマンドを読む処琁E        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
         
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.E, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref);
 
-        // Fetch Command
+        // Fetch Command -> A
         asm.LD(asm.A, asm.DEref);
         asm.INC(asm.DE);
         asm.LD(asm.B, asm.A);
 
         // 0xFF (End)
-        asm.LD(asm.A, 0xFF);
-        asm.CP(asm.B);
+        asm.CP(asm.Value((byte)0xFF));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_end_song"));
 
-        // 0x01 (Tone)
-        asm.LD(asm.A, 0x01);
-        asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadToneData)));
-        
-        // 0x02 (Rest)
-        asm.LD(asm.A, 0x02);
-        asm.CP(asm.B);
+        // 0x60 (Rest)
+        asm.CP(asm.Value((byte)0x60));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadKyufuData)));
 
-        // 0x03 (Volume)
-        asm.LD(asm.A, 0x03);
-        asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadVolumeData)));
-
-        // 0x04 (Envelope)
-        asm.LD(asm.A, 0x04);
-        asm.CP(asm.B);
+        // 0xA0 (Set Voice / Env)
+        asm.CP(asm.Value((byte)0xA0));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadEnvData)));
 
-        // 0x05 (Pitch Envelope)
-        asm.LD(asm.A, 0x05);
-        asm.CP(asm.B);
+        // 0xA1 (Set Volume)
+        asm.CP(asm.Value((byte)0xA1));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadVolumeData)));
+
+        // 0xA2 (Set PEnv)
+        asm.CP(asm.Value((byte)0xA2));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadPEnvData)));
 
-        // 0x06 (Noise)
-        asm.LD(asm.A, 0x06);
-        asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_noise"));
-
-        // 0x07 (Sync Noise)
-        asm.LD(asm.A, 0x07);
-        asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_sync_noise"));
+        // 0x90 (Long Length)
+        asm.CP(asm.Value((byte)0x90));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_long_len"));
 
         // 0x08 (Loop Marker)
-        asm.LD(asm.A, 0x08);
-        asm.CP(asm.B);
+        asm.CP(asm.Value((byte)0x08));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_read_loop_marker"));
 
-        asm.RET(); // Unknown commmand
+        // Noise (0x06) -> wait, we kept Noise as 0x06
+        asm.CP(asm.Value((byte)0x06));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_noise"));
+
+        // Sync Noise (0x07)
+        asm.CP(asm.Value((byte)0x07));
+        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_sync_noise"));
+
+        // If A < 0x60, it's Note ON (0x00 - 0x5F)
+        asm.CP(asm.Value((byte)0x60));
+        asm.JP(asm.C, asm.LabelRef(prefix + "_" + nameof(Labels.ReadToneData)));
         
-        // -- Read Loop Marker
+        // If A >= 0x80 AND A <= 0x8F, it's Short Length
+        asm.SUB(asm.Value((byte)0x80));
+        asm.CP(asm.Value((byte)0x10));
+        asm.JP(asm.C, asm.LabelRef(prefix + "_read_short_len"));
+
+        // Unknown -> Ignore and read next
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
+        // -- Read Long Length --
+        asm.Label(prefix + "_read_long_len");
+        asm.LD(asm.A, asm.DEref);
+        asm.INC(asm.DE);
+        asm.LD(asm.C, asm.A);
+        asm.LD(asm.A, asm.DEref);
+        asm.INC(asm.DE);
+        asm.LD(asm.B, asm.A); // BC = 16-bit Length
+        
+        // Store to StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
+        
+        // Save pos and read next
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+
+        // -- Read Short Length --
+        asm.Label(prefix + "_read_short_len");
+        // A is already (Cmd - 0x80).
+        asm.AND(asm.Value((byte)0x0F));
+        asm.INC(asm.A);
+        asm.LD(asm.C, asm.A);
+        asm.LD(asm.B, 0); // BC = Length
+        
+        // Store to StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
+        
+        // Save pos and read next
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HLref, asm.E);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.D);
+        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+// -- Read Loop Marker
         asm.Label(prefix + "_read_loop_marker");
         // Save current DE (which points to the instruction AFTER 0x08) to StatLoopPosition
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLoopPosition)));
@@ -385,64 +453,79 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, 0x00);
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
 
+        
         // -- Read Tone -- 
         asm.Label(prefix + "_" + nameof(Labels.ReadToneData));
-        // DE is now pointing to 6 bytes: Freq L, Freq H, Dur L, Dur H, Gate L, Gate H
-        // Currently: HW port sending (simple SN76489)
-        // HW port format:
-        // Byte 1: 1 c c t d d d d (c=channel 0-2, t=0(freq)/1(vol), d=data)
-        // Byte 2: 0 - d d d d d d 
-        // We assume DE points to raw register values provided by compiler, to simplify
         
-        // Reset Env Pos Offset for the new note
+        // Setup length from StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.C, asm.HLref);
+        asm.INC(asm.HL);
+        asm.LD(asm.B, asm.HLref);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
+
+        // Reset offsets
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.LD(asm.HLref, 0x00);
-
-        // Reset PEnv Pos Offset for the new note
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HLref, 0x00);
 
-        // Note On flag (1)
+        // Set Note Active
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
         asm.LD(asm.HLref, 0x01);
 
-        // Read Freq (L, H) -> Hardware (using port for SN76489 or E004 for BEEP)
-        asm.LD(asm.A, asm.DEref);
-        asm.INC(asm.DE);
+        // B has the original Note ON command (Note Number)
+        // Note: B was set to the command right after Fetch Command in ReadSongDataOne. Wait, B was overwritten?
+        // Let's just use B since it was saved at the beginning of ReadSongDataOne and we didn't overwrite it for Tone,
+        // EXCEPT we overwrote it during Long/Short Length. Wait! B is NOT overwritten for Tone because Tone is jumped to directly!
+        // But let's verify. B was set: asm.LD(asm.B, asm.A); Yes!
+        
+        // Fetch HW register from Table
         if (port == 0xE0) {
+            asm.LD(asm.HL, asm.LabelRef("DataBeepFreqTable"));
+        } else {
+            asm.LD(asm.HL, asm.LabelRef("DataPsgFreqTable"));
+        }
+        
+        asm.LD(asm.A, asm.B);
+        asm.ADD(asm.A, asm.A); // A = Note * 2
+        asm.LD(asm.C, asm.A);
+        asm.LD(asm.B, 0);
+        asm.ADD(asm.HL, asm.BC);
+        
+        // Output to hardware
+        asm.LD(asm.A, asm.HLref); // low byte
+        
+        if (port == 0xE0) {
+            asm.PUSH(asm.HL);
             asm.LD(asm.HL, (ushort)0xE004);
             asm.LD(asm.HLref, asm.A);
-        } else {
-            asm.OUT(port);
-        }
-
-        asm.LD(asm.A, asm.DEref);
-        asm.INC(asm.DE);
-        if (port == 0xE0) {
+            asm.POP(asm.HL);
+            
+            asm.INC(asm.HL);
+            asm.LD(asm.A, asm.HLref); // high byte
+            
+            asm.PUSH(asm.HL);
             asm.LD(asm.HL, (ushort)0xE004);
             asm.LD(asm.HLref, asm.A);
+            asm.POP(asm.HL);
         } else {
+            // Determine PSG Channel from prefix (track_0 -> 0, etc.)
+            int psgCh = 0;
+            if (prefix.StartsWith("track_")) {
+                int.TryParse(prefix.Substring(6), out psgCh);
+            }
+            byte chBits = (byte)(0x80 | ((psgCh & 0x03) << 5));
+            asm.OR(asm.Value(chBits));
+            asm.OUT(port);
+            
+            asm.INC(asm.HL);
+            asm.LD(asm.A, asm.HLref); // high byte
             asm.OUT(port);
         }
-
-        // Fetch Duration (2 bytes) -> StatLengthRemain
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
-        asm.LD(asm.A, asm.DEref); // Dur L
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
-        asm.INC(asm.HL);
-        asm.LD(asm.A, asm.DEref); // Dur H
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
-
-        // Turn on Note Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
-        asm.LD(asm.HLref, 0x01);
-
-        // Reset Envelope Pos Offset to 0 so note re-triggers envelope correctly
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
-        asm.LD(asm.HLref, 0x00);
 
         // Save pos
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
@@ -462,18 +545,18 @@ public class Z80DriverGenerator
 
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
-
         // -- Read Rest --
         asm.Label(prefix + "_" + nameof(Labels.ReadKyufuData));
-        // Dur L, Dur H
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
-        asm.LD(asm.A, asm.DEref); // Dur L
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        
+        // Setup length from StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
-        asm.LD(asm.A, asm.DEref); // Dur H
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        asm.LD(asm.B, asm.HLref);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
 
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
         asm.LD(asm.HLref, 0x00);
@@ -483,14 +566,12 @@ public class Z80DriverGenerator
             asm.LD(asm.HL, (ushort)0xE008);
             asm.LD(asm.HLref, 0x00); // BEEP OFF
         } else {
-            // Extract channel bits from existing StatHwVolume, append 0x0F to mute
             asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
             asm.LD(asm.A, asm.HLref);
-            asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
-            asm.OR((byte)0x9F);  // Base Vol command + 15 (Mute): 1001 1111
+            asm.AND(asm.Value((byte)0x60)); // Keep only channel bits
+            asm.OR(asm.Value((byte)0x9F));  // Base Vol + 15 (Mute)
             asm.OUT(port);
         }
-        // Note: we do not save this mute volume to StatHwVolume so it remembers original channel base
 
         // Save pos
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
@@ -499,7 +580,7 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, asm.D);
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
-        // -- Read Noise --
+// -- Read Noise --
         asm.Label(prefix + "_read_noise");
         // DE is pointing to 3 bytes: NoiseCmd, DurL, DurH.
         // Similar to ReadTone, but only 1 byte for freq/ctrl instead of two.
@@ -513,17 +594,29 @@ public class Z80DriverGenerator
         // Fetch NoiseCmd and OUT
         asm.LD(asm.A, asm.DEref);
         asm.INC(asm.DE);
+        // -- Read Noise --
+        asm.Label(prefix + "_read_noise");
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HLref, 0x00);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HLref, 0x01);
+
+        // Fetch NoiseCmd and OUT
+        asm.LD(asm.A, asm.DEref);
+        asm.INC(asm.DE);
         if (port != 0xE0) { asm.OUT(port); }
 
-        // Fetch Duration -> StatLengthRemain
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
-        asm.LD(asm.A, asm.DEref);
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        // Setup length from StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
-        asm.LD(asm.A, asm.DEref);
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        asm.LD(asm.B, asm.HLref);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
 
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.HLref, asm.E);
@@ -540,7 +633,6 @@ public class Z80DriverGenerator
 
         // -- Read Sync Noise --
         asm.Label(prefix + "_read_sync_noise");
-        // DE is pointing to 7 bytes: FreqCmd1, FreqCmd2, MuteVol, LinkedNoiseCmd, NoiseVol, DurL, DurH.
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.LD(asm.HLref, 0x00);
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
@@ -549,30 +641,25 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, 0x01);
 
         if (port != 0xE0) {
-            // FreqCmd1
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
-            // FreqCmd2
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
-            // Mute Tone3 Vol
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
-            // Linked Noise Cmd
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
-            // Noise Vol (Save to StatHwVolume and Out)
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE);
             asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
             asm.LD(asm.HLref, asm.A);
             asm.OUT(port);
         }
 
-        // Fetch Duration -> StatLengthRemain
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
-        asm.LD(asm.A, asm.DEref);
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        // Setup length from StatLastLength
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
-        asm.LD(asm.A, asm.DEref);
-        asm.LD(asm.HLref, asm.A);
-        asm.INC(asm.DE);
+        asm.LD(asm.B, asm.HLref);
+        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HLref, asm.C);
+        asm.INC(asm.HL);
+        asm.LD(asm.HLref, asm.B);
 
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.HLref, asm.E);
@@ -581,7 +668,7 @@ public class Z80DriverGenerator
 
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
-        // -- Read Volume --
+// -- Read Volume --
         asm.Label(prefix + "_" + nameof(Labels.ReadVolumeData));
         asm.LD(asm.A, asm.DEref); // raw volume hw byte (1 c c 1 v v v v)
         asm.INC(asm.DE);
@@ -590,7 +677,7 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, asm.A); // save
 
         if (port != 0xE0) {
-            // SN76489に即時ボリューム/ミュートを反映
+            // SN76489に即時�Eリューム/ミュートを反映
             asm.OUT(port);
         }
 

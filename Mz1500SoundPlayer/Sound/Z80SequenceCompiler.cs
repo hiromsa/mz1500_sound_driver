@@ -166,8 +166,8 @@ public class Z80SequenceCompiler
                 }
                 else
                 {
-                    output.Add((byte)Z80SequenceCommand.Rest);
                     emitLength(durationUnits + 1);
+                    output.Add((byte)Z80SequenceCommand.Rest);
                 }
             }
             else
@@ -255,19 +255,15 @@ public class Z80SequenceCompiler
 
                 if (isBeep)
                 {
-                    // Beepチャンネル: ユーザー向けにHzベースのままここは変更なし
-                    double regVal = BeepClockFreq / freq;
-                    if (regVal > 65535) regVal = 65535;
-                    if (regVal < 1) regVal = 1;
-                    ushort regUshort = (ushort)regVal;
-                    byte toneCmd1 = (byte)(regUshort & 0xFF);
-                    byte toneCmd2 = (byte)((regUshort >> 8) & 0xFF);
-                    output.Add(CMD_TONE);
-                    output.Add(toneCmd1);
-                    output.Add(toneCmd2);
+                    // Beepチャンネル
+                    int noteNum = ev.NoteNumber;
+                    if (noteNum < 0) noteNum = 0;
+                    if (noteNum > 95) noteNum = 95;
+                    
                     // Beepは長さ出力
                     ushort durationUnitsBp = (ushort)(gateFrames - 1);
                     emitLength(durationUnitsBp + 1);
+                    output.Add((byte)noteNum);
                 }
                 else if (psgChannel == 3)
                 {
@@ -276,10 +272,10 @@ public class Z80SequenceCompiler
                     byte feedback = (byte)(ev.NoiseWaveMode & 0x01);
                     byte noiseCmd = (byte)(0xE0 | (feedback << 2) | shiftRate);
                     output.Add(CMD_NOISE);
-                    output.Add(noiseCmd);
                     // 長さ出力
                     ushort durationUnitsNoise = (ushort)(gateFrames - 1);
                     emitLength(durationUnitsNoise + 1);
+                    output.Add(noiseCmd);
                 }
                 else
                 {
@@ -289,11 +285,10 @@ public class Z80SequenceCompiler
                     if (noteNum < 0) noteNum = 0;
                     if (noteNum > 95) noteNum = 95;
                     
-                    output.Add((byte)noteNum);
-                    
                     // 長さ出力
                     ushort durationUnits = (ushort)(gateFrames - 1);
                     emitLength(durationUnits + 1);
+                    output.Add((byte)noteNum);
                 }
 
                 // Rest 処理
@@ -348,8 +343,8 @@ public class Z80SequenceCompiler
                         currentVol = 15;
                         
                         ushort restUnits = (ushort)(restFrames - 1);
-                        output.Add((byte)Z80SequenceCommand.Rest);
                         emitLength(restUnits + 1);
+                        output.Add((byte)Z80SequenceCommand.Rest);
                     }
                 }
             }
