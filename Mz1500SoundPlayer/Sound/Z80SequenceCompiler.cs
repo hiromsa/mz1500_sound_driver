@@ -23,7 +23,7 @@ public class Z80SequenceCompiler
     public const byte CMD_SYNC_NOISE = 0xA7; // Tone 3 連携モード専用出劁E
     // CMD_LOOP_MARKER removed // Lコマンドによる無限ループ�Eーカー
     // CMD_END removed
-    public const byte CMD_WAIT = 0x20;
+    public const byte CMD_WAIT = 0xA3;
     public const byte CMD_YM2151_REG_WRITE = 0x21; // 曲の終わめE
 
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();

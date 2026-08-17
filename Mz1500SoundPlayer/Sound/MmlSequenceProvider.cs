@@ -28,6 +28,7 @@ public class MmlSequenceProvider : ISampleProvider
     
     // Engine State
     private int _waitFrames = 0;
+    private int _lastLength = 0;
     private bool _isEnd = false;
     private bool _isRest = false;
     private int _loopOffsetPc = -1;
@@ -84,6 +85,7 @@ public class MmlSequenceProvider : ISampleProvider
         _lfsr = 0x4000;
         
         _waitFrames = 0;
+        _lastLength = 0;
         _isEnd = false;
         _isRest = false;
         _loopOffsetPc = -1;
@@ -108,108 +110,121 @@ public class MmlSequenceProvider : ISampleProvider
         while (fetchNext && !_isEnd && _pc < _bytecode.Length)
         {
             byte cmd = _bytecode[_pc++];
+
+            if (cmd == 0xFF)
+            {
+                if (_loopOffsetPc >= 0)
+                {
+                    _pc = _loopOffsetPc;
+                    fetchNext = true;
+                }
+                else
+                {
+                    _isEnd = true;
+                    fetchNext = false;
+                }
+                continue;
+            }
+
+            if (cmd == 0x60) // REST
+            {
+                _waitFrames = _lastLength;
+                if (_waitFrames == 0)
+                {
+                    _isRest = false;
+                }
+                else
+                {
+                    _isRest = true;
+                    _hwVolume = 15; // 通常の休符はミュート
+                }
+                fetchNext = false;
+                continue;
+            }
+
+            if (cmd >= 0x80 && cmd <= 0x8F) // Short Length
+            {
+                _lastLength = (cmd & 0x0F) + 1;
+                continue;
+            }
+
+            if (cmd == 0x90) // Long Length
+            {
+                byte lenL = _bytecode[_pc++];
+                byte lenH = _bytecode[_pc++];
+                _lastLength = lenL | (lenH << 8);
+                continue;
+            }
+
+            if (cmd < 0x60) // TONE (0x00 - 0x5F)
+            {
+                int noteNum = cmd;
+                double freqHz = 440.0 * Math.Pow(2.0, (noteNum - 57) / 12.0);
+                int baseReg = (int)Math.Round(111860.0 / freqHz);
+                baseReg = Math.Clamp(baseReg, 0, 1023);
+                
+                _hwFreqRaw = (ushort)baseReg;
+                _waitFrames = _lastLength;
+                
+                // Reset envelope
+                _envPosOffset = 0;
+                _pEnvPosOffset = 0;
+                _isRest = false;
+                _isNoiseMode = false;
+                
+                // Immediately initialize envelope
+                if (_envActive && _envelopes.TryGetValue(_envId, out var envInitData) && envInitData.Values.Count > 0)
+                {
+                    int envVal = envInitData.Values[0];
+                    _hwVolume = 15 - envVal; 
+                    if (_hwVolume < 0) _hwVolume = 0;
+                    if (_hwVolume > 15) _hwVolume = 15;
+                    _envPosOffset = 1; 
+                }
+                
+                // Immediately initialize pitch envelope
+                if (_pEnvActive && _pEnvId >= 0 && _pEnvId < _hwPitchEnvelopes.Count)
+                {
+                    var pEnvInitData = _hwPitchEnvelopes[_pEnvId];
+                    if (pEnvInitData.AbsoluteRegisters.Count > 0)
+                    {
+                         ushort hwCmd = pEnvInitData.AbsoluteRegisters[0];
+                         byte cmd1 = (byte)(hwCmd & 0xFF);
+                         byte cmd2 = (byte)(hwCmd >> 8);
+                         ushort freqReg = _isBeep ? (ushort)(cmd1 | (cmd2 << 8)) : (ushort)((cmd1 & 0x0F) | ((cmd2 & 0x3F) << 4));
+                         if (freqReg > 0)
+                         {
+                             double pFreqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
+                             _phaseIncrement = pFreqHz / WaveFormat.SampleRate;
+                         }
+                         else
+                         {
+                             _phaseIncrement = 0;
+                         }
+                         _pEnvPosOffset = 1;
+                    }
+                }
+                
+                if (_pEnvPosOffset == 0)
+                {
+                    if (_hwFreqRaw > 0)
+                    {
+                        double pFreqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
+                        _phaseIncrement = pFreqHz / WaveFormat.SampleRate;
+                    }
+                    else
+                    {
+                        _phaseIncrement = 0;
+                    }
+                }
+                
+                fetchNext = false; // Yield VM processing until next tick
+                continue;
+            }
+
+            // Other commands
             switch (cmd)
             {
-                case Z80SequenceCompiler.CMD_TONE:
-                    byte t1 = _bytecode[_pc++];
-                    byte t2 = _bytecode[_pc++];
-                    byte lenL = _bytecode[_pc++];
-                    byte lenH = _bytecode[_pc++];
-                    
-                    if (_isBeep)
-                    {
-                        _hwFreqRaw = (ushort)(t1 | (t2 << 8));
-                    }
-                    else
-                    {
-                        _hwFreqRaw = (ushort)((t1 & 0x0F) | ((t2 & 0x3F) << 4));
-                    }
-                    
-                    _waitFrames = lenL | (lenH << 8);
-                    
-                    // Reset envelope
-                    _envPosOffset = 0;
-                    _pEnvPosOffset = 0;
-                    _isRest = false;
-                    _isNoiseMode = false;
-                    
-                    // Immediately initialize envelope for the new tone so no delay occurs on first frame
-                    if (_envActive && _envelopes.TryGetValue(_envId, out var envInitData) && envInitData.Values.Count > 0)
-                    {
-                        int envVal = envInitData.Values[0];
-                        _hwVolume = 15 - envVal; 
-                        if (_hwVolume < 0) _hwVolume = 0;
-                        if (_hwVolume > 15) _hwVolume = 15;
-                        _envPosOffset = 1; // Already consumed first step
-                    }
-                    
-                    // Immediately initialize pitch envelope
-                    if (_pEnvActive && _pEnvId >= 0 && _pEnvId < _hwPitchEnvelopes.Count)
-                    {
-                        var pEnvInitData = _hwPitchEnvelopes[_pEnvId];
-                        if (pEnvInitData.AbsoluteRegisters.Count > 0)
-                        {
-                             ushort hwCmd = pEnvInitData.AbsoluteRegisters[0];
-                             byte initCmd1 = (byte)(hwCmd & 0xFF);
-                             byte initCmd2 = (byte)(hwCmd >> 8);
-                             ushort freqReg = _isBeep ? (ushort)(initCmd1 | (initCmd2 << 8)) : (ushort)((initCmd1 & 0x0F) | ((initCmd2 & 0x3F) << 4));
-                             if (freqReg > 0)
-                             {
-                                 double pFreqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
-                                 _phaseIncrement = pFreqHz / WaveFormat.SampleRate;
-                             }
-                             else
-                             {
-                                 _phaseIncrement = 0;
-                             }
-                             _pEnvPosOffset = 1;
-                        }
-                    }
-                    
-                    // Update frequency (only if pitch env did NOT already set it)
-                    if (_pEnvPosOffset == 0)
-                    {
-                        if (_hwFreqRaw > 0)
-                        {
-                            double freqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
-                            _phaseIncrement = freqHz / WaveFormat.SampleRate;
-                        }
-                        else
-                        {
-                            _phaseIncrement = 0;
-                        }
-                    }
-                    // else: pitch envelope already set _phaseIncrement, keep it
-                    
-                    fetchNext = false; // Yield VM processing until next tick
-                    break;
-                    
-                case (byte)Z80SequenceCommand.Rest:
-                    byte rlenL = _bytecode[_pc++];
-                    byte rlenH = _bytecode[_pc++];
-                    _waitFrames = rlenL | (rlenH << 8);
-                    // _isRest = true はここでは設定しない:
-                    // リリースフェーズ中は直前のCMD_VOLによる音量が維持される必要がある。
-                    // (Z80SequenceCompilerはリリース時に CMD_VOL→CMD_REST の順で出力している)
-                    // 音量ミュートは Z80SequenceCompiler 側でリリースが終わった時に CMD_VOL 15 として送付される。
-                    // _isRest フラグは、休符中に周波数が 0 = 無音として扱うかどうかを制御するため、
-                    // ここで true にすると Read() でサイン波生成がスキップされ音が出なくなる。
-                    // リリース用の短い休符（0フレーム）に対しては、直前のトーン周波数のまま継続する。
-                    if (_waitFrames == 0 && rlenL == 0 && rlenH == 0)
-                    {
-                        // 1フレーム待機（リリース展開中の短い休止）。音量は直前のCMD_VOLのままにする。
-                        _isRest = false;
-                    }
-                    else
-                    {
-                        _isRest = true;
-                        _hwVolume = 15; // 通常の休符はミュート
-                    }
-                    
-                    fetchNext = false; // Yield VM processing until next tick
-                    break;
-
-                    
                 case Z80SequenceCompiler.CMD_NOISE:
                     byte noiseCmd = _bytecode[_pc++];
                     byte nlenL = _bytecode[_pc++];
@@ -260,7 +275,7 @@ public class MmlSequenceProvider : ISampleProvider
                     _isRest = false;
                     fetchNext = false;
                     break;
-                    
+
                 case (byte)Z80SequenceCommand.SetVolume:
                     byte volData = _bytecode[_pc++];
                     _hwVolume = volData & 0x0F;
@@ -297,19 +312,6 @@ public class MmlSequenceProvider : ISampleProvider
                 case (byte)Z80SequenceCommand.LoopMarker:
                     _loopOffsetPc = _pc;
                     fetchNext = true;
-                    break;
-                    
-                case (byte)Z80SequenceCommand.TrackEnd:
-                    if (_loopOffsetPc >= 0)
-                    {
-                        _pc = _loopOffsetPc;
-                        fetchNext = true;
-                    }
-                    else
-                    {
-                        _isEnd = true;
-                        fetchNext = false;
-                    }
                     break;
             }
         }

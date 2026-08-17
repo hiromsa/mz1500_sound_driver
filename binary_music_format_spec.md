@@ -15,7 +15,7 @@
 | `CMD_ENV` | `0x04` | エンベロープID(1バイチE | 2 bytes | ソフトウェア音量エンベロープ設宁E|
 | `CMD_PENV` | `0x05` | ピッチEnv ID(1バイチE | 2 bytes | ピッチエンベロープ設宁E|
 | `CMD_NOISE` | `0xA6` | ノイズ設宁E1バイチE + 長ぁE2バイチE | 4 bytes | ノイズ発音 |
-| `CMD_WAIT` | `0x20` | フレーム数(2バイチE | 3 bytes | FM音源用のウェイト（征E��！E|
+| `CMD_WAIT` | `0xA3` | フレーム数(2バイチE | 3 bytes | FM音源用のウェイト（征E��！E|
 | `CMD_YM2151_REG`| `0x21` | レジスタ番号(1バイチE + 値(1バイチE | 3 bytes | FM音源への直接レジスタ書き込み |
 | `CMD_END` | `0xFF` | なぁE| 1 byte | 曲の終わめE|
 
