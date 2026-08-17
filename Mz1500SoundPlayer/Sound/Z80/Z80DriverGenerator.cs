@@ -271,11 +271,11 @@ public class Z80DriverGenerator
         asm.JP(asm.Z, asm.LabelRef(prefix + "_read_loop_marker"));
 
         // Noise (0x06) -> wait, we kept Noise as 0x06
-        asm.CP(asm.Value((byte)0x06));
+        asm.CP(asm.Value((byte)0xA6));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_read_noise"));
 
         // Sync Noise (0x07)
-        asm.CP(asm.Value((byte)0x07));
+        asm.CP(asm.Value((byte)0xA7));
         asm.JP(asm.Z, asm.LabelRef(prefix + "_read_sync_noise"));
 
         // If A < 0x60, it's Note ON (0x00 - 0x5F)

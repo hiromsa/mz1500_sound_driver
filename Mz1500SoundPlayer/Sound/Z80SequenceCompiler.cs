@@ -4,11 +4,11 @@ using System.Collections.Generic;
 namespace Mz1500SoundPlayer.Sound;
 
 /// <summary>
-/// MML（ASTのNoteEventリスト）を、Z80サウンドドライバ向けの簡易シーケンスバイナリへ変換するコンパイラ
+/// MML�E�ESTのNoteEventリスト）を、Z80サウンドドライバ向け�E簡易シーケンスバイナリへ変換するコンパイラ
 /// </summary>
 public class Z80SequenceCompiler
 {
-    // SN76489 の計算式: freq = 111860 / register
+    // SN76489 の計算弁E freq = 111860 / register
     // -> register = 111860 / freq (Hz)
     public const double BaseClockFreq = 111860.0;
     public const double BeepClockFreq = 894886.0; // Intel 8253 Timer0 Base Clock
@@ -17,14 +17,14 @@ public class Z80SequenceCompiler
     public const byte CMD_TONE = 0x01;
     // CMD_REST removed
     // CMD_VOL removed
-    // CMD_ENV removed // ソフトウェア音量エンベロープのセット
-    public const byte CMD_PENV = 0xA2; // ピッチエンベロープ(HwPitchEnv)の切り替え
-    public const byte CMD_NOISE= 0x06; // ノイズジェネレータ専用出力
-    public const byte CMD_SYNC_NOISE = 0x07; // Tone 3 連携モード専用出力
-    // CMD_LOOP_MARKER removed // Lコマンドによる無限ループマーカー
+    // CMD_ENV removed // ソフトウェア音量エンベロープ�EセチE��
+    public const byte CMD_PENV = 0xA2; // ピッチエンベローチEHwPitchEnv)の刁E��替ぁE
+    public const byte CMD_NOISE = 0xA6; // ノイズジェネレータ専用出劁E
+    public const byte CMD_SYNC_NOISE = 0xA7; // Tone 3 連携モード専用出劁E
+    // CMD_LOOP_MARKER removed // Lコマンドによる無限ループ�Eーカー
     // CMD_END removed
     public const byte CMD_WAIT = 0x20;
-    public const byte CMD_YM2151_REG_WRITE = 0x21; // 曲の終わり
+    public const byte CMD_YM2151_REG_WRITE = 0x21; // 曲の終わめE
 
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     public Dictionary<int, EnvelopeData> PitchEnvelopes { get; set; } = new();
@@ -81,9 +81,9 @@ public class Z80SequenceCompiler
             
             // Allow gateFrames to equal totalFrames for full legato (q8 or @q0)
             if (gateFrames > totalFrames) gateFrames = totalFrames;
-            if (gateFrames < 1 && ev.Frequency > 0) gateFrames = 1; // 少なくとも1フレームは鳴らす（非常に短い音の場合）
+            if (gateFrames < 1 && ev.Frequency > 0) gateFrames = 1; // 少なくとめEフレームは鳴らす�E�非常に短ぁE��の場合！E
 
-            // エンベロープの状態変化があればまず出力する
+            // エンベロープ�E状態変化があれ�Eまず�E力すめE
             if (ev.EnvelopeId >= 0 && ev.EnvelopeId != currentEnvId)
             {
                 output.Add((byte)Z80SequenceCommand.SetVoice);
@@ -92,9 +92,9 @@ public class Z80SequenceCompiler
             }
             else if (ev.EnvelopeId < 0 && currentEnvId >= 0)
             {
-                // リリースがある場合はサステイン終了直後に(byte)Z80SequenceCommand.SetVoiceをOFFにすると音が切れる可能性があるため、
-                // リリースを持たない場合のみ即座にOFFにする。
-                // (リリースがある場合は、NoteOff時の展開ループに任せる)
+                // リリースがある場合�EサスチE��ン終亁E��後に(byte)Z80SequenceCommand.SetVoiceをOFFにすると音が�Eれる可能性があるため、E
+                // リリースを持たなぁE��合�Eみ即座にOFFにする、E
+                // (リリースがある場合�E、NoteOff時�E展開ループに任せる)
                 if (!VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataOff) || envDataOff.ReleaseValues.Count == 0)
                 {
                     output.Add((byte)Z80SequenceCommand.SetVoice);
@@ -109,7 +109,7 @@ public class Z80SequenceCompiler
                 // Mute before rest unless release is active
                 if (currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var relEnvData) && relEnvData.ReleaseValues.Count > 0 && currentReleaseEnvPos >= 0)
                 {
-                    // Fall back to Rest 処理 below to continue release phase
+                    // Fall back to Rest 処琁Ebelow to continue release phase
                 }
                 else
                 {
@@ -125,7 +125,7 @@ public class Z80SequenceCompiler
                 
                 if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                 {
-                    // 休符開始時にハードウェアエンベロープをOFFにしてリリース展開を許可する
+                    // 休符開始時にハ�EドウェアエンベロープをOFFにしてリリース展開を許可する
                     output.Add((byte)Z80SequenceCommand.SetVoice);
                     output.Add(0xFF);
                     currentEnvId = -1;
@@ -175,7 +175,7 @@ public class Z80SequenceCompiler
                 // Note ON, reset release envelope position
                 currentReleaseEnvPos = 0; 
 
-                // 音量チェンジがあれば先に吐く (エンベロープが効いていればZ80側で上書きされるため初期値として機能する)
+                // 音量チェンジがあれ�E先に吐く (エンベロープが効ぁE��ぁE��ばZ80側で上書きされるため初期値として機�Eする)
                 int vol15 = (int)Math.Round((ev.Volume / 0.15) * 15.0);
                 if (vol15 < 0) vol15 = 0;
                 if (vol15 > 15) vol15 = 15;
@@ -190,12 +190,12 @@ public class Z80SequenceCompiler
                     currentVol = hwVol;
                 }
 
-                // ---------- @EP (ピッチエンベロープ) 処理 ----------
-                // @EPの値は「レジスタ差分」として扱う（プラス=音程上昇）
-                // baseReg - ep値 の整数クランプで生成する
+                // ---------- @EP (ピッチエンベローチE 処琁E----------
+                // @EPの値は「レジスタ差刁E��として扱ぁE���Eラス=音程上�E�E�E
+                // baseReg - ep値 の整数クランプで生�Eする
                 if (ev.PitchEnvelopeId >= 0 && PitchEnvelopes.ContainsKey(ev.PitchEnvelopeId))
                 {
-                    // ベース周波数からベースレジスタ値を求める
+                    // ベ�Eス周波数からベ�Eスレジスタ値を求めめE
                     double baseFreqForEp = ev.Frequency;
                     double baseClockForEp = isBeep ? BeepClockFreq : BaseClockFreq;
                     double baseRegRaw = (baseFreqForEp > 0) ? (baseClockForEp / baseFreqForEp) : 0;
@@ -209,7 +209,7 @@ public class Z80SequenceCompiler
 
                         foreach (var epDelta in pEnvData.Values)
                         {
-                            // 出力レジスタ = ベースレジスタ - D値 - EP値の引き算
+                            // 出力レジスタ = ベ�Eスレジスタ - D値 - EP値の引き箁E
                             int reg = Math.Clamp(baseRegInt - ev.Detune - epDelta, 0, isBeep ? 65535 : 1023);
                             ushort regU = (ushort)reg;
 
@@ -249,8 +249,8 @@ public class Z80SequenceCompiler
                     currentPEnvId = -1;
                 }
 
-                // ---------- トーン出力 ----------
-                // ベース周波数からPSGレジスタ値を計算
+                // ---------- ト�Eン出劁E----------
+                // ベ�Eス周波数からPSGレジスタ値を計箁E
                 double freq = ev.Frequency;
 
                 if (isBeep)
@@ -260,44 +260,44 @@ public class Z80SequenceCompiler
                     if (noteNum < 0) noteNum = 0;
                     if (noteNum > 95) noteNum = 95;
                     
-                    // Beepは長さ出力
+                    // Beepは長さ�E劁E
                     ushort durationUnitsBp = (ushort)(gateFrames - 1);
                     emitLength(durationUnitsBp + 1);
                     output.Add((byte)noteNum);
                 }
                 else if (psgChannel == 3)
                 {
-                    // ノイズトラック
+                    // ノイズトラチE��
                     byte shiftRate = (freq < 300) ? (byte)2 : (freq < 350) ? (byte)1 : (byte)0;
                     byte feedback = (byte)(ev.NoiseWaveMode & 0x01);
                     byte noiseCmd = (byte)(0xE0 | (feedback << 2) | shiftRate);
                     output.Add(CMD_NOISE);
-                    // 長さ出力
+                    // 長さ�E劁E
                     ushort durationUnitsNoise = (ushort)(gateFrames - 1);
                     emitLength(durationUnitsNoise + 1);
                     output.Add(noiseCmd);
                 }
                 else
                 {
-                    // ---------- トーンチャンネル (A/B/C/E/F/G) ----------
+                    // ---------- ト�Eンチャンネル (A/B/C/E/F/G) ----------
                     // Tone ON: 0x00 - 0x5F (NoteNumber)
                     int noteNum = ev.NoteNumber;
                     if (noteNum < 0) noteNum = 0;
                     if (noteNum > 95) noteNum = 95;
                     
-                    // 長さ出力
+                    // 長さ�E劁E
                     ushort durationUnits = (ushort)(gateFrames - 1);
                     emitLength(durationUnits + 1);
                     output.Add((byte)noteNum);
                 }
 
-                // Rest 処理
+                // Rest 処琁E
                 int restFrames = totalFrames - gateFrames;
                 if (restFrames > 0)
                 {
                     if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                     {
-                        // リリース開始時にハードウェアエンベロープをOFFにする (ソフトウェアでの音量制御に切り替えるため)
+                        // リリース開始時にハ�EドウェアエンベロープをOFFにする (ソフトウェアでの音量制御に刁E��替えるため)
                         output.Add((byte)Z80SequenceCommand.SetVoice);
                         output.Add(0xFF);
                         int activeEnvId = currentEnvId;
@@ -472,7 +472,7 @@ public class Z80SequenceCompiler
             }
             else
             {
-                // 休符(r)の時は明確にKEY OFFを送ってからWAITする
+                // 休符(r)の時�E明確にKEY OFFを送ってからWAITする
                 emitReg(0x08, (byte)(0x00 | fmChannel));
                 emitWait(totalFrames);
             }
