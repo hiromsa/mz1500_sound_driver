@@ -160,8 +160,17 @@ public class MmlSequenceProvider : ISampleProvider
             {
                 int noteNum = cmd;
                 double freqHz = 440.0 * Math.Pow(2.0, (noteNum - 57) / 12.0);
-                int baseReg = (int)Math.Round(111860.0 / freqHz);
-                baseReg = Math.Clamp(baseReg, 0, 1023);
+                int baseReg;
+                if (_isBeep)
+                {
+                    baseReg = (int)Math.Round(Z80SequenceCompiler.BeepClockFreq / freqHz);
+                    baseReg = Math.Clamp(baseReg, 0, 65535);
+                }
+                else
+                {
+                    baseReg = (int)Math.Round(BaseClockFreq / freqHz);
+                    baseReg = Math.Clamp(baseReg, 0, 1023);
+                }
                 
                 _hwFreqRaw = (ushort)baseReg;
                 _waitFrames = _lastLength;
