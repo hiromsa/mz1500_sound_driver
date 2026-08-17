@@ -198,7 +198,7 @@ public class TrackEventExpander
                             {
                                 var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
                                 currentRegisterWrites.Clear();
-                                events.Add(new NoteEvent(0, specificDurationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
+                                events.Add(new NoteEvent(0, specificDurationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes, NoteNumber: GetNoteNumber(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave)));
                             }
                             else
                             {
@@ -207,7 +207,7 @@ public class TrackEventExpander
                                 double vol = (currentVolume / 15.0) * 0.15;
                                 var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
                                 currentRegisterWrites.Clear();
-                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
+                                events.Add(new NoteEvent(freq, specificDurationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, inner.TextStartIndex, inner.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes, NoteNumber: GetNoteNumber(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave)));
                             }
                             nextIsLoopPoint = false;
                             noteIndex++;
@@ -258,7 +258,7 @@ public class TrackEventExpander
                 {
                     var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
                                 currentRegisterWrites.Clear();
-                                events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
+                                events.Add(new NoteEvent(0, durationMs, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes, NoteNumber: GetNoteNumber(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave)));
                 }
                 else
                 {
@@ -267,7 +267,7 @@ public class TrackEventExpander
                     double vol = (currentVolume / 15.0) * 0.15;
                     var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
                                 currentRegisterWrites.Clear();
-                                events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
+                                events.Add(new NoteEvent(freq, durationMs, vol, gateMs, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, nextIsLoopPoint, cmd.TextStartIndex, cmd.TextLength, currentDetune, currentSweep, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes, NoteNumber: GetNoteNumber(nc.Note, nc.SemiToneOffset + currentTranspose, currentOctave)));
                 }
                 nextIsLoopPoint = false;
             }
@@ -278,7 +278,7 @@ public class TrackEventExpander
         {
             var writes = currentRegisterWrites.Count > 0 ? new List<Ym2151RegisterCommand>(currentRegisterWrites) : null;
                                 currentRegisterWrites.Clear();
-                                events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true, -1, 0, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes));
+                                events.Add(new NoteEvent(0, 0, 0, 0, currentEnvelopeId, currentPitchEnvelopeId, currentNoiseWaveMode, currentIntegrateNoiseMode, true, -1, 0, VoiceId: currentFmVoiceId, Pan: currentFmPan, FmVolume: currentFmVolume, RegisterWrites: writes, NoteNumber: 0));
         }
 
         return events;
@@ -336,6 +336,18 @@ public class TrackEventExpander
         noteIndex += semiToneOffset;
         int semitonesFromA4 = noteIndex - 9 + (octave - 4) * 12;
         return 440.0 * Math.Pow(2.0, semitonesFromA4 / 12.0);
+    }
+
+    private int GetNoteNumber(char note, int semiToneOffset, int octave)
+    {
+        if (note == 'r') return 0;
+        int noteIndex = note switch
+        {
+            'c' => 0, 'd' => 2, 'e' => 4, 'f' => 5, 'g' => 7, 'a' => 9, 'b' => 11,
+            _ => 0
+        };
+        noteIndex += semiToneOffset;
+        return octave * 12 + noteIndex;
     }
 
     public List<double> ExtractBeatTimings(TrackData track)
