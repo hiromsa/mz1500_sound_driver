@@ -17,7 +17,7 @@ public class Channel
     }
 }
 
-public class MZ1500MusicAssembler
+public class Z80DriverGenerator
 {
     public List<Channel> ChannelList { get; } = new();
     
@@ -25,7 +25,7 @@ public class MZ1500MusicAssembler
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     
     // HwPitchEnvデータ
-    public List<MmlToZ80Compiler.HwPitchEnvData> HwPitchEnvelopes { get; set; } = new();
+    public List<Z80SequenceCompiler.HwPitchEnvData> HwPitchEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
 

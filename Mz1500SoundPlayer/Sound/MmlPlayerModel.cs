@@ -87,7 +87,7 @@ public class MmlPlayerModel
             new NoteEvent(0, 50, 0, 0),
             new NoteEvent(329.63, 500, 0.2, 500)
         };
-        var compiler = new MmlToZ80Compiler();
+        var compiler = new Z80SequenceCompiler();
         var bin = compiler.CompileTrack(demo, 0);
         var dict = new Dictionary<string, byte[]> { { "P1", bin } };
         await PlayBytecodeDictAsync(dict, null!, null!);
@@ -100,7 +100,7 @@ public class MmlPlayerModel
         var tracks = mmlData.Tracks;
 
         var expander = new TrackEventExpander();
-        var compiler = new MmlToZ80Compiler();
+        var compiler = new Z80SequenceCompiler();
         compiler.VolumeEnvelopes = mmlData.VolumeEnvelopes;
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         var trackBinaries = new Dictionary<string, byte[]>();
@@ -195,12 +195,12 @@ public class MmlPlayerModel
         var tracks = mmlData.Tracks;
 
         var expander = new TrackEventExpander();
-        var compiler = new MmlToZ80Compiler();
+        var compiler = new Z80SequenceCompiler();
         compiler.VolumeEnvelopes = mmlData.VolumeEnvelopes;
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         
         // 5. Build Z80 Execution Binary (QDC) for hardware/emulator
-        var musicAssembler = new Z80.MZ1500MusicAssembler();
+        var musicAssembler = new Z80.Z80DriverGenerator();
         musicAssembler.VolumeEnvelopes = mmlData.VolumeEnvelopes; // Z80ドライバにエンベロープ辞書を渡す
         
         // 各トラックごとにMML展開 -> Z80コマンドコンパイル -> Channelオブジェクトとしてアセンブラに登録
@@ -273,7 +273,7 @@ public class MmlPlayerModel
         return log.ToString();
     }
 
-    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, List<double> metronomeTimings = null!, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000, bool hasInfiniteLoop = false)
+    private async Task PlayBytecodeDictAsync(Dictionary<string, byte[]> trackBinaries, List<double> metronomeTimings = null!, Dictionary<int, EnvelopeData> volumeEnvelopes = null!, List<Z80SequenceCompiler.HwPitchEnvData> hwPitchEnvelopes = null!, double totalMs = 3000, bool hasInfiniteLoop = false)
     {
         Stop(); // 前の再生を安全に停止
 
@@ -281,7 +281,7 @@ public class MmlPlayerModel
         var token = _cancellationTokenSource.Token;
 
         if (volumeEnvelopes == null) volumeEnvelopes = new Dictionary<int, EnvelopeData>();
-        if (hwPitchEnvelopes == null) hwPitchEnvelopes = new List<MmlToZ80Compiler.HwPitchEnvData>();
+        if (hwPitchEnvelopes == null) hwPitchEnvelopes = new List<Z80SequenceCompiler.HwPitchEnvData>();
         
         _multiSequenceProvider = new MultiTrackSequenceProvider(trackBinaries, envelopes: volumeEnvelopes, hwPitchEnvelopes: hwPitchEnvelopes);
         _multiSequenceProvider.ActiveChannels = _activeChannels;

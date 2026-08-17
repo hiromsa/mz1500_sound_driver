@@ -6,7 +6,7 @@ namespace Mz1500SoundPlayer.Sound;
 /// <summary>
 /// MML（ASTのNoteEventリスト）を、Z80サウンドドライバ向けの簡易シーケンスバイナリへ変換するコンパイラ
 /// </summary>
-public class MmlToZ80Compiler
+public class Z80SequenceCompiler
 {
     // SN76489 の計算式: freq = 111860 / register
     // -> register = 111860 / freq (Hz)
@@ -15,14 +15,14 @@ public class MmlToZ80Compiler
     
     // Command Types (VB版互換に近い形で定義)
     public const byte CMD_TONE = 0x01;
-    public const byte CMD_REST = 0x02;
-    public const byte CMD_VOL  = 0x03;
-    public const byte CMD_ENV  = 0x04; // ソフトウェア音量エンベロープのセット
-    public const byte CMD_PENV = 0x05; // ピッチエンベロープ(HwPitchEnv)の切り替え
+    // CMD_REST removed
+    // CMD_VOL removed
+    // CMD_ENV removed // ソフトウェア音量エンベロープのセット
+    public const byte CMD_PENV = 0xA2; // ピッチエンベロープ(HwPitchEnv)の切り替え
     public const byte CMD_NOISE= 0x06; // ノイズジェネレータ専用出力
     public const byte CMD_SYNC_NOISE = 0x07; // Tone 3 連携モード専用出力
-    public const byte CMD_LOOP_MARKER = 0x08; // Lコマンドによる無限ループマーカー
-    public const byte CMD_END  = 0xFF;
+    // CMD_LOOP_MARKER removed // Lコマンドによる無限ループマーカー
+    // CMD_END removed
     public const byte CMD_WAIT = 0x20;
     public const byte CMD_YM2151_REG_WRITE = 0x21; // 曲の終わり
 
@@ -48,12 +48,25 @@ public class MmlToZ80Compiler
         double currentTimeMs = 0;
         int currentFrame = 0;
         int currentReleaseEnvPos = -1; // -1 means release is off or finished
+        
+        int currentLength = -1;
+        Action<int> emitLength = (len) => {
+            if (len == currentLength) return;
+            if (len >= 1 && len <= 16) {
+                output.Add((byte)((int)Z80SequenceCommand.ShortLengthBase + (len - 1)));
+            } else {
+                output.Add((byte)Z80SequenceCommand.LongLength);
+                output.Add((byte)(len & 0xFF));
+                output.Add((byte)((len >> 8) & 0xFF));
+            }
+            currentLength = len;
+        };
 
         foreach (var ev in events)
         {
             if (ev.IsLoopPoint)
             {
-                output.Add(CMD_LOOP_MARKER);
+                output.Add((byte)Z80SequenceCommand.LoopMarker);
             }
 
             double nextTimeMs = currentTimeMs + ev.DurationMs;
@@ -73,18 +86,18 @@ public class MmlToZ80Compiler
             // エンベロープの状態変化があればまず出力する
             if (ev.EnvelopeId >= 0 && ev.EnvelopeId != currentEnvId)
             {
-                output.Add(CMD_ENV);
+                output.Add((byte)Z80SequenceCommand.SetVoice);
                 output.Add((byte)ev.EnvelopeId);
                 currentEnvId = ev.EnvelopeId;
             }
             else if (ev.EnvelopeId < 0 && currentEnvId >= 0)
             {
-                // リリースがある場合はサステイン終了直後にCMD_ENVをOFFにすると音が切れる可能性があるため、
+                // リリースがある場合はサステイン終了直後に(byte)Z80SequenceCommand.SetVoiceをOFFにすると音が切れる可能性があるため、
                 // リリースを持たない場合のみ即座にOFFにする。
                 // (リリースがある場合は、NoteOff時の展開ループに任せる)
                 if (!VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataOff) || envDataOff.ReleaseValues.Count == 0)
                 {
-                    output.Add(CMD_ENV);
+                    output.Add((byte)Z80SequenceCommand.SetVoice);
                     output.Add(0xFF); // 0xFF means off
                     currentEnvId = -1;
                     currentVol = -1;
@@ -101,7 +114,7 @@ public class MmlToZ80Compiler
                 else
                 {
                     byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                    output.Add(CMD_VOL);
+                    output.Add((byte)Z80SequenceCommand.SetVolume);
                     output.Add(muteVolCmd);
                     currentVol = 15;
                     currentReleaseEnvPos = -1;
@@ -113,7 +126,7 @@ public class MmlToZ80Compiler
                 if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                 {
                     // 休符開始時にハードウェアエンベロープをOFFにしてリリース展開を許可する
-                    output.Add(CMD_ENV);
+                    output.Add((byte)Z80SequenceCommand.SetVoice);
                     output.Add(0xFF);
                     currentEnvId = -1;
 
@@ -130,7 +143,7 @@ public class MmlToZ80Compiler
 
                             if (currentVol != hwVol)
                             {
-                                output.Add(CMD_VOL);
+                                output.Add((byte)Z80SequenceCommand.SetVolume);
                                 output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (hwVol & 0x0F)));
                                 currentVol = hwVol;
                             }
@@ -139,7 +152,7 @@ public class MmlToZ80Compiler
                         {
                             if (currentVol != 15)
                             {
-                                output.Add(CMD_VOL);
+                                output.Add((byte)Z80SequenceCommand.SetVolume);
                                 output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (0x0F)));
                                 currentVol = 15;
                             }
@@ -147,16 +160,14 @@ public class MmlToZ80Compiler
                         }
                         
                         // Emit 1 frame rest
-                        output.Add(CMD_REST);
-                        output.Add(0);
-                        output.Add(0);
+                        emitLength(1);
+                        output.Add((byte)Z80SequenceCommand.Rest);
                     }
                 }
                 else
                 {
-                    output.Add(CMD_REST);
-                    output.Add((byte)(durationUnits & 0xFF));
-                    output.Add((byte)((durationUnits >> 8) & 0xFF));
+                    output.Add((byte)Z80SequenceCommand.Rest);
+                    emitLength(durationUnits + 1);
                 }
             }
             else
@@ -172,7 +183,7 @@ public class MmlToZ80Compiler
 
                 if (currentVol != hwVol)
                 {
-                    output.Add(CMD_VOL);
+                    output.Add((byte)Z80SequenceCommand.SetVolume);
                     // SN76489 Volume Command
                     byte volCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | (hwVol & 0x0F));
                     output.Add(volCmd);
@@ -256,8 +267,7 @@ public class MmlToZ80Compiler
                     output.Add(toneCmd2);
                     // Beepは長さ出力
                     ushort durationUnitsBp = (ushort)(gateFrames - 1);
-                    output.Add((byte)(durationUnitsBp & 0xFF));
-                    output.Add((byte)((durationUnitsBp >> 8) & 0xFF));
+                    emitLength(durationUnitsBp + 1);
                 }
                 else if (psgChannel == 3)
                 {
@@ -269,106 +279,21 @@ public class MmlToZ80Compiler
                     output.Add(noiseCmd);
                     // 長さ出力
                     ushort durationUnitsNoise = (ushort)(gateFrames - 1);
-                    output.Add((byte)(durationUnitsNoise & 0xFF));
-                    output.Add((byte)((durationUnitsNoise >> 8) & 0xFF));
+                    emitLength(durationUnitsNoise + 1);
                 }
                 else
                 {
                     // ---------- トーンチャンネル (A/B/C/E/F/G) ----------
-                    // ベースレジスタ値を計算 (Hz→レジスタ)
-                    while (freq > 0 && BaseClockFreq / freq > 1023) freq *= 2.0; // octave up if too low
-                    int baseReg = (int)Math.Round(BaseClockFreq / freq);
-                    baseReg = Math.Clamp(baseReg, 0, 1023);
-
-                    bool hasSweep = (ev.Sweep != 0);
-                    bool hasPEnv = (ev.PitchEnvelopeId >= 0);
-
-                    if (psgChannel == 2 && ev.IntegrateNoiseMode > 0)
-                    {
-                        // Tone3 連動ノイズモード: ベースレジスタにDetuneだけ適用
-                        int syncReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
-                        ushort syncRegU = (ushort)syncReg;
-                        byte freqCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (syncRegU & 0x0F));
-                        byte freqCmd2 = (byte)((syncRegU >> 4) & 0x3F);
-                        byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                        byte feedback2 = (ev.IntegrateNoiseMode == 2) ? (byte)1 : (byte)0;
-                        byte linkedNoiseCmd = (byte)(0xE0 | (feedback2 << 2) | 3);
-                        byte noiseVolCmd = (byte)(0x90 | (((psgChannel + 1) & 0x03) << 5) | ((byte)(currentVol >= 0 ? currentVol : 15) & 0x0F));
-                        output.Add(CMD_SYNC_NOISE);
-                        output.Add(freqCmd1);
-                        output.Add(freqCmd2);
-                        output.Add(muteVolCmd);
-                        output.Add(linkedNoiseCmd);
-                        output.Add(noiseVolCmd);
-                        // 長さ出力
-                        ushort syncDur = (ushort)(gateFrames - 1);
-                        output.Add((byte)(syncDur & 0xFF));
-                        output.Add((byte)((syncDur >> 8) & 0xFF));
-                    }
-                    else if (!hasSweep)
-                    {
-                        // スイープなし: @EPがあればHwPitchEnvに任せ、なければ單一CMD_TONE
-                        int startReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
-                        ushort startRegU = (ushort)startReg;
-                        byte toneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (startRegU & 0x0F));
-                        byte toneCmd2 = (byte)((startRegU >> 4) & 0x3F);
-                        output.Add(CMD_TONE);
-                        output.Add(toneCmd1);
-                        output.Add(toneCmd2);
-                        // 長さ出力
-                        ushort durationUnits = (ushort)(gateFrames - 1);
-                        output.Add((byte)(durationUnits & 0xFF));
-                        output.Add((byte)((durationUnits >> 8) & 0xFF));
-                    }
-                    else
-                    {
-                        // スイープあり: 毼ノート共通のHwPitchEnvを使い回す（ノート長に依存しない）
-                        // 最大256ステップのリープ付きエンヘロープを生成する（LoopIndex=0）
-                        // CMD_TONEのたびに_pEnvPosOffset=0へリセットされるので、各ノートでちゃんと最初から
-                        string sweepKey = $"Sweep_{baseReg}_D{ev.Detune}_SW{ev.Sweep}_Ch{psgChannel}";
-                        if (!_hwPitchEnvCache.TryGetValue(sweepKey, out int sweepHwId))
-                        {
-                            var sweepRegs = new List<ushort>();
-                            const int SweepTableLength = 256;
-                            for (int tick = 0; tick < SweepTableLength; tick++)
-                            {
-                                int sweepReg = Math.Clamp(baseReg - ev.Detune - (ev.Sweep * tick), 0, 1023);
-                                ushort sweepRegU = (ushort)sweepReg;
-                                byte sc1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (sweepRegU & 0x0F));
-                                byte sc2 = (byte)((sweepRegU >> 4) & 0x3F);
-                                sweepRegs.Add((ushort)(sc1 | (sc2 << 8)));
-                            }
-                            sweepHwId = HwPitchEnvelopes.Count;
-                            HwPitchEnvelopes.Add(new HwPitchEnvData
-                            {
-                                Id = sweepHwId,
-                                AbsoluteRegisters = sweepRegs,
-                                LoopIndex = -1 // ループなし: 限界に達したら最後の値を保持
-                            });
-                            _hwPitchEnvCache[sweepKey] = sweepHwId;
-                        }
-
-                        // CMD_PENVでスイープ用HwPitchEnvを設定
-                        if (sweepHwId != currentPEnvId)
-                        {
-                            output.Add(CMD_PENV);
-                            output.Add((byte)sweepHwId);
-                            currentPEnvId = sweepHwId;
-                        }
-
-                        // CMD_TONEは最初のレジスタ値で1回のみ出力
-                        int initReg = Math.Clamp(baseReg - ev.Detune, 0, 1023);
-                        ushort initRegU = (ushort)initReg;
-                        byte swToneCmd1 = (byte)(0x80 | ((psgChannel & 0x03) << 5) | (initRegU & 0x0F));
-                        byte swToneCmd2 = (byte)((initRegU >> 4) & 0x3F);
-                        output.Add(CMD_TONE);
-                        output.Add(swToneCmd1);
-                        output.Add(swToneCmd2);
-                        // 長さ出力
-                        ushort sweepDuration = (ushort)(gateFrames - 1);
-                        output.Add((byte)(sweepDuration & 0xFF));
-                        output.Add((byte)((sweepDuration >> 8) & 0xFF));
-                    }
+                    // Tone ON: 0x00 - 0x5F (NoteNumber)
+                    int noteNum = ev.NoteNumber;
+                    if (noteNum < 0) noteNum = 0;
+                    if (noteNum > 95) noteNum = 95;
+                    
+                    output.Add((byte)noteNum);
+                    
+                    // 長さ出力
+                    ushort durationUnits = (ushort)(gateFrames - 1);
+                    emitLength(durationUnits + 1);
                 }
 
                 // Rest 処理
@@ -378,7 +303,7 @@ public class MmlToZ80Compiler
                     if (currentReleaseEnvPos >= 0 && currentEnvId >= 0 && VolumeEnvelopes.TryGetValue(currentEnvId, out var envDataR) && envDataR.ReleaseValues.Count > 0)
                     {
                         // リリース開始時にハードウェアエンベロープをOFFにする (ソフトウェアでの音量制御に切り替えるため)
-                        output.Add(CMD_ENV);
+                        output.Add((byte)Z80SequenceCommand.SetVoice);
                         output.Add(0xFF);
                         int activeEnvId = currentEnvId;
                         currentEnvId = -1;
@@ -395,7 +320,7 @@ public class MmlToZ80Compiler
 
                                 if (currentVol != relHwVol)
                                 {
-                                    output.Add(CMD_VOL);
+                                    output.Add((byte)Z80SequenceCommand.SetVolume);
                                     output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | (relHwVol & 0x0F)));
                                     currentVol = relHwVol;
                                 }
@@ -404,29 +329,27 @@ public class MmlToZ80Compiler
                             {
                                 if (currentVol != 15)
                                 {
-                                    output.Add(CMD_VOL);
+                                    output.Add((byte)Z80SequenceCommand.SetVolume);
                                     output.Add((byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F));
                                     currentVol = 15;
                                 }
                                 currentReleaseEnvPos = -1;
                             }
                             
-                            output.Add(CMD_REST);
-                            output.Add(0);
-                            output.Add(0);
+                            emitLength(1);
+                            output.Add((byte)Z80SequenceCommand.Rest);
                         }
                     }
                     else
                     {
                         byte muteVolCmd = (byte)(0x90 | ((psgChannel & 0x03) << 5) | 0x0F);
-                        output.Add(CMD_VOL);
+                        output.Add((byte)Z80SequenceCommand.SetVolume);
                         output.Add(muteVolCmd);
                         currentVol = 15;
                         
                         ushort restUnits = (ushort)(restFrames - 1);
-                        output.Add(CMD_REST);
-                        output.Add((byte)(restUnits & 0xFF));
-                        output.Add((byte)((restUnits >> 8) & 0xFF));
+                        output.Add((byte)Z80SequenceCommand.Rest);
+                        emitLength(restUnits + 1);
                     }
                 }
             }
@@ -436,7 +359,7 @@ public class MmlToZ80Compiler
         }
         
         // 曲端 (Terminator)
-        output.Add(CMD_END);
+        output.Add((byte)Z80SequenceCommand.TrackEnd);
 
         return output.ToArray();
     }
@@ -474,7 +397,7 @@ public class MmlToZ80Compiler
         {
             if (ev.IsLoopPoint)
             {
-                output.Add(CMD_LOOP_MARKER);
+                output.Add((byte)Z80SequenceCommand.LoopMarker);
             }
             
             if (ev.RegisterWrites != null)
@@ -563,7 +486,7 @@ public class MmlToZ80Compiler
             currentFrame = nextFrame;
         }
         
-        output.Add(CMD_END);
+        output.Add((byte)Z80SequenceCommand.TrackEnd);
         return output.ToArray();
     }
 

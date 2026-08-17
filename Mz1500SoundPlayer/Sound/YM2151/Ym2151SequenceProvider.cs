@@ -53,13 +53,13 @@ public class Ym2151SequenceProvider : ISampleProvider
             byte cmd = _bytecode[_pc++];
             switch (cmd)
             {
-                case MmlToZ80Compiler.CMD_WAIT:
+                case Z80SequenceCompiler.CMD_WAIT:
                     byte wL = _bytecode[_pc++];
                     byte wH = _bytecode[_pc++];
                     _waitFrames = (wL | (wH << 8)) + 1; // CMD_WAIT stores frames - 1
                     Console.WriteLine($"  [FM-VM] CMD_WAIT: {_waitFrames} frames (sample pos: {_totalSamplesProcessed})");
                     break;
-                case MmlToZ80Compiler.CMD_YM2151_REG_WRITE:
+                case Z80SequenceCompiler.CMD_YM2151_REG_WRITE:
                     byte reg = _bytecode[_pc++];
                     byte val = _bytecode[_pc++];
                     if (!IsMuted)
@@ -79,10 +79,10 @@ public class Ym2151SequenceProvider : ISampleProvider
                     else if (reg >= 0x30 && reg <= 0x37)
                         ; // Console.WriteLine($"  [FM-VM] KF  reg=0x{reg:X2} val=0x{val:X2} (sample pos: {_totalSamplesProcessed})");
                     break;
-                case MmlToZ80Compiler.CMD_LOOP_MARKER:
+                case (byte)Z80SequenceCommand.LoopMarker:
                     // Loops not fully implemented in simple version, ignore marker
                     break;
-                case MmlToZ80Compiler.CMD_END:
+                case (byte)Z80SequenceCommand.TrackEnd:
                     Console.WriteLine($"  [FM-VM] CMD_END (sample pos: {_totalSamplesProcessed})");
                     _isEnd = true;
                     fetchNext = false;

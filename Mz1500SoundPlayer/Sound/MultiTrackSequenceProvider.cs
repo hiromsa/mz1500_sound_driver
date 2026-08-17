@@ -17,7 +17,7 @@ public class MultiTrackSequenceProvider : ISampleProvider
     
     public YM2151Manager YM2151 { get; }
 
-    public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
+    public MultiTrackSequenceProvider(Dictionary<string, byte[]> trackBinaries, Dictionary<int, EnvelopeData> envelopes, List<Z80SequenceCompiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _trackProviders = new List<(string TrackName, ISampleProvider Provider)>();

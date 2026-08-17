@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound;
 
-public record NoteEvent(double Frequency, double DurationMs, double Volume, double GateTimeMs, int EnvelopeId = -1, int PitchEnvelopeId = -1, int NoiseWaveMode = 1, int IntegrateNoiseMode = 0, bool IsLoopPoint = false, int TextStartIndex = -1, int TextLength = 0, int Detune = 0, int Sweep = 0, int VoiceId = 0, int Pan = 3, int FmVolume = 127, List<Ym2151RegisterCommand> RegisterWrites = null);
+public record NoteEvent(double Frequency, double DurationMs, double Volume, double GateTimeMs, int EnvelopeId = -1, int PitchEnvelopeId = -1, int NoiseWaveMode = 1, int IntegrateNoiseMode = 0, bool IsLoopPoint = false, int TextStartIndex = -1, int TextLength = 0, int Detune = 0, int Sweep = 0, int VoiceId = 0, int Pan = 3, int FmVolume = 127, List<Ym2151RegisterCommand> RegisterWrites = null, int NoteNumber = -1);
 
 public class MmlParser
 {
@@ -77,8 +77,6 @@ public class MmlParser
             i++;
         }
 
-        // Calculate duration in ms
-        // tempo = quarter notes per minute. 1 quarter note = 60000 / tempo ms
         double quarterNoteMs = 60000.0 / _tempo;
         double durationMs = (quarterNoteMs * 4.0) / length;
         if (dots > 0)
@@ -91,13 +89,21 @@ public class MmlParser
         
         if (noteChar == 'r')
         {
-            events.Add(new NoteEvent(0, durationMs, 0, 0));
+            events.Add(new NoteEvent(0, durationMs, 0, 0, NoteNumber: 0));
         }
         else
         {
+            int noteIndex = noteChar switch
+            {
+                'c' => 0, 'd' => 2, 'e' => 4, 'f' => 5, 'g' => 7, 'a' => 9, 'b' => 11,
+                _ => 0
+            };
+            noteIndex += semiToneOffset;
+            int noteNum = _octave * 12 + noteIndex;
+
             double freq = GetFrequency(noteChar, semiToneOffset, _octave);
-            double vol = _volume / 15.0 * 0.2; // 0.2 is max volume to avoid clipping
-            events.Add(new NoteEvent(freq, durationMs, vol, gateTimeMs));
+            double vol = _volume / 15.0 * 0.2; 
+            events.Add(new NoteEvent(freq, durationMs, vol, gateTimeMs, NoteNumber: noteNum));
         }
     }
 

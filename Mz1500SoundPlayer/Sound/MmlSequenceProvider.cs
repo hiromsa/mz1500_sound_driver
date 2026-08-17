@@ -42,7 +42,7 @@ public class MmlSequenceProvider : ISampleProvider
     private bool _pEnvActive = false;
     private int _pEnvId = -1;
     private int _pEnvPosOffset = 0;
-    private readonly List<MmlToZ80Compiler.HwPitchEnvData> _hwPitchEnvelopes;
+    private readonly List<Z80SequenceCompiler.HwPitchEnvData> _hwPitchEnvelopes;
 
     // Constants
     private const double BaseClockFreq = 111860.0;
@@ -59,12 +59,12 @@ public class MmlSequenceProvider : ISampleProvider
         0.0631f, 0.0501f, 0.0398f, 0.0000f
     };
 
-    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<MmlToZ80Compiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false)
+    public MmlSequenceProvider(byte[] bytecode, Dictionary<int, EnvelopeData> envelopes, List<Z80SequenceCompiler.HwPitchEnvData> hwPitchEnvelopes, int sampleRate = 44100, bool isBeep = false)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
         _bytecode = bytecode;
         _envelopes = envelopes ?? new Dictionary<int, EnvelopeData>();
-        _hwPitchEnvelopes = hwPitchEnvelopes ?? new List<MmlToZ80Compiler.HwPitchEnvData>();
+        _hwPitchEnvelopes = hwPitchEnvelopes ?? new List<Z80SequenceCompiler.HwPitchEnvData>();
         _samplesPerFrame = WaveFormat.SampleRate / 60.0;
         _isBeep = isBeep;
         
@@ -110,7 +110,7 @@ public class MmlSequenceProvider : ISampleProvider
             byte cmd = _bytecode[_pc++];
             switch (cmd)
             {
-                case MmlToZ80Compiler.CMD_TONE:
+                case Z80SequenceCompiler.CMD_TONE:
                     byte t1 = _bytecode[_pc++];
                     byte t2 = _bytecode[_pc++];
                     byte lenL = _bytecode[_pc++];
@@ -155,7 +155,7 @@ public class MmlSequenceProvider : ISampleProvider
                              ushort freqReg = _isBeep ? (ushort)(initCmd1 | (initCmd2 << 8)) : (ushort)((initCmd1 & 0x0F) | ((initCmd2 & 0x3F) << 4));
                              if (freqReg > 0)
                              {
-                                 double pFreqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
+                                 double pFreqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
                                  _phaseIncrement = pFreqHz / WaveFormat.SampleRate;
                              }
                              else
@@ -171,7 +171,7 @@ public class MmlSequenceProvider : ISampleProvider
                     {
                         if (_hwFreqRaw > 0)
                         {
-                            double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
+                            double freqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / _hwFreqRaw : BaseClockFreq / _hwFreqRaw;
                             _phaseIncrement = freqHz / WaveFormat.SampleRate;
                         }
                         else
@@ -184,14 +184,14 @@ public class MmlSequenceProvider : ISampleProvider
                     fetchNext = false; // Yield VM processing until next tick
                     break;
                     
-                case MmlToZ80Compiler.CMD_REST:
+                case (byte)Z80SequenceCommand.Rest:
                     byte rlenL = _bytecode[_pc++];
                     byte rlenH = _bytecode[_pc++];
                     _waitFrames = rlenL | (rlenH << 8);
                     // _isRest = true はここでは設定しない:
                     // リリースフェーズ中は直前のCMD_VOLによる音量が維持される必要がある。
-                    // (MmlToZ80Compilerはリリース時に CMD_VOL→CMD_REST の順で出力している)
-                    // 音量ミュートは MmlToZ80Compiler 側でリリースが終わった時に CMD_VOL 15 として送付される。
+                    // (Z80SequenceCompilerはリリース時に CMD_VOL→CMD_REST の順で出力している)
+                    // 音量ミュートは Z80SequenceCompiler 側でリリースが終わった時に CMD_VOL 15 として送付される。
                     // _isRest フラグは、休符中に周波数が 0 = 無音として扱うかどうかを制御するため、
                     // ここで true にすると Read() でサイン波生成がスキップされ音が出なくなる。
                     // リリース用の短い休符（0フレーム）に対しては、直前のトーン周波数のまま継続する。
@@ -210,7 +210,7 @@ public class MmlSequenceProvider : ISampleProvider
                     break;
 
                     
-                case MmlToZ80Compiler.CMD_NOISE:
+                case Z80SequenceCompiler.CMD_NOISE:
                     byte noiseCmd = _bytecode[_pc++];
                     byte nlenL = _bytecode[_pc++];
                     byte nlenH = _bytecode[_pc++];
@@ -234,7 +234,7 @@ public class MmlSequenceProvider : ISampleProvider
                     fetchNext = false;
                     break;
 
-                case MmlToZ80Compiler.CMD_SYNC_NOISE:
+                case Z80SequenceCompiler.CMD_SYNC_NOISE:
                     byte fCmd1 = _bytecode[_pc++];
                     byte fCmd2 = _bytecode[_pc++];
                     byte muteVol = _bytecode[_pc++];
@@ -261,12 +261,12 @@ public class MmlSequenceProvider : ISampleProvider
                     fetchNext = false;
                     break;
                     
-                case MmlToZ80Compiler.CMD_VOL:
+                case (byte)Z80SequenceCommand.SetVolume:
                     byte volData = _bytecode[_pc++];
                     _hwVolume = volData & 0x0F;
                     break;
                     
-                case MmlToZ80Compiler.CMD_ENV:
+                case (byte)Z80SequenceCommand.SetVoice:
                     byte id = _bytecode[_pc++];
                     if (id == 0xFF)
                     {
@@ -280,7 +280,7 @@ public class MmlSequenceProvider : ISampleProvider
                     }
                     break;
                     
-                case MmlToZ80Compiler.CMD_PENV:
+                case Z80SequenceCompiler.CMD_PENV:
                     byte pid = _bytecode[_pc++];
                     if (pid == 0xFF)
                     {
@@ -294,12 +294,12 @@ public class MmlSequenceProvider : ISampleProvider
                     }
                     break;
                     
-                case MmlToZ80Compiler.CMD_LOOP_MARKER:
+                case (byte)Z80SequenceCommand.LoopMarker:
                     _loopOffsetPc = _pc;
                     fetchNext = true;
                     break;
                     
-                case MmlToZ80Compiler.CMD_END:
+                case (byte)Z80SequenceCommand.TrackEnd:
                     if (_loopOffsetPc >= 0)
                     {
                         _pc = _loopOffsetPc;
@@ -392,7 +392,7 @@ public class MmlSequenceProvider : ISampleProvider
                         
                         if (freqReg > 0)
                         {
-                            double freqHz = _isBeep ? MmlToZ80Compiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
+                            double freqHz = _isBeep ? Z80SequenceCompiler.BeepClockFreq / freqReg : BaseClockFreq / freqReg;
                             _phaseIncrement = freqHz / WaveFormat.SampleRate;
                         }
                         else
