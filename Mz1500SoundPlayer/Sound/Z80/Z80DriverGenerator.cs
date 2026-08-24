@@ -516,9 +516,15 @@ public class Z80DriverGenerator
             asm.LD(asm.HLref, asm.A);
             asm.POP(asm.HL);
         } else {
-            // Determine PSG Channel from prefix (track_0 -> 0, etc.)
+            // Determine PSG Channel from prefix (track_P1 -> 0, etc.)
             int psgCh = 0;
-            if (prefix.StartsWith("track_")) {
+            if (prefix.StartsWith("track_P")) {
+                if (int.TryParse(prefix.Substring(7), out int trkNum)) {
+                    psgCh = Math.Max(0, trkNum - 1) % 3; // P1->0, P2->1, P3->2
+                }
+            } else if (prefix.StartsWith("track_N")) {
+                psgCh = 3; // Noise
+            } else if (prefix.StartsWith("track_")) {
                 int.TryParse(prefix.Substring(6), out psgCh);
             }
             byte chBits = (byte)(0x80 | ((psgCh & 0x03) << 5));
