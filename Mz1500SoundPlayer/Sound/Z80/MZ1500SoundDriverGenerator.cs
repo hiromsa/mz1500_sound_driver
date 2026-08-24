@@ -92,6 +92,10 @@ public class MZ1500SoundDriverGenerator
         assembler.LD(assembler.HLref, 0x00);
         assembler.DEC(assembler.HL);
         assembler.LD(assembler.HLref, 0x02);
+        assembler.LD(assembler.HLref, 0x00);
+        
+        assembler.LD(assembler.A, 0x05);
+        assembler.LD(0xE003, assembler.A);
 
         assembler.EI();
 
