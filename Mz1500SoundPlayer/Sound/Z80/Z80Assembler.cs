@@ -121,6 +121,7 @@ public class Z80Assembler
     public Register M { get; } = new("M");
     public Register AF_PRIME { get; } = new("AF'");
 
+    public List<string> Errors { get; } = new();
     public Z80Assembler()
     {
         InitMap();
@@ -831,7 +832,13 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
                     break;
                 }
                 key.RemoveTail();
-                if (key.Parts.Count == 0) throw new Exception($"Mnemonic not found: {p1.GetInfo()}");
+                if (key.Parts.Count == 0)
+                {
+                    string fullMnemonic = string.Join(" ", parts.Select(p => p.GetInfo()));
+                    Errors.Add($"Mnemonic not found: {fullMnemonic}");
+                    _dataList.Add(new DataByte(0x00));
+                    break;
+                }
             }
         }
 
@@ -911,6 +918,11 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
 
     public byte[] Build()
     {
+        if (Errors.Count > 0)
+        {
+            var distinctErrors = Errors.Distinct().ToList();
+            throw new Exception("Missing mnemonics:\n" + string.Join("\n", distinctErrors));
+        }
         ushort addr = _startAddress;
         var labelMap = new Dictionary<AsmLabel, ushort>();
         var resolvedList = new List<AssemblerData>();
@@ -954,6 +966,7 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
         return byteList.ToArray();
     }
 }
+
 
 
 
