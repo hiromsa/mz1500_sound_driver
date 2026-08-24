@@ -765,8 +765,7 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         }
 
         // Increment Offset
-        asm.LD(asm.HL, asm.LabelRef(GetSharedCtx(isBeep).StatEnvPosOffset));
-        asm.INC(asm.HLref);
+        asm.INC(asm.IXref(IxStatEnvPosOffset));
 
         asm.Label(GetSharedCtx(isBeep).OutputPenvCheck);
         // Check PEnv Active
@@ -824,8 +823,7 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         }
 
         // Increment Offset
-        asm.LD(asm.HL, asm.LabelRef(GetSharedCtx(isBeep).StatPEnvPosOffset));
-        asm.INC(asm.HLref);
+        asm.INC(asm.IXref(IxStatPEnvPosOffset));
 
         asm.Label(GetSharedCtx(isBeep).OutputEnd);
         asm.RET();
@@ -842,8 +840,7 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         
         asm.Label(GetSharedCtx(isBeep).EnvEnd);
         // If 0xFF, stay at the last valid position
-        asm.LD(asm.HL, asm.LabelRef(GetSharedCtx(isBeep).StatEnvPosOffset));
-        asm.DEC(asm.HLref);
+        asm.DEC(asm.IXref(IxStatEnvPosOffset));
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).OutputSoundByStatus));
 
         // PEnv loop handlers
@@ -854,50 +851,9 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).OutputPenvCheck));
         
         asm.Label(GetSharedCtx(isBeep).PenvEnd);
-        asm.LD(asm.HL, asm.LabelRef(GetSharedCtx(isBeep).StatPEnvPosOffset));
-        asm.DEC(asm.HLref);
+        asm.DEC(asm.IXref(IxStatPEnvPosOffset));
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).OutputPenvCheck));
 
-
-        // -- Stat Variables --
-        asm.Label(GetSharedCtx(isBeep).StatSongDataPosition);
-        asm.DB(asm.LabelRef(GetSharedCtx(isBeep).DataSong)); // Initialize with Data Start Address
-        
-        asm.Label(GetSharedCtx(isBeep).StatLoopPosition);
-        asm.DB(asm.LabelRef(GetSharedCtx(isBeep).DataSongEnd)); // Initialize loop point to End Address (No loop by default)
-
-        asm.Label(GetSharedCtx(isBeep).StatLengthRemain);
-        asm.DB(new byte[] { 0, 0 });
-        
-        asm.Label(GetSharedCtx(isBeep).StatLastLength);
-        asm.DB(new byte[] { 0, 0 });
-        
-        asm.Label(GetSharedCtx(isBeep).StatGateRemain);
-        asm.DB(new byte[] { 0, 0 });
-
-        asm.Label(GetSharedCtx(isBeep).StatNoteOn);
-        asm.DB(0);
-
-        asm.Label(GetSharedCtx(isBeep).StatHwVolume);
-        asm.DB(0); // Holds the raw SN76489 volume byte
-
-        asm.Label(GetSharedCtx(isBeep).StatEnvActive);
-        asm.DB(0); 
-
-        asm.Label(GetSharedCtx(isBeep).StatEnvDataPtr);
-        asm.DB(new byte[] { 0, 0 });
-
-        asm.Label(GetSharedCtx(isBeep).StatEnvPosOffset);
-        asm.DB(0);
-
-        asm.Label(GetSharedCtx(isBeep).StatPEnvActive);
-        asm.DB(0); 
-
-        asm.Label(GetSharedCtx(isBeep).StatPEnvDataPtr);
-        asm.DB(new byte[] { 0, 0 });
-
-        asm.Label(GetSharedCtx(isBeep).StatPEnvPosOffset);
-        asm.DB(0);
 
         // -- Envelope Data Tables --
         // To make it simpler, we embed the global VolumeEnvelopes table inside each channel's memory block,
