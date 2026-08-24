@@ -5,14 +5,26 @@ using System.Linq;
 namespace Mz1500SoundPlayer.Sound.Z80;
 
 // AsmLabel represents a type-safe label identifier for the assembler
-public class AsmLabel
+public class AsmLabel : IEquatable<AsmLabel>
 {
     public string Name { get; }
-    public AsmLabel(string name)
+
+    public static readonly AsmLabel Dummy = new AsmLabel("");
+
+    private AsmLabel(string name)
     {
         Name = name;
     }
+
     public override string ToString() => Name;
+    public bool Equals(AsmLabel? other) => other != null && Name == other.Name;
+    public override bool Equals(object? obj) => Equals(obj as AsmLabel);
+    public override int GetHashCode() => Name?.GetHashCode() ?? 0;
+
+    public abstract class Context
+    {
+        protected AsmLabel CreateLabel(string name) => new AsmLabel(name);
+    }
 }
 
 public abstract class Z80Part : IEquatable<Z80Part>

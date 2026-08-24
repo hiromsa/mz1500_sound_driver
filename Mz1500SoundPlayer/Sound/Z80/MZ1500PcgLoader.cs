@@ -7,23 +7,23 @@ public static class MZ1500PcgLoader
     public static void AppendImageLoader(Z80Assembler asm, byte[] pcgData)
     {
         string prefix = "pcg_";
-        var lblImageLoader = new AsmLabel("ImageLoader");
-        var lblCls = new AsmLabel(prefix + "CLS");
-        var lblStart = new AsmLabel(prefix + "start");
-        var lblMemfil = new AsmLabel(prefix + "MEMFIL");
-        var lblLoopStart = new AsmLabel(prefix + "LoopStart");
-        var lblLoopEnd = new AsmLabel(prefix + "LoopEnd");
-        var lblVramStart = new AsmLabel(prefix + "VRAM-start");
-        var lblVramLoop = new AsmLabel(prefix + "VRAM-loop");
-        var lblVramLoopReturn = new AsmLabel(prefix + "VRAM-loop-return");
-        var lblLoopSkipPcg = new AsmLabel(prefix + "loop_skip_pcg:");
+        var lblImageLoader = MZ1500SoundDriverGenerator.MainCtx.GetPCG("ImageLoader");
+        var lblCls = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "CLS");
+        var lblStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "start");
+        var lblMemfil = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "MEMFIL");
+        var lblLoopStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "LoopStart");
+        var lblLoopEnd = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "LoopEnd");
+        var lblVramStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "VRAM-start");
+        var lblVramLoop = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "VRAM-loop");
+        var lblVramLoopReturn = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "VRAM-loop-return");
+        var lblLoopSkipPcg = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "loop_skip_pcg:");
         
-        var lblPsgGreenStart = new AsmLabel(prefix + "PSGData-Green-start");
-        var lblPsgGreenEnd = new AsmLabel(prefix + "PSGData-Green-end");
-        var lblPsgRedStart = new AsmLabel(prefix + "PSGData-Red-start");
-        var lblPsgRedEnd = new AsmLabel(prefix + "PSGData-Red-end");
-        var lblPsgBlueStart = new AsmLabel(prefix + "PSGData-Blue-start");
-        var lblPsgBlueEnd = new AsmLabel(prefix + "PSGData-Blue-end");
+        var lblPsgGreenStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Green-start");
+        var lblPsgGreenEnd = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Green-end");
+        var lblPsgRedStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Red-start");
+        var lblPsgRedEnd = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Red-end");
+        var lblPsgBlueStart = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Blue-start");
+        var lblPsgBlueEnd = MZ1500SoundDriverGenerator.MainCtx.GetPCG("pcg_" + "PSGData-Blue-end");
 
         asm.Label(lblImageLoader);
         asm.CALL(asm.LabelRef(lblCls));

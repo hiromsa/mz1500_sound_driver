@@ -131,13 +131,13 @@ public class Z80Assembler
     private void InitMap()
     {
         // 鬯・ｽｻ驛｢竏壺・闖ｴ・ｿ郢ｧ荳奇ｽ檎ｹｧ謚80陷ｻ・ｽ闔会ｽ､邵ｺ・ｮ郢晁・縺・ｹ昜ｺ･繝ｻ陞ｳ螟ゑｽｾ・ｩ (VB霑壼現ﾂｰ郢ｧ閾･・ｧ・ｻ隶繝ｻ
-        _mnemonicMap.Add(new Z80Part[]{ LabelRef(new AsmLabel("")) }, new byte[]{ 0x00 }); // Dummy
+        _mnemonicMap.Add(new Z80Part[]{ LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x00 }); // Dummy
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, A }, new byte[]{ 0x87 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, HL, BC }, new byte[]{ 0x09 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, HL, DE }, new byte[]{ 0x19 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeAND, A }, new byte[]{ 0xA7 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, Value((ushort)0) }, new byte[]{ 0xCD });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, LabelRef(new AsmLabel("")) }, new byte[]{ 0xCD });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xCD });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, A }, new byte[]{ 0xBF });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, B }, new byte[]{ 0xB8 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, HLref }, new byte[]{ 0xBE });
@@ -169,7 +169,7 @@ public class Z80Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z }, new byte[]{ 0xCA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ }, new byte[]{ 0xC2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C }, new byte[]{ 0xDA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, LabelRef(new AsmLabel("")) }, new byte[]{ 0xC3 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xC3 });
         
         // LD
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, A }, new byte[]{ 0x7F });
@@ -203,12 +203,12 @@ public class Z80Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, E }, new byte[]{ 0x6B });
 
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, Value((ushort)0) }, new byte[]{ 0x01 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(new AsmLabel("")) }, new byte[]{ 0x01 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x01 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, Value((ushort)0) }, new byte[]{ 0x11 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(new AsmLabel("")) }, new byte[]{ 0x11 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x11 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, DE }, new byte[]{ 0x62, 0x6B }); // H=D, L=E
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, Value((ushort)0) }, new byte[]{ 0x21 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(new AsmLabel("")) }, new byte[]{ 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x21 });
 
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DEref, A }, new byte[]{ 0x12 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, A }, new byte[]{ 0x77 });
@@ -423,8 +423,8 @@ public class Z80Assembler
     {
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IX, Value((ushort)0) }, new byte[]{ 0xDD, 0x21 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IY, Value((ushort)0) }, new byte[]{ 0xFD, 0x21 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IX, LabelRef(new AsmLabel("")) }, new byte[]{ 0xDD, 0x21 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IY, LabelRef(new AsmLabel("")) }, new byte[]{ 0xFD, 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IX, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xDD, 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IY, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xFD, 0x21 });
 // PUSH / POP
         _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, BC }, new byte[]{ 0xC5 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, BC }, new byte[]{ 0xC1 });
@@ -450,56 +450,56 @@ public class Z80Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeRET, M }, new byte[]{ 0xF8 });
 // JP
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ, Value((ushort)0) }, new byte[]{ 0xC2 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ, LabelRef(new AsmLabel("")) }, new byte[]{ 0xC2 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xC2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z, Value((ushort)0) }, new byte[]{ 0xCA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z, LabelRef(new AsmLabel("")) }, new byte[]{ 0xCA });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xCA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NC, Value((ushort)0) }, new byte[]{ 0xD2 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NC, LabelRef(new AsmLabel("")) }, new byte[]{ 0xD2 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NC, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xD2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C, Value((ushort)0) }, new byte[]{ 0xDA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C, LabelRef(new AsmLabel("")) }, new byte[]{ 0xDA });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xDA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PO, Value((ushort)0) }, new byte[]{ 0xE2 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PO, LabelRef(new AsmLabel("")) }, new byte[]{ 0xE2 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PO, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xE2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PE, Value((ushort)0) }, new byte[]{ 0xEA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PE, LabelRef(new AsmLabel("")) }, new byte[]{ 0xEA });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, PE, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xEA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, P, Value((ushort)0) }, new byte[]{ 0xF2 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, P, LabelRef(new AsmLabel("")) }, new byte[]{ 0xF2 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, P, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xF2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, M, Value((ushort)0) }, new byte[]{ 0xFA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, M, LabelRef(new AsmLabel("")) }, new byte[]{ 0xFA });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, M, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xFA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Value((ushort)0) }, new byte[]{ 0xC3 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, HLref }, new byte[]{ 0xE9 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, IXref(0) }, new byte[]{ 0xDD, 0xE9 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, IYref(0) }, new byte[]{ 0xFD, 0xE9 });
 // CALL
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NZ, Value((ushort)0) }, new byte[]{ 0xC4 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NZ, LabelRef(new AsmLabel("")) }, new byte[]{ 0xC4 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NZ, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xC4 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, Z, Value((ushort)0) }, new byte[]{ 0xCC });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, Z, LabelRef(new AsmLabel("")) }, new byte[]{ 0xCC });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, Z, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xCC });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NC, Value((ushort)0) }, new byte[]{ 0xD4 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NC, LabelRef(new AsmLabel("")) }, new byte[]{ 0xD4 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, NC, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xD4 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, C, Value((ushort)0) }, new byte[]{ 0xDC });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, C, LabelRef(new AsmLabel("")) }, new byte[]{ 0xDC });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, C, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xDC });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PO, Value((ushort)0) }, new byte[]{ 0xE4 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PO, LabelRef(new AsmLabel("")) }, new byte[]{ 0xE4 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PO, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xE4 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PE, Value((ushort)0) }, new byte[]{ 0xEC });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PE, LabelRef(new AsmLabel("")) }, new byte[]{ 0xEC });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, PE, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xEC });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, P, Value((ushort)0) }, new byte[]{ 0xF4 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, P, LabelRef(new AsmLabel("")) }, new byte[]{ 0xF4 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, P, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xF4 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, M, Value((ushort)0) }, new byte[]{ 0xFC });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, M, LabelRef(new AsmLabel("")) }, new byte[]{ 0xFC });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, M, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0xFC });
 // JR
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, Value((byte)0) }, new byte[]{ 0x18 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, LabelRef(new AsmLabel("")) }, new byte[]{ 0x18 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x18 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NZ, Value((byte)0) }, new byte[]{ 0x20 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NZ, LabelRef(new AsmLabel("")) }, new byte[]{ 0x20 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NZ, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x20 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, Z, Value((byte)0) }, new byte[]{ 0x28 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, Z, LabelRef(new AsmLabel("")) }, new byte[]{ 0x28 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, Z, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x28 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NC, Value((byte)0) }, new byte[]{ 0x30 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NC, LabelRef(new AsmLabel("")) }, new byte[]{ 0x30 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, NC, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x30 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, C, Value((byte)0) }, new byte[]{ 0x38 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, C, LabelRef(new AsmLabel("")) }, new byte[]{ 0x38 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJR, C, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x38 });
 // DJNZ
         _mnemonicMap.Add(new Z80Part[]{ OpCodeDJNZ, Value((byte)0) }, new byte[]{ 0x10 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeDJNZ, LabelRef(new AsmLabel("")) }, new byte[]{ 0x10 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeDJNZ, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x10 });
 // EX
         _mnemonicMap.Add(new Z80Part[]{ OpCodeEX, AF, AF_PRIME }, new byte[]{ 0x08 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeEXX }, new byte[]{ 0xD9 });
@@ -801,13 +801,13 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, IXref(0) }, new byte[]{ 0xDD, 0x35 })
 _mnemonicMap.Add(new Z80Part[]{ OpCodeINC, IYref(0) }, new byte[]{ 0xFD, 0x34 });
 _mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, IYref(0) }, new byte[]{ 0xFD, 0x35 });
 _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, Value((ushort)0) }, new byte[]{ 0x01 });
-_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(new AsmLabel("")) }, new byte[]{ 0x01 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x01 });
 _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, Value((ushort)0) }, new byte[]{ 0x11 });
-_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(new AsmLabel("")) }, new byte[]{ 0x11 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x11 });
 _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, Value((ushort)0) }, new byte[]{ 0x21 });
-_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(new AsmLabel("")) }, new byte[]{ 0x21 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x21 });
 _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, Value((ushort)0) }, new byte[]{ 0x31 });
-_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new byte[]{ 0x31 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(AsmLabel.Dummy) }, new byte[]{ 0x31 });
     }
 
     public void ORG(ushort address) => _startAddress = address;
