@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound.Z80;
@@ -894,6 +894,9 @@ public class Z80DriverGenerator
         asm.DB(asm.LabelRef(prefix + "_data_song_end")); // Initialize loop point to End Address (No loop by default)
 
         asm.Label(prefix + "_" + nameof(Labels.StatLengthRemain));
+        asm.DB(new byte[] { 0, 0 });
+        
+        asm.Label(prefix + "_StatLastLength");
         asm.DB(new byte[] { 0, 0 });
         
         asm.Label(prefix + "_" + nameof(Labels.StatGateRemain));
