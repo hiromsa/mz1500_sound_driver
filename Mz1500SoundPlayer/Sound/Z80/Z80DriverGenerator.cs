@@ -21,10 +21,10 @@ public class Z80DriverGenerator
 {
     public List<Channel> ChannelList { get; } = new();
     
-    // MmlPlayerModelから渡されるエンベロープ定義チE�Eタ (EnvId -> ボリューム配�E)
+    // MmlPlayerModel縺九ｉ貂｡縺輔ｌ繧九お繝ｳ繝吶Ο繝ｼ繝怜ｮ夂ｾｩ繝・・繧ｿ (EnvId -> 繝懊Μ繝･繝ｼ繝驟榊・)
     public Dictionary<int, EnvelopeData> VolumeEnvelopes { get; set; } = new();
     
-    // HwPitchEnvチE�Eタ
+    // HwPitchEnv繝・・繧ｿ
     public List<Z80SequenceCompiler.HwPitchEnvData> HwPitchEnvelopes { get; set; } = new();
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
@@ -76,14 +76,14 @@ public class Z80DriverGenerator
 
         assembler.IM1();
 
-        // 割り込みベクタの設宁E
+        // 蜑ｲ繧願ｾｼ縺ｿ繝吶け繧ｿ縺ｮ險ｭ螳・
         assembler.LD(assembler.HL, 0x1039);
         assembler.LD(assembler.DE, assembler.LabelRef("sound:"));
         assembler.LD(assembler.HLref, assembler.E);
         assembler.INC(assembler.HL);
         assembler.LD(assembler.HLref, assembler.D);
 
-        // 8253タイマ�E設宁E(割り込み周朁E
+        // 8253繧ｿ繧､繝槭・險ｭ螳・(蜑ｲ繧願ｾｼ縺ｿ蜻ｨ譛・
         assembler.LD(assembler.HL, 0xE007);
         assembler.LD(assembler.HLref, 0xB0); // CH2 Mode0
         assembler.LD(assembler.HLref, 0x74); // CH1 Mode2
@@ -94,28 +94,28 @@ public class Z80DriverGenerator
         assembler.LD(assembler.HLref, 0x02);
         assembler.LD(assembler.HLref, 0x00);
 
-        // 割り込み許可 (INTMSK)
+        // 蜑ｲ繧願ｾｼ縺ｿ險ｱ蜿ｯ (INTMSK)
         assembler.LD(assembler.A, 0x05);
         assembler.LD(0xE003, assembler.A);
 
-        // MZ-700音溁EBEEP)初期匁E(SN76489のダミ�Eか互換用�E�E
+        // MZ-700髻ｳ貅・BEEP)蛻晄悄蛹・(SN76489縺ｮ繝繝溘・縺倶ｺ呈鋤逕ｨ・・
         assembler.LD(assembler.A, 0x01);
         assembler.LD(assembler.HL, 0xE008);
         assembler.LD(assembler.HLref, assembler.A);
         assembler.LD(assembler.HL, 0xE007);
         assembler.LD(assembler.HLref, 0x36);
 
-        // --- VRAMクリアとチE��ト描画 (フリーズ(無反忁EしてぁE��ように見えなぁE��め�E対筁E ---
+        // --- VRAM繧ｯ繝ｪ繧｢縺ｨ繝・せ繝域緒逕ｻ (繝輔Μ繝ｼ繧ｺ(辟｡蜿榊ｿ・縺励※縺・ｋ繧医≧縺ｫ隕九∴縺ｪ縺・◆繧√・蟇ｾ遲・ ---
         if (pcgData == null)
         {
-            // VRAM(0xD000、ExD3E7)をクリア
+            // VRAM(0xD000縲・xD3E7)繧偵け繝ｪ繧｢
             assembler.LD(assembler.HL, 0xD000);
             assembler.LD(assembler.DE, 0xD001);
             assembler.LD(assembler.BC, 0x03FF);
             assembler.LD(assembler.HLref, 0x00); // 0x00 (Space or Empty)
             assembler.LDIR();
 
-            // 画面左丁E0xD000)に 'PLAYING' をMZ-1500のアスキー斁E��（画面表示コード）で直書ぁE
+            // 逕ｻ髱｢蟾ｦ荳・0xD000)縺ｫ 'PLAYING' 繧樽Z-1500縺ｮ繧｢繧ｹ繧ｭ繝ｼ譁・ｭ暦ｼ育判髱｢陦ｨ遉ｺ繧ｳ繝ｼ繝会ｼ峨〒逶ｴ譖ｸ縺・
             assembler.LD(assembler.HL, 0xD000);
             assembler.LD(assembler.HLref, 0x10); assembler.INC(assembler.HL); // P = 16 = 0x10
             assembler.LD(assembler.HLref, 0x0C); assembler.INC(assembler.HL); // L = 12 = 0x0C
@@ -125,22 +125,22 @@ public class Z80DriverGenerator
             assembler.LD(assembler.HLref, 0x0E); assembler.INC(assembler.HL); // N = 14 = 0x0E
             assembler.LD(assembler.HLref, 0x07);                              // G = 7  = 0x07
         }
-        // --- 描画ここまで ---
+        // --- 謠冗判縺薙％縺ｾ縺ｧ ---
 
         assembler.EI();
 
-        // 無限ルーチE(メイン処琁E�E割り込みに任せる)
+        // 辟｡髯舌Ν繝ｼ繝・(繝｡繧､繝ｳ蜃ｦ逅・・蜑ｲ繧願ｾｼ縺ｿ縺ｫ莉ｻ縺帙ｋ)
         assembler.Label("loop:");
         assembler.JP(assembler.LabelRef("loop:"));
 
-        // ===== 割り込みハンドラ =====
+        // ===== 蜑ｲ繧願ｾｼ縺ｿ繝上Φ繝峨Λ =====
         assembler.Label("sound:");
         assembler.PUSH(assembler.AF);
         assembler.PUSH(assembler.BC);
         assembler.PUSH(assembler.DE);
         assembler.PUSH(assembler.HL);
         
-        // 8253タイマ�E設宁E
+        // 8253繧ｿ繧､繝槫・險ｭ螳・
         assembler.LD(assembler.HL, 0xE006);
         assembler.LD(assembler.HLref, 0x83);
         assembler.LD(assembler.HLref, 0x00);
@@ -159,14 +159,14 @@ public class Z80DriverGenerator
         assembler.RET();
 
 
-        // ===== チャンネルごとの処琁E��ーチン =====
+        // ===== 繝√Ε繝ｳ繝阪Ν縺斐→縺ｮ蜃ｦ逅・Ν繝ｼ繝√Φ =====
         foreach (var ch in ChannelList)
         {
             AppendPlayChannelSource(ch.Name, assembler, ch.IOPort);
         }
 
         
-        // ----- 生�Eした周波数チE�Eブルの追加 -----
+        // ----- 逕滓・縺励◆蜻ｨ豕｢謨ｰ繝・・繝悶Ν縺ｮ霑ｽ蜉 -----
         assembler.Label("DataPsgFreqTable");
         for (int i = 0; i < 96; i++) {
             double freq = 440.0 * Math.Pow(2.0, (i - 57) / 12.0);
@@ -190,13 +190,13 @@ public class Z80DriverGenerator
             assembler.DB((byte)((reg >> 8) & 0xFF));
         }
 
-        // ===== チャンネル独立�EシーケンスチE�Eタ配置 =====
+        // ===== 繝√Ε繝ｳ繝阪Ν迢ｬ遶九・繧ｷ繝ｼ繧ｱ繝ｳ繧ｹ繝・・繧ｿ驟咲ｽｮ =====
         foreach (var ch in ChannelList)
         {
             assembler.Label(ch.Name + "_" + nameof(Labels.DataSong));
             assembler.DB(ch.SequenceData);
             assembler.Label(ch.Name + "_data_song_end");
-            assembler.DB(0xFF); // 安�E用の終端マ�Eカー (L省略時にここにジャンプして停止し続けめE
+            assembler.DB(0xFF); // 螳牙・逕ｨ縺ｮ邨らｫｯ繝槭・繧ｫ繝ｼ (L逵∫払譎ゅ↓縺薙％縺ｫ繧ｸ繝｣繝ｳ繝励＠縺ｦ蛛懈ｭ｢縺礼ｶ壹￠繧・
         }
 
         return assembler.Build();
@@ -206,7 +206,7 @@ public class Z80DriverGenerator
     {
         asm.Label(prefix);
         
-        // 1. レングス(Duration)の減少と判宁E
+        // 1. 繝ｬ繝ｳ繧ｰ繧ｹ(Duration)縺ｮ貂帛ｰ代→蛻､螳・
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
@@ -226,11 +226,11 @@ public class Z80DriverGenerator
         asm.Label(prefix + "_dec_dur_lower");
         asm.DEC(asm.HLref);
 
-        // 2. ゲーチEGate)の処琁E(簡易実裁E Duration中にGateが�Eれたら音量を無音にするなどの処琁E��忁E��だがまず�E無視するか要調整)
+        // 2. 繧ｲ繝ｼ繝・Gate)縺ｮ蜃ｦ逅・(邁｡譏灘ｮ溯｣・ Duration荳ｭ縺ｫGate縺悟・繧後◆繧蛾浹驥上ｒ辟｡髻ｳ縺ｫ縺吶ｋ縺ｪ縺ｩ縺ｮ蜃ｦ逅・′蠢・ｦ√□縺後∪縺壹・辟｡隕悶☆繧九°隕∬ｪｿ謨ｴ)
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
         
-        // 3. 次のコマンドを読む処琁E        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
+        // 3. 谺｡縺ｮ繧ｳ繝槭Φ繝峨ｒ隱ｭ繧蜃ｦ逅・        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
         
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.E, asm.HLref);
@@ -543,7 +543,7 @@ public class Z80DriverGenerator
             asm.OUT(port);
         }
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(prefix));
 
         // -- Read Rest --
         asm.Label(prefix + "_" + nameof(Labels.ReadKyufuData));
@@ -578,7 +578,7 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(prefix));
 
 // -- Read Noise --
         asm.Label(prefix + "_read_noise");
@@ -628,7 +628,7 @@ public class Z80DriverGenerator
             asm.LD(asm.A, asm.HLref);
             asm.OUT(port);
         }
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(prefix));
 
 
         // -- Read Sync Noise --
@@ -666,7 +666,7 @@ public class Z80DriverGenerator
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(prefix));
 
 // -- Read Volume --
         asm.Label(prefix + "_" + nameof(Labels.ReadVolumeData));
@@ -677,7 +677,7 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, asm.A); // save
 
         if (port != 0xE0) {
-            // SN76489に即時�Eリューム/ミュートを反映
+            // SN76489縺ｫ蜊ｳ譎ゅ・繝ｪ繝･繝ｼ繝/繝溘Η繝ｼ繝医ｒ蜿肴丐
             asm.OUT(port);
         }
 

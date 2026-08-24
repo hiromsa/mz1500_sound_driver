@@ -419,14 +419,15 @@ public class MmlSequenceProvider : ISampleProvider
                 }
                 
                 // End of frame logic for wait counter
-                if (_waitFrames > 0)
-                {
-                    _waitFrames--;
-                }
-                else
+                if (_waitFrames <= 0)
                 {
                     // Fetch new commands if wait is over
                     ProcessVM();
+                }
+
+                if (_waitFrames > 0)
+                {
+                    _waitFrames--;
                 }
             }
 
