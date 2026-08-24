@@ -296,18 +296,12 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.LD(asm.B, asm.A); // BC = 16-bit Length
         
         // Store to StatLastLength
-        asm.LD(asm.L, asm.IXref(IxStatLastLength));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLastLength), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLastLength + 1)), asm.B);
         
         // Save pos and read next
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 
         // -- Read Short Length --
@@ -319,34 +313,22 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.LD(asm.B, 0); // BC = Length
         
         // Store to StatLastLength
-        asm.LD(asm.L, asm.IXref(IxStatLastLength));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLastLength), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLastLength + 1)), asm.B);
         
         // Save pos and read next
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 // -- Read Loop Marker
         asm.Label(GetSharedCtx(isBeep).ReadLoopMarker);
         // Save current DE (which points to the instruction AFTER 0x08) to StatLoopPosition
-        asm.LD(asm.L, asm.IXref(IxStatLoopPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLoopPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatLoopPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatLoopPosition + 1)), asm.D);
 
         // Also save DE to StatSongDataPosition so it won't read 0x08 forever
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
 
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 
@@ -356,11 +338,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.INC(asm.DE);
         
         // Save pos
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
 
         // Check if Off (0xFF)
         asm.LD(asm.B, asm.A);
@@ -389,11 +368,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref); // DE is now EnvData Pointer
 
-        asm.LD(asm.L, asm.IXref(IxStatEnvDataPtr));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatEnvDataPtr + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatEnvDataPtr), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatEnvDataPtr + 1)), asm.D);
 
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 
@@ -408,11 +384,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.INC(asm.DE);
         
         // Save pos
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
 
         // Check if Off (0xFF)
         asm.LD(asm.B, asm.A);
@@ -440,11 +413,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref); // DE is now PEnvData Pointer
 
-        asm.LD(asm.L, asm.IXref(IxStatPEnvDataPtr));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatPEnvDataPtr + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatPEnvDataPtr), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatPEnvDataPtr + 1)), asm.D);
 
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 
@@ -461,11 +431,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         // Setup length from StatLastLength
         asm.LD(asm.C, asm.IXref(IxStatLastLength));
         asm.LD(asm.B, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.L, asm.IXref(IxStatLengthRemain));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLengthRemain + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLengthRemain), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), asm.B);
         asm.POP(asm.BC); // Restore B (Note Number)
 
         // Reset offsets
@@ -525,11 +492,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         }
 
         // Save pos
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
 
         // Apply Volume
         if (isBeep) {
@@ -549,11 +513,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         // Setup length from StatLastLength
         asm.LD(asm.C, asm.IXref(IxStatLastLength));
         asm.LD(asm.B, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.L, asm.IXref(IxStatLengthRemain));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLengthRemain + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLengthRemain), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), asm.B);
 
         asm.LD(asm.IXref(IxStatNoteOn), asm.Value((byte)0x00));
 
@@ -570,11 +531,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         }
 
         // Save pos
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).UpdateChannel));
 
 // -- Read Noise --
@@ -594,17 +552,11 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         // Setup length from StatLastLength
         asm.LD(asm.C, asm.IXref(IxStatLastLength));
         asm.LD(asm.B, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.L, asm.IXref(IxStatLengthRemain));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLengthRemain + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLengthRemain), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), asm.B);
 
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
         
         if (!isBeep) {
             asm.LD(asm.A, asm.IXref(IxStatHwVolume));
@@ -638,17 +590,11 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         // Setup length from StatLastLength
         asm.LD(asm.C, asm.IXref(IxStatLastLength));
         asm.LD(asm.B, asm.IXref((sbyte)(IxStatLastLength + 1)));
-        asm.LD(asm.L, asm.IXref(IxStatLengthRemain));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLengthRemain + 1)));
-        asm.LD(asm.HLref, asm.C);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.B);
+        asm.LD(asm.IXref(IxStatLengthRemain), asm.C);
+        asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), asm.B);
 
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
 
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).UpdateChannel));
 
@@ -666,21 +612,15 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         }
 
         // Save pos & Read Next
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
         asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
 
         // -- End Song (Looping) --
         asm.Label(GetSharedCtx(isBeep).EndSong);
-        asm.LD(asm.L, asm.IXref(IxStatLoopPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLoopPosition + 1)));
         // Get Address from StatLoopPosition -> DE
-        asm.LD(asm.E, asm.HLref);
-        asm.INC(asm.HL);
-        asm.LD(asm.D, asm.HLref);
+        asm.LD(asm.E, asm.IXref(IxStatLoopPosition));
+        asm.LD(asm.D, asm.IXref((sbyte)(IxStatLoopPosition + 1)));
         
         asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
         asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
@@ -699,11 +639,8 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
 
         // If it is 0xFF, it means we are at a halt state (data_song_end) or an empty track.
         // Set LengthRemain to 0x7FFF (about 9 minutes at 60Hz) to prevent infinite loop within a frame.
-        asm.LD(asm.L, asm.IXref(IxStatLengthRemain));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatLengthRemain + 1)));
-        asm.LD(asm.HLref, 0xFF);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, 0x7F);
+        asm.LD(asm.IXref(IxStatLengthRemain), 0xFF);
+        asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), 0x7F);
         asm.RET();
 
 
