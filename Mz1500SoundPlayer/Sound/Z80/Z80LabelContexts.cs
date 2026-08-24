@@ -72,6 +72,7 @@ public class SharedRoutineContext : AsmLabel.Context
     public AsmLabel ReadShortLen { get; }
     public AsmLabel ReadLongLen { get; }
     public AsmLabel DecDurLower { get; }
+    public AsmLabel HaltSong { get; }
     public AsmLabel ReadLoopMarker { get; }
     public AsmLabel ReadEnvData { get; }
     public AsmLabel ReadPEnvData { get; }
@@ -124,6 +125,7 @@ public class SharedRoutineContext : AsmLabel.Context
         ReadShortLen = CreateLabel($"{_prefix}_ReadShortLen");
         ReadLongLen = CreateLabel($"{_prefix}_ReadLongLen");
         DecDurLower = CreateLabel($"{_prefix}_DecDurLower");
+        HaltSong = CreateLabel($"{_prefix}_HaltSong");
         ReadLoopMarker = CreateLabel($"{_prefix}_ReadLoopMarker");
         ReadEnvData = CreateLabel($"{_prefix}_ReadEnvData");
         ReadPEnvData = CreateLabel($"{_prefix}_ReadPEnvData");

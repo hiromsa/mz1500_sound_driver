@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound.Z80;
@@ -626,23 +626,20 @@ private void AppendSharedPlayRoutine(Z80Assembler asm, bool isBeep)
         asm.LD(asm.E, asm.IXref(IxStatLoopPosition));
         asm.LD(asm.D, asm.IXref((sbyte)(IxStatLoopPosition + 1)));
         
-        asm.LD(asm.L, asm.IXref(IxStatSongDataPosition));
-        asm.LD(asm.H, asm.IXref((sbyte)(IxStatSongDataPosition + 1)));
-        // And store DE to StatSongDataPosition
-        asm.LD(asm.HLref, asm.E);
-        asm.INC(asm.HL);
-        asm.LD(asm.HLref, asm.D);
-
-        // Fetch the next command to execute
-        asm.LD(asm.A, asm.DEref); // A = memory at DE
-        asm.LD(asm.B, 0xFF);      // B = 0xFF (End marker)
-        asm.CP(asm.B);            // Compare A with B
+        // Check if LoopPosition is 0 (uninitialized / no loop)
+        asm.LD(asm.A, asm.E);
+        asm.OR(asm.D);
+        asm.JP(asm.Z, asm.LabelRef(GetSharedCtx(isBeep).HaltSong));
         
-        // If not 0xFF, jump to parsing (valid loop target)
-        asm.JP(asm.NZ, asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
-
-        // If it is 0xFF, it means we are at a halt state (data_song_end) or an empty track.
-        // Set LengthRemain to 0x7FFF (about 9 minutes at 60Hz) to prevent infinite loop within a frame.
+        // And store DE to StatSongDataPosition
+        asm.LD(asm.IXref(IxStatSongDataPosition), asm.E);
+        asm.LD(asm.IXref((sbyte)(IxStatSongDataPosition + 1)), asm.D);
+        
+        // Jump back to read the looped command
+        asm.JP(asm.LabelRef(GetSharedCtx(isBeep).ReadSongDataOne));
+        
+        asm.Label(GetSharedCtx(isBeep).HaltSong);
+        // If LoopPosition is 0 (no loop), set LengthRemain to 0x7FFF (infinite wait)
         asm.LD(asm.IXref(IxStatLengthRemain), 0xFF);
         asm.LD(asm.IXref((sbyte)(IxStatLengthRemain + 1)), 0x7F);
         asm.RET();
