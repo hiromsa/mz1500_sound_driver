@@ -1,0 +1,36 @@
+エディタ上で　Ctrl + S で保存したい
+
+
+
+# 指示：Z80サウンドドライバーのラベル管理（コンテキスト）の再設計とリファクタリング
+
+以前の最適化で、IXレジスタを利用した共通ルーチン化（UpdateBeepChannel / UpdatePSGChannel）が行われ、コード効率は良くなりました。しかし、その過程で `AppendSharedPlayRoutine` 内に `new AsmLabel($"{...}_env_off")` のような文字列連結によるラベル生成が大量に復活してしまい、ラベルの未定義や不整合バグが再発しています。
+
+すでに `AsmLabel` クラスは導入済みですので、静的型チェックを効かせるために以下の再設計とリファクタリングを必ず実行してください。
+
+## 1. 2つのラベルコンテキストへの分離
+共通ルーチン化に伴い、ラベルの用途を「共通ルーチン用」と「各チャンネルのデータ用」の2つに分けて再設計してください。
+
+*   **A: `SharedRoutineContext` クラスの作成**
+    *   PSG用共通ルーチン、BEEP用共通ルーチンそれぞれの内部ジャンプ先ラベル（`ReadSongDataOne`, `EnvLoopEnd`, `ReadKyufuData` など）を保持するクラス。
+    *   コンストラクタでプレフィックス（例: "UpdatePSGChannel" や "UpdateBeepChannel"）を受け取り、すべての内部ラベルを事前にインスタンス化してプロパティとして保持すること。
+*   **B: `ChannelDataContext` クラスの作成**
+    *   各チャンネル固有のデータ領域（`DataBlock`, `SongData`, `SongDataEnd`）を指し示すラベルだけを保持するクラス。
+    *   チャンネル生成時（`ChannelList.Add`のタイミングなど）にプレフィックス（"track_1"など）を渡して生成すること。
+
+## 2. 実装の修正
+*   `MZ1500SoundDriverGenerator` クラス内で文字列を連結して `new AsmLabel()` を直接呼び出す記述を**完全に禁止**します。
+*   `AppendSharedPlayRoutine` メソッドは `bool isBeep` ではなく、上記で作成した `SharedRoutineContext` のインスタンスを受け取るように引数を変更してください。
+    *   修正前: `asm.JP(asm.LabelRef(new AsmLabel(isBeep ? "UpdateBeepChannel_EndSong" : "UpdatePSGChannel_EndSong")));`
+    *   修正後: `asm.JP(asm.LabelRef(routineCtx.EndSong));`
+*   チャンネルごとのデータブロック構築やポインタ設定時も、`ChannelDataContext` のプロパティを使用してください。
+
+上記の方針に基づいて、まずは `SharedRoutineContext` と `ChannelDataContext` のクラス定義のコードを提示し、その後 `MZ1500SoundDriverGenerator.cs` の主要な修正箇所を見せてください。
+
+
+MZ1500エミュのパスを設定で登録できるようにして、本アプリから起動できるようにしたい。
+
+設定画面欲しい
+・作業フォルダ(MML/FM音源)　
+・MZ1500.exeのパス設定
+・YM2151利用(ぽよこまだんなさんのFM音源カード)
