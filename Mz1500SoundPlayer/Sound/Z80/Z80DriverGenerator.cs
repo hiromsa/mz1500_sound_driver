@@ -458,6 +458,7 @@ public class Z80DriverGenerator
         // -- Read Tone -- 
         asm.Label(prefix + "_" + nameof(Labels.ReadToneData));
         
+        asm.PUSH(asm.BC); // Save B (Note Number)
         // Setup length from StatLastLength
         asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
         asm.LD(asm.C, asm.HLref);
@@ -467,6 +468,7 @@ public class Z80DriverGenerator
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
+        asm.POP(asm.BC); // Restore B (Note Number)
 
         // Reset offsets
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
