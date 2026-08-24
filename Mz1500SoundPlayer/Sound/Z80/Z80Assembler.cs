@@ -958,8 +958,16 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
         {
             if (dat is DataLabelRef r)
             {
-                dat.Address = labelMap[r.Label];
-                byteList.AddRange(dat.GetBytes());
+                if (labelMap.TryGetValue(r.Label, out ushort lblAddr))
+                {
+                    dat.Address = lblAddr;
+                    byteList.AddRange(dat.GetBytes());
+                }
+                else
+                {
+                    Errors.Add($"Label not found: {r.Label.Name}");
+                    byteList.AddRange(new byte[] { 0x00, 0x00 });
+                }
             }
             else
             {
@@ -967,9 +975,16 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
             }
         }
 
+        if (Errors.Count > 0)
+        {
+            var distinctErrors = Errors.Distinct().ToList();
+            throw new Exception("Errors during assembly:\n" + string.Join("\n", distinctErrors));
+        }
+
         return byteList.ToArray();
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -146,3 +146,4 @@ public class IndexRef : OperandPart
     public override string GetInfo() => $"({Register.Name}+d)";
     public override int GetHashCode() => Register.GetHashCode() ^ 0x1234;
 }
+
