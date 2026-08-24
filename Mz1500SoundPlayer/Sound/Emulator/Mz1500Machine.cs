@@ -240,6 +240,10 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                 ushort lastExecAddr = 0x1200;
                 bool loadedAny = false;
+                bool isFirstBlock = true;
+
+                ushort currentLoadAddr = 0;
+                ushort currentFileSize = 0;
 
                 while (ptr < data.Length - 4)
                 {
@@ -250,6 +254,16 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     }
 
                     ptr++; // skip 0xA5
+
+                    if (isFirstBlock)
+                    {
+                        isFirstBlock = false;
+                        byte numBlocks = data[ptr++];
+                        ptr += 2; // skip CRC
+                        Console.WriteLine($"QDF Block Info: numBlocks={numBlocks}");
+                        continue;
+                    }
+
                     byte blockType = data[ptr++];
                     ushort blockSize = (ushort)(data[ptr] | (data[ptr + 1] << 8));
                     ptr += 2;
@@ -269,42 +283,40 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                         Console.WriteLine($"QDF Header: Name='{fileName}', Size=0x{fileSize:X4}, LoadAddr=0x{loadAddr:X4}, ExecAddr=0x{execAddr:X4}");
 
-                        ptr += blockSize;
-                        ptr += 2; // skip CRC
+                        currentLoadAddr = loadAddr;
+                        currentFileSize = fileSize;
 
                         if (execAddr != 0)
                         {
                             lastExecAddr = execAddr;
                         }
 
-                        // Search for accompanying data block
-                        while (ptr < data.Length - 4)
+                        ptr += blockSize;
+                        ptr += 2; // skip CRC
+                    }
+                    else if (blockType == 0x01 || blockType == 0x03 || blockType == 0x05 || blockType == 0x07) // Data Block
+                    {
+                        if (ptr + blockSize <= data.Length)
                         {
-                            if (data[ptr] == 0xA5)
-                            {
-                                ptr++;
-                                byte dBlockType = data[ptr++];
-                                ushort dBlockSize = (ushort)(data[ptr] | (data[ptr + 1] << 8));
-                                ptr += 2;
+                            int loadLen = Math.Min((int)currentFileSize, (int)blockSize);
+                            if (loadLen == 0) loadLen = blockSize;
 
-                                if (dBlockType == 0x01 || dBlockType == 0x03 || dBlockType == 0x05 || dBlockType == 0x07)
-                                {
-                                    if (ptr + dBlockSize <= data.Length)
-                                    {
-                                        byte[] fileData = new byte[Math.Min((int)fileSize, (int)dBlockSize)];
-                                        Array.Copy(data, ptr, fileData, 0, fileData.Length);
+                            byte[] fileData = new byte[loadLen];
+                            Array.Copy(data, ptr, fileData, 0, loadLen);
 
-                                        Memory.LoadBinary(loadAddr, fileData);
-                                        Console.WriteLine($"QDF Data: Loaded {fileData.Length} bytes at 0x{loadAddr:X4}");
-                                        loadedAny = true;
+                            Memory.LoadBinary(currentLoadAddr, fileData);
+                            Console.WriteLine($"QDF Data: Loaded {fileData.Length} bytes at 0x{currentLoadAddr:X4}");
+                            loadedAny = true;
 
-                                        ptr += dBlockSize;
-                                        ptr += 2; // skip CRC
-                                        break;
-                                    }
-                                }
-                            }
-                            ptr++;
+                            currentLoadAddr += (ushort)loadLen;
+                            if (currentFileSize >= loadLen) currentFileSize -= (ushort)loadLen;
+
+                            ptr += blockSize;
+                            ptr += 2; // skip CRC
+                        }
+                        else
+                        {
+                            break;
                         }
                     }
                     else
