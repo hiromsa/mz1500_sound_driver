@@ -219,6 +219,127 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             }
         }
 
+        public bool LoadQdf(string path)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(path))
+                {
+                    Console.WriteLine($"QDF file not found: {path}");
+                    return false;
+                }
+
+                byte[] data = System.IO.File.ReadAllBytes(path);
+                int ptr = 0;
+
+                // Skip optional "-QD format-" header
+                if (data.Length > 16 && data[0] == '-' && data[1] == 'Q' && data[2] == 'D')
+                {
+                    ptr = 16;
+                }
+
+                ushort lastExecAddr = 0x1200;
+                bool loadedAny = false;
+
+                while (ptr < data.Length - 4)
+                {
+                    if (data[ptr] != 0xA5)
+                    {
+                        ptr++;
+                        continue;
+                    }
+
+                    ptr++; // skip 0xA5
+                    byte blockType = data[ptr++];
+                    ushort blockSize = (ushort)(data[ptr] | (data[ptr + 1] << 8));
+                    ptr += 2;
+
+                    if (blockType == 0x00 || blockType == 0x02) // Header Block
+                    {
+                        if (ptr + blockSize > data.Length) break;
+
+                        byte fileAttr = data[ptr];
+                        byte[] nameBytes = new byte[17];
+                        Array.Copy(data, ptr + 1, nameBytes, 0, 17);
+                        string fileName = System.Text.Encoding.ASCII.GetString(nameBytes).TrimEnd('\r', '\0', ' ');
+
+                        ushort fileSize = (ushort)(data[ptr + 20] | (data[ptr + 21] << 8));
+                        ushort loadAddr = (ushort)(data[ptr + 22] | (data[ptr + 23] << 8));
+                        ushort execAddr = (ushort)(data[ptr + 24] | (data[ptr + 25] << 8));
+
+                        Console.WriteLine($"QDF Header: Name='{fileName}', Size=0x{fileSize:X4}, LoadAddr=0x{loadAddr:X4}, ExecAddr=0x{execAddr:X4}");
+
+                        ptr += blockSize;
+                        ptr += 2; // skip CRC
+
+                        if (execAddr != 0)
+                        {
+                            lastExecAddr = execAddr;
+                        }
+
+                        // Search for accompanying data block
+                        while (ptr < data.Length - 4)
+                        {
+                            if (data[ptr] == 0xA5)
+                            {
+                                ptr++;
+                                byte dBlockType = data[ptr++];
+                                ushort dBlockSize = (ushort)(data[ptr] | (data[ptr + 1] << 8));
+                                ptr += 2;
+
+                                if (dBlockType == 0x01 || dBlockType == 0x03 || dBlockType == 0x05 || dBlockType == 0x07)
+                                {
+                                    if (ptr + dBlockSize <= data.Length)
+                                    {
+                                        byte[] fileData = new byte[Math.Min((int)fileSize, (int)dBlockSize)];
+                                        Array.Copy(data, ptr, fileData, 0, fileData.Length);
+
+                                        Memory.LoadBinary(loadAddr, fileData);
+                                        Console.WriteLine($"QDF Data: Loaded {fileData.Length} bytes at 0x{loadAddr:X4}");
+                                        loadedAny = true;
+
+                                        ptr += dBlockSize;
+                                        ptr += 2; // skip CRC
+                                        break;
+                                    }
+                                }
+                            }
+                            ptr++;
+                        }
+                    }
+                    else
+                    {
+                        ptr += blockSize;
+                        ptr += 2; // skip CRC
+                    }
+                }
+
+                if (loadedAny)
+                {
+                    // Set standard QD execution environment:
+                    // Bank 0x0000..0x0FFF to RAM (Port 0xE0)
+                    // Bank 0xE800..0xFFFF to RAM (Port 0xE2)
+                    // Bank 0xD000..0xDFFF to VRAM (Port 0xE4)
+                    Memory.WriteIo(0xE0, 0);
+                    Memory.WriteIo(0xE2, 0);
+                    Memory.WriteIo(0xE4, 0);
+                    Memory.WriteIo(0xF0, 0);
+                    Memory.WriteIo(0xF1, 0);
+
+                    Cpu.Registers.PC = lastExecAddr;
+                    Console.WriteLine($"QDF Loaded successfully. Starting PC = 0x{lastExecAddr:X4}");
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load QDF: {ex.Message}");
+                return false;
+            }
+        }
+
         private class TimerInterruptSource : IZ80InterruptSource
         {
             public bool IntLineIsActive => _pending;

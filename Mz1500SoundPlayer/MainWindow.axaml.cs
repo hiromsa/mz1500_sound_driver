@@ -881,14 +881,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
             else if (ext == ".qdf")
             {
-                // Quick disk loading (stub for now until QD is implemented)
-                LogTextBox.Text += "Starting emulator with QDF inserted (Quick Disk Emulation will handle boot)...\n";
-                var emulatorWin = new EmulatorWindow();
-                emulatorWin.Show();
-                emulatorWin.Start(machine);
-                
-                // TODO: Need QuickDisk class integration for full QD load.
-                _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+                if (machine.LoadQdf(path))
+                {
+                    LogTextBox.Text += "QDF loaded. Starting execution...\n";
+                    var emulatorWin = new EmulatorWindow();
+                    emulatorWin.Show();
+                    emulatorWin.Start(machine);
+                    
+                    _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+                }
+                else
+                {
+                    LogTextBox.Text += "Failed to load QDF.\n";
+                }
             }
         }
     }
