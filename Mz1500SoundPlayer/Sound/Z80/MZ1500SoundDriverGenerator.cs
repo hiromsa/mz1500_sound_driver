@@ -77,6 +77,22 @@ public class MZ1500SoundDriverGenerator
             assembler.Label(MainCtx.Main2);
         }
 
+        assembler.IM1();
+        assembler.LD(assembler.HL, 0x1039);
+        assembler.LD(assembler.DE, assembler.LabelRef(MainCtx.Sound));
+        assembler.LD(assembler.HLref, assembler.E);
+        assembler.INC(assembler.HL);
+        assembler.LD(assembler.HLref, assembler.D);
+
+        assembler.LD(assembler.HL, 0xE007);
+        assembler.LD(assembler.HLref, 0xB0);
+        assembler.LD(assembler.HLref, 0x74);
+        assembler.DEC(assembler.HL);
+        assembler.LD(assembler.HLref, 0x83);
+        assembler.LD(assembler.HLref, 0x00);
+        assembler.DEC(assembler.HL);
+        assembler.LD(assembler.HLref, 0x02);
+
         assembler.EI();
 
         assembler.Label(MainCtx.Loop);
