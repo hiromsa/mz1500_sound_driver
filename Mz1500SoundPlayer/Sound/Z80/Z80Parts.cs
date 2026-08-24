@@ -132,3 +132,17 @@ public class MnemonicKey : IEquatable<MnemonicKey>
         return hash;
     }
 }
+
+public class IndexRef : OperandPart
+{
+    public Register Register { get; }
+    public sbyte Offset { get; }
+    public IndexRef(Register reg, sbyte offset)
+    {
+        Register = reg;
+        Offset = offset;
+    }
+    public override bool Equals(Z80Part? other) => other is IndexRef r && Register.Equals(r.Register);
+    public override string GetInfo() => $"({Register.Name}+d)";
+    public override int GetHashCode() => Register.GetHashCode() ^ 0x1234;
+}

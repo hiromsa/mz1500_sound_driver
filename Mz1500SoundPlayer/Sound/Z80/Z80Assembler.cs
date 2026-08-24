@@ -67,6 +67,7 @@ public class Z80Assembler
     public Register DE { get; } = new("DE");
     public Register HL { get; } = new("HL");
     public Register AF { get; } = new("AF");
+    public Register SP { get; } = new("SP");
     public Register IX { get; } = new("IX");
     public Register IY { get; } = new("IY");
     public Register Z { get; } = new("Z");
@@ -104,11 +105,12 @@ public class Z80Assembler
     public Z80Assembler()
     {
         InitMap();
+        InitMapExtended();
     }
 
     private void InitMap()
     {
-        // 頻繁に使われるZ80命令のバイト列定義 (VB版から移植)
+        // 鬁E��郢√�E菴�E�繧上ｌ繧技80蜻�E�莉､縺�E�繝�EぁE��亥・螳夂ｾ�E� (VB迚医°繧臥�E��E�讀・
         _mnemonicMap.Add(new Z80Part[]{ LabelRef(new AsmLabel("")) }, new byte[]{ 0x00 }); // Dummy
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, A }, new byte[]{ 0x87 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, HL, BC }, new byte[]{ 0x09 });
@@ -397,12 +399,237 @@ public class Z80Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, A }, new byte[]{ 0x3D });
     }
 
+        private void InitMapExtended()
+    {
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeOUT, C, A }, new byte[]{ 0xED, 0x79 });
+// Auto-generated Z80 instructions
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, B }, new byte[]{ 0x40 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, C }, new byte[]{ 0x41 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, D }, new byte[]{ 0x42 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, E }, new byte[]{ 0x43 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, H }, new byte[]{ 0x44 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, L }, new byte[]{ 0x45 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, HLref }, new byte[]{ 0x46 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, A }, new byte[]{ 0x47 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, B }, new byte[]{ 0x48 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, C }, new byte[]{ 0x49 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, D }, new byte[]{ 0x4A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, E }, new byte[]{ 0x4B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, H }, new byte[]{ 0x4C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, L }, new byte[]{ 0x4D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, HLref }, new byte[]{ 0x4E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, A }, new byte[]{ 0x4F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, B }, new byte[]{ 0x50 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, C }, new byte[]{ 0x51 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, D }, new byte[]{ 0x52 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, E }, new byte[]{ 0x53 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, H }, new byte[]{ 0x54 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, L }, new byte[]{ 0x55 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, HLref }, new byte[]{ 0x56 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, A }, new byte[]{ 0x57 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, B }, new byte[]{ 0x58 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, C }, new byte[]{ 0x59 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, D }, new byte[]{ 0x5A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, E }, new byte[]{ 0x5B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, H }, new byte[]{ 0x5C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, L }, new byte[]{ 0x5D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, HLref }, new byte[]{ 0x5E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, A }, new byte[]{ 0x5F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, B }, new byte[]{ 0x60 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, C }, new byte[]{ 0x61 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, D }, new byte[]{ 0x62 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, E }, new byte[]{ 0x63 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, H }, new byte[]{ 0x64 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, L }, new byte[]{ 0x65 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, HLref }, new byte[]{ 0x66 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, A }, new byte[]{ 0x67 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, B }, new byte[]{ 0x68 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, C }, new byte[]{ 0x69 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, D }, new byte[]{ 0x6A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, E }, new byte[]{ 0x6B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, H }, new byte[]{ 0x6C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, L }, new byte[]{ 0x6D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, HLref }, new byte[]{ 0x6E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, A }, new byte[]{ 0x6F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, B }, new byte[]{ 0x70 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, C }, new byte[]{ 0x71 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, D }, new byte[]{ 0x72 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, E }, new byte[]{ 0x73 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, H }, new byte[]{ 0x74 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, L }, new byte[]{ 0x75 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, A }, new byte[]{ 0x77 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, B }, new byte[]{ 0x78 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, C }, new byte[]{ 0x79 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, D }, new byte[]{ 0x7A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, E }, new byte[]{ 0x7B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, H }, new byte[]{ 0x7C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, L }, new byte[]{ 0x7D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, HLref }, new byte[]{ 0x7E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, A }, new byte[]{ 0x7F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, Value((byte)0) }, new byte[]{ 0x06 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, Value((byte)0) }, new byte[]{ 0x0E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, Value((byte)0) }, new byte[]{ 0x16 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, Value((byte)0) }, new byte[]{ 0x1E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, Value((byte)0) }, new byte[]{ 0x26 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, Value((byte)0) }, new byte[]{ 0x2E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, Value((byte)0) }, new byte[]{ 0x3E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, Value((byte)0) }, new byte[]{ 0x36 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, IXref(0) }, new byte[]{ 0xDD, 0x46 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), B }, new byte[]{ 0xDD, 0x70 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, B, IYref(0) }, new byte[]{ 0xFD, 0x46 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), B }, new byte[]{ 0xFD, 0x70 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, IXref(0) }, new byte[]{ 0xDD, 0x4E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), C }, new byte[]{ 0xDD, 0x71 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, C, IYref(0) }, new byte[]{ 0xFD, 0x4E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), C }, new byte[]{ 0xFD, 0x71 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, IXref(0) }, new byte[]{ 0xDD, 0x56 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), D }, new byte[]{ 0xDD, 0x72 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, D, IYref(0) }, new byte[]{ 0xFD, 0x56 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), D }, new byte[]{ 0xFD, 0x72 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, IXref(0) }, new byte[]{ 0xDD, 0x5E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), E }, new byte[]{ 0xDD, 0x73 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, E, IYref(0) }, new byte[]{ 0xFD, 0x5E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), E }, new byte[]{ 0xFD, 0x73 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, IXref(0) }, new byte[]{ 0xDD, 0x66 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), H }, new byte[]{ 0xDD, 0x74 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, H, IYref(0) }, new byte[]{ 0xFD, 0x66 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), H }, new byte[]{ 0xFD, 0x74 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, IXref(0) }, new byte[]{ 0xDD, 0x6E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), L }, new byte[]{ 0xDD, 0x75 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, IYref(0) }, new byte[]{ 0xFD, 0x6E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), L }, new byte[]{ 0xFD, 0x75 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, IXref(0) }, new byte[]{ 0xDD, 0x7E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), A }, new byte[]{ 0xDD, 0x77 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, IYref(0) }, new byte[]{ 0xFD, 0x7E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), A }, new byte[]{ 0xFD, 0x77 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IXref(0), Value((byte)0) }, new byte[]{ 0xDD, 0x36 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IYref(0), Value((byte)0) }, new byte[]{ 0xFD, 0x36 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, B }, new byte[]{ 0x80 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, C }, new byte[]{ 0x81 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, D }, new byte[]{ 0x82 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, E }, new byte[]{ 0x83 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, H }, new byte[]{ 0x84 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, L }, new byte[]{ 0x85 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, HLref }, new byte[]{ 0x86 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, A }, new byte[]{ 0x87 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, IXref(0) }, new byte[]{ 0xDD, 0x86 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, IYref(0) }, new byte[]{ 0xFD, 0x86 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, Value((byte)0) }, new byte[]{ 0xC6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, B }, new byte[]{ 0x88 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, C }, new byte[]{ 0x89 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, D }, new byte[]{ 0x8A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, E }, new byte[]{ 0x8B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, H }, new byte[]{ 0x8C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, L }, new byte[]{ 0x8D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, HLref }, new byte[]{ 0x8E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, A }, new byte[]{ 0x8F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, IXref(0) }, new byte[]{ 0xDD, 0x8E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, IYref(0) }, new byte[]{ 0xFD, 0x8E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeADC, A, Value((byte)0) }, new byte[]{ 0xCE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, B }, new byte[]{ 0x90 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, C }, new byte[]{ 0x91 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, D }, new byte[]{ 0x92 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, E }, new byte[]{ 0x93 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, H }, new byte[]{ 0x94 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, L }, new byte[]{ 0x95 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, HLref }, new byte[]{ 0x96 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, A }, new byte[]{ 0x97 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, IXref(0) }, new byte[]{ 0xDD, 0x96 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, IYref(0) }, new byte[]{ 0xFD, 0x96 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSUB, Value((byte)0) }, new byte[]{ 0xD6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, B }, new byte[]{ 0x98 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, C }, new byte[]{ 0x99 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, D }, new byte[]{ 0x9A });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, E }, new byte[]{ 0x9B });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, H }, new byte[]{ 0x9C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, L }, new byte[]{ 0x9D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, HLref }, new byte[]{ 0x9E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, A }, new byte[]{ 0x9F });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, IXref(0) }, new byte[]{ 0xDD, 0x9E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, IYref(0) }, new byte[]{ 0xFD, 0x9E });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeSBC, A, Value((byte)0) }, new byte[]{ 0xDE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, B }, new byte[]{ 0xA0 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, C }, new byte[]{ 0xA1 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, D }, new byte[]{ 0xA2 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, E }, new byte[]{ 0xA3 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, H }, new byte[]{ 0xA4 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, L }, new byte[]{ 0xA5 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, HLref }, new byte[]{ 0xA6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, A }, new byte[]{ 0xA7 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, IXref(0) }, new byte[]{ 0xDD, 0xA6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, IYref(0) }, new byte[]{ 0xFD, 0xA6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeAND, Value((byte)0) }, new byte[]{ 0xE6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, B }, new byte[]{ 0xA8 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, C }, new byte[]{ 0xA9 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, D }, new byte[]{ 0xAA });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, E }, new byte[]{ 0xAB });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, H }, new byte[]{ 0xAC });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, L }, new byte[]{ 0xAD });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, HLref }, new byte[]{ 0xAE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, A }, new byte[]{ 0xAF });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, IXref(0) }, new byte[]{ 0xDD, 0xAE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, IYref(0) }, new byte[]{ 0xFD, 0xAE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeXOR, Value((byte)0) }, new byte[]{ 0xEE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, B }, new byte[]{ 0xB0 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, C }, new byte[]{ 0xB1 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, D }, new byte[]{ 0xB2 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, E }, new byte[]{ 0xB3 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, H }, new byte[]{ 0xB4 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, L }, new byte[]{ 0xB5 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, HLref }, new byte[]{ 0xB6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, A }, new byte[]{ 0xB7 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, IXref(0) }, new byte[]{ 0xDD, 0xB6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, IYref(0) }, new byte[]{ 0xFD, 0xB6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeOR, Value((byte)0) }, new byte[]{ 0xF6 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, B }, new byte[]{ 0xB8 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, C }, new byte[]{ 0xB9 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, D }, new byte[]{ 0xBA });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, E }, new byte[]{ 0xBB });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, H }, new byte[]{ 0xBC });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, L }, new byte[]{ 0xBD });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, HLref }, new byte[]{ 0xBE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, A }, new byte[]{ 0xBF });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, IXref(0) }, new byte[]{ 0xDD, 0xBE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, IYref(0) }, new byte[]{ 0xFD, 0xBE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeCP, Value((byte)0) }, new byte[]{ 0xFE });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, B }, new byte[]{ 0x04 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, B }, new byte[]{ 0x05 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, C }, new byte[]{ 0x0C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, C }, new byte[]{ 0x0D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, D }, new byte[]{ 0x14 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, D }, new byte[]{ 0x15 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, E }, new byte[]{ 0x1C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, E }, new byte[]{ 0x1D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, H }, new byte[]{ 0x24 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, H }, new byte[]{ 0x25 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, L }, new byte[]{ 0x2C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, L }, new byte[]{ 0x2D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, HLref }, new byte[]{ 0x34 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, HLref }, new byte[]{ 0x35 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, A }, new byte[]{ 0x3C });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, A }, new byte[]{ 0x3D });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, IXref(0) }, new byte[]{ 0xDD, 0x34 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, IXref(0) }, new byte[]{ 0xDD, 0x35 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeINC, IYref(0) }, new byte[]{ 0xFD, 0x34 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeDEC, IYref(0) }, new byte[]{ 0xFD, 0x35 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, Value((ushort)0) }, new byte[]{ 0x01 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(new AsmLabel("")) }, new byte[]{ 0x01 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, Value((ushort)0) }, new byte[]{ 0x11 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(new AsmLabel("")) }, new byte[]{ 0x11 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, Value((ushort)0) }, new byte[]{ 0x21 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(new AsmLabel("")) }, new byte[]{ 0x21 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, Value((ushort)0) }, new byte[]{ 0x31 });
+_mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new byte[]{ 0x31 });
+    }
+
     public void ORG(ushort address) => _startAddress = address;
     
     public void Label(AsmLabel label) => _dataList.Add(new DataLabel(label));
     public ValueLabelRef LabelRef(AsmLabel label) => new(label);
     public Value Value(ushort val) => new(val);
     public Value Value(byte val) => new(val);
+    public IndexRef IXref(sbyte offset) => new IndexRef(IX, offset);
+    public IndexRef IYref(sbyte offset) => new IndexRef(IY, offset);
 
     private void Append(Z80Part p1, Z80Part? p2 = null, Z80Part? p3 = null)
     {
@@ -456,6 +683,7 @@ public class Z80Assembler
     public void OR(Z80Part p1) => Append(OpCodeOR, p1);
     public void OR(byte p1) => Append(OpCodeOR, Value(p1));
     public void OUT(byte port) => Append(OpCodeOUT, Value(port));
+    public void OUT(Z80Part p1, Z80Part p2) => Append(OpCodeOUT, p1, p2);
     public void POP(Z80Part p1) => Append(OpCodePOP, p1);
     public void PUSH(Z80Part p1) => Append(OpCodePUSH, p1);
     public void RET() => Append(OpCodeRET);
@@ -481,7 +709,7 @@ public class Z80Assembler
     {
         if (part is ValueLabelRef r)
         {
-            _dataList.Add(new DataLabelRef(r.Label)); // LabelRefは2バイトアサインするようにPass 1で処理されている
+            _dataList.Add(new DataLabelRef(r.Label)); // LabelRef縺�E�2繝�EぁE��医ぁE���E�繧�E�繝ｳ縺吶�E�繧医≧縺�E�Pass 1縺�E�蜁E��送E�E�E�E��後※縺・�E�E
         }
         else if (part is Value v)
         {
@@ -543,3 +771,5 @@ public class Z80Assembler
         return byteList.ToArray();
     }
 }
+
+
