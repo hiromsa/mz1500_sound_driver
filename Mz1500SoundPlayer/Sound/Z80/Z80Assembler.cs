@@ -421,6 +421,10 @@ public class Z80Assembler
 
         private void InitMapExtended()
     {
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IX, Value((ushort)0) }, new byte[]{ 0xDD, 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IY, Value((ushort)0) }, new byte[]{ 0xFD, 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IX, LabelRef(new AsmLabel("")) }, new byte[]{ 0xDD, 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, IY, LabelRef(new AsmLabel("")) }, new byte[]{ 0xFD, 0x21 });
 // PUSH / POP
         _mnemonicMap.Add(new Z80Part[]{ OpCodePUSH, BC }, new byte[]{ 0xC5 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodePOP, BC }, new byte[]{ 0xC1 });
@@ -966,6 +970,7 @@ _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, SP, LabelRef(new AsmLabel("")) }, new 
         return byteList.ToArray();
     }
 }
+
 
 
 
