@@ -4,7 +4,17 @@ using System.Linq;
 
 namespace Mz1500SoundPlayer.Sound.Z80;
 
-// Operand, Mnemonic definitions
+// AsmLabel represents a type-safe label identifier for the assembler
+public class AsmLabel
+{
+    public string Name { get; }
+    public AsmLabel(string name)
+    {
+        Name = name;
+    }
+    public override string ToString() => Name;
+}
+
 public abstract class Z80Part : IEquatable<Z80Part>
 {
     public abstract bool Equals(Z80Part? other);
@@ -54,8 +64,8 @@ public class ValueRef : OperandPart
 
 public class ValueLabelRef : OperandPart
 {
-    public string Name { get; }
-    public ValueLabelRef(string name) => Name = name;
+    public AsmLabel Label { get; }
+    public ValueLabelRef(AsmLabel label) => Label = label;
     public override bool Equals(Z80Part? other) => other is ValueLabelRef;
     public override string GetInfo() => "(<label>)";
     public override int GetHashCode() => 2;
@@ -72,16 +82,16 @@ public abstract class AssemblerData
 
 public class DataLabel : AssemblerData
 {
-    public string Name { get; }
-    public DataLabel(string name) => Name = name;
+    public AsmLabel Label { get; }
+    public DataLabel(AsmLabel label) => Label = label;
     public override bool HasBytes() => false;
     public override byte[] GetBytes() => Array.Empty<byte>();
 }
 
 public class DataLabelRef : AssemblerData
 {
-    public string Name { get; }
-    public DataLabelRef(string name) => Name = name;
+    public AsmLabel Label { get; }
+    public DataLabelRef(AsmLabel label) => Label = label;
     public override bool HasBytes() => true;
     public override byte[] GetBytes() => BitConverter.GetBytes(Address);
 }

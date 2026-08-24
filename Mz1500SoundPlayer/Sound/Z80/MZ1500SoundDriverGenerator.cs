@@ -17,7 +17,7 @@ public class Channel
     }
 }
 
-public class Z80DriverGenerator
+public class MZ1500SoundDriverGenerator
 {
     public List<Channel> ChannelList { get; } = new();
     
@@ -29,56 +29,29 @@ public class Z80DriverGenerator
 
     public void AppendChannel(Channel channel) => ChannelList.Add(channel);
 
-    private enum Labels
-    {
-        StatSongDataPosition,   // 2 bytes
-        StatLoopPosition,       // 2 bytes 
-        StatLengthRemain,       // 2 bytes
-        StatGateRemain,         // 2 bytes
-        StatNoteOn,             // 1 byte
-        StatHwVolume,           // 1 byte (0=Louder, 15=Silent)
-        StatEnvActive,          // 1 byte (0=Off, 1=On)
-        StatEnvDataPtr,         // 2 bytes (Current Env Table Address)
-        StatEnvPosOffset,       // 1 byte (Current offset in table)
-        
-        StatPEnvActive,         // 1 byte
-        StatPEnvDataPtr,        // 2 bytes
-        StatPEnvPosOffset,      // 1 byte
-        
-        // Routines
-        OutputSoundByStatus,
-        ReadSongDataOne,
-        ReadToneData,
-        ReadVolumeData,
-        ReadEnvData,
-        ReadPEnvData,
-        ReadKyufuData,
-        DataSong,
-        DataEnvTableBase,
-        DataPEnvTableBase
-    }
+    
 
     public byte[] Build(byte[]? pcgData = null)
     {
-        var assembler = new MZ1500Assembler();
+        var assembler = new Z80Assembler();
         
         assembler.ORG(0x1200);
-        assembler.Label("main:");
+        assembler.Label(new AsmLabel("main:"));
         assembler.DI();
         
         if (pcgData != null && pcgData.Length == 24000)
         {
-            assembler.CALL(assembler.LabelRef("ImageLoader"));
-            assembler.JP(assembler.LabelRef("main2:"));
-            AppendImageLoader(assembler, pcgData);
-            assembler.Label("main2:");
+            assembler.CALL(assembler.LabelRef(new AsmLabel("ImageLoader")));
+            assembler.JP(assembler.LabelRef(new AsmLabel("main2:")));
+            MZ1500PcgLoader.AppendImageLoader(assembler, pcgData);
+            assembler.Label(new AsmLabel("main2:"));
         }
 
         assembler.IM1();
 
         // 蜑ｲ繧願ｾｼ縺ｿ繝吶け繧ｿ縺ｮ險ｭ螳・
         assembler.LD(assembler.HL, 0x1039);
-        assembler.LD(assembler.DE, assembler.LabelRef("sound:"));
+        assembler.LD(assembler.DE, assembler.LabelRef(new AsmLabel("sound:")));
         assembler.LD(assembler.HLref, assembler.E);
         assembler.INC(assembler.HL);
         assembler.LD(assembler.HLref, assembler.D);
@@ -130,11 +103,12 @@ public class Z80DriverGenerator
         assembler.EI();
 
         // 辟｡髯舌Ν繝ｼ繝・(繝｡繧､繝ｳ蜃ｦ逅・・蜑ｲ繧願ｾｼ縺ｿ縺ｫ莉ｻ縺帙ｋ)
-        assembler.Label("loop:");
-        assembler.JP(assembler.LabelRef("loop:"));
+        assembler.Label(new AsmLabel("loop:"));
+        
+        assembler.JP(assembler.LabelRef(new AsmLabel("loop:")));
 
-        // ===== 蜑ｲ繧願ｾｼ縺ｿ繝上Φ繝峨Λ =====
-        assembler.Label("sound:");
+        // 蜑ｲ繧願ｾｼ縺ｿ繝上Φ繝峨Λ
+        assembler.Label(new AsmLabel("sound:"));
         assembler.PUSH(assembler.AF);
         assembler.PUSH(assembler.BC);
         assembler.PUSH(assembler.DE);
@@ -147,7 +121,7 @@ public class Z80DriverGenerator
 
         foreach (var ch in ChannelList)
         {
-            assembler.CALL(assembler.LabelRef(ch.Name));
+            assembler.CALL(assembler.LabelRef(new AsmLabel(ch.Name)));
         }
 
         assembler.POP(assembler.HL);
@@ -162,12 +136,12 @@ public class Z80DriverGenerator
         // ===== 繝√Ε繝ｳ繝阪Ν縺斐→縺ｮ蜃ｦ逅・Ν繝ｼ繝√Φ =====
         foreach (var ch in ChannelList)
         {
-            AppendPlayChannelSource(ch.Name, assembler, ch.IOPort);
+            AppendPlayChannelSource(new ChannelContext(ch.Name), assembler, ch.IOPort);
         }
 
         
         // ----- 逕滓・縺励◆蜻ｨ豕｢謨ｰ繝・・繝悶Ν縺ｮ霑ｽ蜉 -----
-        assembler.Label("DataPsgFreqTable");
+        assembler.Label(new AsmLabel("DataPsgFreqTable"));
         for (int i = 0; i < 96; i++) {
             double freq = 440.0 * Math.Pow(2.0, (i - 57) / 12.0);
             int baseReg = (int)Math.Round(111860.0 / freq);
@@ -180,7 +154,7 @@ public class Z80DriverGenerator
             assembler.DB(c2);
         }
 
-        assembler.Label("DataBeepFreqTable");
+        assembler.Label(new AsmLabel("DataBeepFreqTable"));
         for (int i = 0; i < 96; i++) {
             double freq = 440.0 * Math.Pow(2.0, (i - 57) / 12.0);
             double baseReg = 894886.0 / freq;
@@ -193,47 +167,47 @@ public class Z80DriverGenerator
         // ===== 繝√Ε繝ｳ繝阪Ν迢ｬ遶九・繧ｷ繝ｼ繧ｱ繝ｳ繧ｹ繝・・繧ｿ驟咲ｽｮ =====
         foreach (var ch in ChannelList)
         {
-            assembler.Label(ch.Name + "_" + nameof(Labels.DataSong));
+            assembler.Label(new ChannelContext(ch.Name).DataSong);
             assembler.DB(ch.SequenceData);
-            assembler.Label(ch.Name + "_data_song_end");
+            assembler.Label(new ChannelContext(ch.Name).DataSongEnd);
             assembler.DB(0xFF); // 螳牙・逕ｨ縺ｮ邨らｫｯ繝槭・繧ｫ繝ｼ (L逵∫払譎ゅ↓縺薙％縺ｫ繧ｸ繝｣繝ｳ繝励＠縺ｦ蛛懈ｭ｢縺礼ｶ壹￠繧・
         }
 
         return assembler.Build();
     }
 
-    private void AppendPlayChannelSource(string prefix, MZ1500Assembler asm, byte port)
+    private void AppendPlayChannelSource(ChannelContext ctx, Z80Assembler asm, byte port)
     {
-        asm.Label(prefix);
+        asm.Label(ctx.PrefixLabel);
         
         // 1. 繝ｬ繝ｳ繧ｰ繧ｹ(Duration)縺ｮ貂帛ｰ代→蛻､螳・
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
-        asm.JP(asm.NZ, asm.LabelRef(prefix + "_dec_dur_lower"));
+        asm.JP(asm.NZ, asm.LabelRef(ctx.DecDurLower));
         // lower is 0, check upper
         asm.INC(asm.HL);
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
         asm.DEC(asm.HL); // restore HL
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne))); // both 0 -> next command
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadSongDataOne)); // both 0 -> next command
         
         // dec upper
         asm.INC(asm.HL);
         asm.DEC(asm.HLref);
         asm.DEC(asm.HL);
         
-        asm.Label(prefix + "_dec_dur_lower");
+        asm.Label(ctx.DecDurLower);
         asm.DEC(asm.HLref);
 
         // 2. 繧ｲ繝ｼ繝・Gate)縺ｮ蜃ｦ逅・(邁｡譏灘ｮ溯｣・ Duration荳ｭ縺ｫGate縺悟・繧後◆繧蛾浹驥上ｒ辟｡髻ｳ縺ｫ縺吶ｋ縺ｪ縺ｩ縺ｮ蜃ｦ逅・′蠢・ｦ√□縺後∪縺壹・辟｡隕悶☆繧九°隕∬ｪｿ謨ｴ)
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(ctx.OutputSoundByStatus));
 
         
         // 3. 谺｡縺ｮ繧ｳ繝槭Φ繝峨ｒ隱ｭ繧蜃ｦ逅・
-        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
+        asm.Label(ctx.ReadSongDataOne);
         
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.E, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref);
@@ -245,54 +219,54 @@ public class Z80DriverGenerator
 
         // 0xFF (End)
         asm.CP(asm.Value((byte)0xFF));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_end_song"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.EndSong));
 
         // 0x60 (Rest)
         asm.CP(asm.Value((byte)0x60));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadKyufuData)));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadKyufuData));
 
         // 0xA0 (Set Voice / Env)
         asm.CP(asm.Value((byte)0xA0));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadEnvData)));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadEnvData));
 
         // 0xA1 (Set Volume)
         asm.CP(asm.Value((byte)0xA1));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadVolumeData)));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadVolumeData));
 
         // 0xA2 (Set PEnv)
         asm.CP(asm.Value((byte)0xA2));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_" + nameof(Labels.ReadPEnvData)));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadPEnvData));
 
         // 0x90 (Long Length)
         asm.CP(asm.Value((byte)0x90));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_long_len"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadLongLen));
 
         // 0x08 (Loop Marker)
         asm.CP(asm.Value((byte)0x08));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_loop_marker"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadLoopMarker));
 
         // Noise (0x06) -> wait, we kept Noise as 0x06
         asm.CP(asm.Value((byte)0xA6));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_noise"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadNoise));
 
         // Sync Noise (0x07)
         asm.CP(asm.Value((byte)0xA7));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_read_sync_noise"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.ReadSyncNoise));
 
         // If A < 0x60, it's Note ON (0x00 - 0x5F)
         asm.CP(asm.Value((byte)0x60));
-        asm.JP(asm.C, asm.LabelRef(prefix + "_" + nameof(Labels.ReadToneData)));
+        asm.JP(asm.C, asm.LabelRef(ctx.ReadToneData));
         
         // If A >= 0x80 AND A <= 0x8F, it's Short Length
         asm.SUB(asm.Value((byte)0x80));
         asm.CP(asm.Value((byte)0x10));
-        asm.JP(asm.C, asm.LabelRef(prefix + "_read_short_len"));
+        asm.JP(asm.C, asm.LabelRef(ctx.ReadShortLen));
 
         // Unknown -> Ignore and read next
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // -- Read Long Length --
-        asm.Label(prefix + "_read_long_len");
+        asm.Label(ctx.ReadLongLen);
         asm.LD(asm.A, asm.DEref);
         asm.INC(asm.DE);
         asm.LD(asm.C, asm.A);
@@ -301,20 +275,20 @@ public class Z80DriverGenerator
         asm.LD(asm.B, asm.A); // BC = 16-bit Length
         
         // Store to StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
         
         // Save pos and read next
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // -- Read Short Length --
-        asm.Label(prefix + "_read_short_len");
+        asm.Label(ctx.ReadShortLen);
         // A is already (Cmd - 0x80).
         asm.AND(asm.Value((byte)0x0F));
         asm.INC(asm.A);
@@ -322,40 +296,40 @@ public class Z80DriverGenerator
         asm.LD(asm.B, 0); // BC = Length
         
         // Store to StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
         
         // Save pos and read next
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 // -- Read Loop Marker
-        asm.Label(prefix + "_read_loop_marker");
+        asm.Label(ctx.ReadLoopMarker);
         // Save current DE (which points to the instruction AFTER 0x08) to StatLoopPosition
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLoopPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLoopPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
         // Also save DE to StatSongDataPosition so it won't read 0x08 forever
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // -- Read Envelope Command --
-        asm.Label(prefix + "_" + nameof(Labels.ReadEnvData));
+        asm.Label(ctx.ReadEnvData);
         asm.LD(asm.A, asm.DEref); // EnvelopeId (or 0xFF for Off)
         asm.INC(asm.DE);
         
         // Save pos
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
@@ -364,19 +338,19 @@ public class Z80DriverGenerator
         asm.LD(asm.B, asm.A);
         asm.LD(asm.A, 0xFF);
         asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_off"));
+        asm.JP(asm.Z, asm.LabelRef(new AsmLabel($"{ctx.Prefix}_env_off")));
 
         // Set Env Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvActive));
         asm.LD(asm.HLref, 0x01);
         
         // Offset = 0
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
 
         // Compute BaseAddress = DataEnvTableBase + (EnvId * 2)
         // Since we have EnvId in B
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.DataEnvTableBase)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.DataEnvTableBase));
         asm.LD(asm.A, asm.B); 
         asm.ADD(asm.A, asm.A); // A = EnvId * 2
         // Calculate HL + A
@@ -389,26 +363,26 @@ public class Z80DriverGenerator
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref); // DE is now EnvData Pointer
 
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvDataPtr)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvDataPtr));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // Env Off
-        asm.Label(prefix + "_env_off");
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.Label(new AsmLabel($"{ctx.Prefix}_env_off"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvActive));
         asm.LD(asm.HLref, 0x00);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // -- Read Pitch Envelope Command --
-        asm.Label(prefix + "_" + nameof(Labels.ReadPEnvData));
+        asm.Label(ctx.ReadPEnvData);
         asm.LD(asm.A, asm.DEref); // EnvId (or 0xFF for Off)
         asm.INC(asm.DE);
         
         // Save pos
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
@@ -417,18 +391,18 @@ public class Z80DriverGenerator
         asm.LD(asm.B, asm.A);
         asm.LD(asm.A, 0xFF);
         asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_off"));
+        asm.JP(asm.Z, asm.LabelRef(new AsmLabel($"{ctx.Prefix}_penv_off")));
 
         // Set PEnv Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvActive));
         asm.LD(asm.HLref, 0x01);
         
         // Offset = 0
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
 
         // Compute BaseAddress = DataPEnvTableBase + (EnvId * 2)
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.DataPEnvTableBase)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.DataPEnvTableBase));
         asm.LD(asm.A, asm.B); 
         asm.ADD(asm.A, asm.A); // A = EnvId * 2
         // Calculate HL + A
@@ -441,43 +415,43 @@ public class Z80DriverGenerator
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref); // DE is now PEnvData Pointer
 
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvDataPtr)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvDataPtr));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // PEnv Off
-        asm.Label(prefix + "_penv_off");
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.Label(new AsmLabel($"{ctx.Prefix}_penv_off"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvActive));
         asm.LD(asm.HLref, 0x00);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         
         // -- Read Tone -- 
-        asm.Label(prefix + "_" + nameof(Labels.ReadToneData));
+        asm.Label(ctx.ReadToneData);
         
         asm.PUSH(asm.BC); // Save B (Note Number)
         // Setup length from StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.B, asm.HLref);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
         asm.POP(asm.BC); // Restore B (Note Number)
 
         // Reset offsets
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
 
         // Set Note Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatNoteOn));
         asm.LD(asm.HLref, 0x01);
 
         // B has the original Note ON command (Note Number)
@@ -488,9 +462,9 @@ public class Z80DriverGenerator
         
         // Fetch HW register from Table
         if (port == 0xE0) {
-            asm.LD(asm.HL, asm.LabelRef("DataBeepFreqTable"));
+            asm.LD(asm.HL, asm.LabelRef(new AsmLabel("DataBeepFreqTable")));
         } else {
-            asm.LD(asm.HL, asm.LabelRef("DataPsgFreqTable"));
+            asm.LD(asm.HL, asm.LabelRef(new AsmLabel("DataPsgFreqTable")));
         }
         
         asm.LD(asm.A, asm.B);
@@ -518,14 +492,14 @@ public class Z80DriverGenerator
         } else {
             // Determine PSG Channel from prefix (track_P1 -> 0, etc.)
             int psgCh = 0;
-            if (prefix.StartsWith("track_P")) {
-                if (int.TryParse(prefix.Substring(7), out int trkNum)) {
+            if (ctx.Prefix.StartsWith("track_P")) {
+                if (int.TryParse(ctx.Prefix.Substring(7), out int trkNum)) {
                     psgCh = Math.Max(0, trkNum - 1) % 3; // P1->0, P2->1, P3->2
                 }
-            } else if (prefix.StartsWith("track_N")) {
+            } else if (ctx.Prefix.StartsWith("track_N")) {
                 psgCh = 3; // Noise
-            } else if (prefix.StartsWith("track_")) {
-                int.TryParse(prefix.Substring(6), out psgCh);
+            } else if (ctx.Prefix.StartsWith("track_")) {
+                int.TryParse(ctx.Prefix.Substring(6), out psgCh);
             }
             byte chBits = (byte)(0x80 | ((psgCh & 0x03) << 5));
             asm.OR(asm.Value(chBits));
@@ -537,7 +511,7 @@ public class Z80DriverGenerator
         }
 
         // Save pos
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
@@ -547,27 +521,27 @@ public class Z80DriverGenerator
             asm.LD(asm.HL, (ushort)0xE008);
             asm.LD(asm.HLref, 0x01); // BEEP ON
         } else {
-            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
             asm.LD(asm.A, asm.HLref);
             asm.OUT(port);
         }
 
-        asm.JP(asm.LabelRef(prefix));
+        asm.JP(asm.LabelRef(ctx.PrefixLabel));
 
         // -- Read Rest --
-        asm.Label(prefix + "_" + nameof(Labels.ReadKyufuData));
+        asm.Label(ctx.ReadKyufuData);
         
         // Setup length from StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.B, asm.HLref);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
 
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatNoteOn));
         asm.LD(asm.HLref, 0x00);
 
         // Send Volume=0 (0x0F) to mute
@@ -575,7 +549,7 @@ public class Z80DriverGenerator
             asm.LD(asm.HL, (ushort)0xE008);
             asm.LD(asm.HLref, 0x00); // BEEP OFF
         } else {
-            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
             asm.LD(asm.A, asm.HLref);
             asm.AND(asm.Value((byte)0x60)); // Keep only channel bits
             asm.OR(asm.Value((byte)0x9F));  // Base Vol + 15 (Mute)
@@ -583,21 +557,21 @@ public class Z80DriverGenerator
         }
 
         // Save pos
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
-        asm.JP(asm.LabelRef(prefix));
+        asm.JP(asm.LabelRef(ctx.PrefixLabel));
 
 // -- Read Noise --
-        asm.Label(prefix + "_read_noise");
+        asm.Label(ctx.ReadNoise);
         // DE is pointing to 3 bytes: NoiseCmd, DurL, DurH.
         // Similar to ReadTone, but only 1 byte for freq/ctrl instead of two.
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatNoteOn));
         asm.LD(asm.HLref, 0x01);
 
         // Fetch NoiseCmd and OUT
@@ -606,35 +580,35 @@ public class Z80DriverGenerator
         if (port != 0xE0) { asm.OUT(port); }
 
         // Setup length from StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.B, asm.HLref);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
 
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
         
         if (port != 0xE0) {
-            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
             asm.LD(asm.A, asm.HLref);
             asm.OUT(port);
         }
-        asm.JP(asm.LabelRef(prefix));
+        asm.JP(asm.LabelRef(ctx.PrefixLabel));
 
 
         // -- Read Sync Noise --
-        asm.Label(prefix + "_read_sync_noise");
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.Label(ctx.ReadSyncNoise);
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatNoteOn));
         asm.LD(asm.HLref, 0x01);
 
         if (port != 0xE0) {
@@ -643,34 +617,34 @@ public class Z80DriverGenerator
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE); asm.OUT(port);
             asm.LD(asm.A, asm.DEref); asm.INC(asm.DE);
-            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
             asm.LD(asm.HLref, asm.A);
             asm.OUT(port);
         }
 
         // Setup length from StatLastLength
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_StatLastLength"));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLastLength));
         asm.LD(asm.C, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.B, asm.HLref);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.HLref, asm.C);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.B);
 
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
 
-        asm.JP(asm.LabelRef(prefix));
+        asm.JP(asm.LabelRef(ctx.PrefixLabel));
 
 // -- Read Volume --
-        asm.Label(prefix + "_" + nameof(Labels.ReadVolumeData));
+        asm.Label(ctx.ReadVolumeData);
         asm.LD(asm.A, asm.DEref); // raw volume hw byte (1 c c 1 v v v v)
         asm.INC(asm.DE);
         
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
         asm.LD(asm.HLref, asm.A); // save
 
         if (port != 0xE0) {
@@ -679,21 +653,21 @@ public class Z80DriverGenerator
         }
 
         // Save pos & Read Next
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, asm.D);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.LabelRef(ctx.ReadSongDataOne));
 
         // -- End Song (Looping) --
-        asm.Label(prefix + "_end_song");
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLoopPosition)));
+        asm.Label(ctx.EndSong);
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLoopPosition));
         // Get Address from StatLoopPosition -> DE
         asm.LD(asm.E, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref);
         
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatSongDataPosition));
         // And store DE to StatSongDataPosition
         asm.LD(asm.HLref, asm.E);
         asm.INC(asm.HL);
@@ -705,11 +679,11 @@ public class Z80DriverGenerator
         asm.CP(asm.B);            // Compare A with B
         
         // If not 0xFF, jump to parsing (valid loop target)
-        asm.JP(asm.NZ, asm.LabelRef(prefix + "_" + nameof(Labels.ReadSongDataOne)));
+        asm.JP(asm.NZ, asm.LabelRef(ctx.ReadSongDataOne));
 
         // If it is 0xFF, it means we are at a halt state (data_song_end) or an empty track.
         // Set LengthRemain to 0x7FFF (about 9 minutes at 60Hz) to prevent infinite loop within a frame.
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatLengthRemain)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatLengthRemain));
         asm.LD(asm.HLref, 0xFF);
         asm.INC(asm.HL);
         asm.LD(asm.HLref, 0x7F);
@@ -717,27 +691,27 @@ public class Z80DriverGenerator
 
 
         // -- Output By Status --
-        asm.Label(prefix + "_" + nameof(Labels.OutputSoundByStatus));
+        asm.Label(ctx.OutputSoundByStatus);
         // Check Note On
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatNoteOn));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // Note Off -> Do nothing
+        asm.JP(asm.Z, asm.LabelRef(ctx.OutputEnd)); // Note Off -> Do nothing
 
         // Check Env Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvActive)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvActive));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_penv_check")); // Env Off -> skip to PEnv
+        asm.JP(asm.Z, asm.LabelRef(ctx.OutputPenvCheck)); // Env Off -> skip to PEnv
 
         // Read Env Data pointer
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvDataPtr)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvDataPtr));
         asm.LD(asm.E, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref);
 
         // Read Env Pos Offset
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.C, asm.HLref);
         asm.LD(asm.B, 0);
 
@@ -751,18 +725,18 @@ public class Z80DriverGenerator
 
         // is it Loop Endpoint? (0xFE)
         asm.CP(asm.Value((byte)0xFE));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_loop_end"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.EnvLoopEnd));
 
         // it might be End marker (0xFF)
         asm.CP(asm.Value((byte)0xFF));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_env_end"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.EnvEnd));
 
         // Valid Volume in A (0-15).
         // Save Volume to B
         asm.LD(asm.B, asm.A);
 
         // Extract channel bits from existing StatHwVolume
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
         asm.LD(asm.A, asm.HLref);
         asm.AND((byte)0x60); // Keep only channel bits: 0110 0000
         asm.OR((byte)0x90);  // Base Vol command: 1001 0000
@@ -774,14 +748,14 @@ public class Z80DriverGenerator
             // Envelope applies to BEEP ON/OFF
             asm.LD(asm.A, asm.B);
             asm.CP(asm.Value(0)); // If 0 (silent)
-            asm.JP(asm.Z, asm.LabelRef(prefix + "_env_vol_mute"));
+            asm.JP(asm.Z, asm.LabelRef(ctx.EnvVolMute));
             asm.LD(asm.A, (byte)1);
-            asm.JP(asm.LabelRef(prefix + "_env_vol_apply"));
+            asm.JP(asm.LabelRef(ctx.EnvVolApply));
             
-            asm.Label(prefix + "_env_vol_mute");
+            asm.Label(ctx.EnvVolMute);
             asm.LD(asm.A, (byte)0);
             
-            asm.Label(prefix + "_env_vol_apply");
+            asm.Label(ctx.EnvVolApply);
             asm.LD(asm.HL, (ushort)0xE008);
             asm.LD(asm.HLref, asm.A);
         } else {
@@ -790,30 +764,30 @@ public class Z80DriverGenerator
             asm.OR(asm.C);  // Combine with channel bits: 1001 c c X X
 
             // Save back for consistency and OUT
-            asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatHwVolume)));
+            asm.LD(asm.HL, asm.LabelRef(ctx.StatHwVolume));
             asm.LD(asm.HLref, asm.A);
             asm.OUT(port);
         }
 
         // Increment Offset
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.INC(asm.HLref);
 
-        asm.Label(prefix + "_output_penv_check");
+        asm.Label(ctx.OutputPenvCheck);
         // Check PEnv Active
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvActive)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvActive));
         asm.LD(asm.A, asm.HLref);
         asm.OR(asm.A);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_output_end")); // PEnv Off -> End
+        asm.JP(asm.Z, asm.LabelRef(ctx.OutputEnd)); // PEnv Off -> End
 
         // Read PEnv Data pointer
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvDataPtr)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvDataPtr));
         asm.LD(asm.E, asm.HLref);
         asm.INC(asm.HL);
         asm.LD(asm.D, asm.HLref);
 
         // Read PEnv Pos Offset
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.C, asm.HLref);
         asm.LD(asm.B, 0);
 
@@ -828,11 +802,11 @@ public class Z80DriverGenerator
         
         // is it Loop Endpoint? (0xFE)
         asm.CP(asm.Value((byte)0xFE));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_loop_end"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.PenvLoopEnd));
 
         // it might be End marker (0xFF)
         asm.CP(asm.Value((byte)0xFF));
-        asm.JP(asm.Z, asm.LabelRef(prefix + "_penv_end"));
+        asm.JP(asm.Z, asm.LabelRef(ctx.PenvEnd));
 
         // Output Byte 1
         if (port == 0xE0) {
@@ -857,87 +831,87 @@ public class Z80DriverGenerator
         }
 
         // Increment Offset
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.INC(asm.HLref);
 
-        asm.Label(prefix + "_output_end");
+        asm.Label(ctx.OutputEnd);
         asm.RET();
 
-        asm.Label(prefix + "_env_loop_end");
+        asm.Label(ctx.EnvLoopEnd);
         // Read the next byte which contains the loop offset
         // HL currently points to the 0xFE byte. The offset is at HL+1.
         asm.INC(asm.HL);
         asm.LD(asm.A, asm.HLref); // A = loop offset
         // Store it to StatEnvPosOffset
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.LD(asm.HLref, asm.A);
         // JP back to OutputSoundByStatus to output the looped value in the same frame
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(ctx.OutputSoundByStatus));
         
-        asm.Label(prefix + "_env_end");
+        asm.Label(ctx.EnvEnd);
         // If 0xFF, stay at the last valid position
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatEnvPosOffset));
         asm.DEC(asm.HLref);
-        asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
+        asm.JP(asm.LabelRef(ctx.OutputSoundByStatus));
 
         // PEnv loop handlers
-        asm.Label(prefix + "_penv_loop_end");
+        asm.Label(ctx.PenvLoopEnd);
         asm.INC(asm.HL);
         asm.LD(asm.A, asm.HLref);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.LD(asm.HLref, asm.A);
-        asm.JP(asm.LabelRef(prefix + "_output_penv_check"));
+        asm.JP(asm.LabelRef(ctx.OutputPenvCheck));
         
-        asm.Label(prefix + "_penv_end");
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
+        asm.Label(ctx.PenvEnd);
+        asm.LD(asm.HL, asm.LabelRef(ctx.StatPEnvPosOffset));
         asm.DEC(asm.HLref);
-        asm.JP(asm.LabelRef(prefix + "_output_penv_check"));
+        asm.JP(asm.LabelRef(ctx.OutputPenvCheck));
 
 
         // -- Stat Variables --
-        asm.Label(prefix + "_" + nameof(Labels.StatSongDataPosition));
-        asm.DB(asm.LabelRef(prefix + "_" + nameof(Labels.DataSong))); // Initialize with Data Start Address
+        asm.Label(ctx.StatSongDataPosition);
+        asm.DB(asm.LabelRef(ctx.DataSong)); // Initialize with Data Start Address
         
-        asm.Label(prefix + "_" + nameof(Labels.StatLoopPosition));
-        asm.DB(asm.LabelRef(prefix + "_data_song_end")); // Initialize loop point to End Address (No loop by default)
+        asm.Label(ctx.StatLoopPosition);
+        asm.DB(asm.LabelRef(ctx.DataSongEnd)); // Initialize loop point to End Address (No loop by default)
 
-        asm.Label(prefix + "_" + nameof(Labels.StatLengthRemain));
+        asm.Label(ctx.StatLengthRemain);
         asm.DB(new byte[] { 0, 0 });
         
-        asm.Label(prefix + "_StatLastLength");
+        asm.Label(ctx.StatLastLength);
         asm.DB(new byte[] { 0, 0 });
         
-        asm.Label(prefix + "_" + nameof(Labels.StatGateRemain));
+        asm.Label(ctx.StatGateRemain);
         asm.DB(new byte[] { 0, 0 });
 
-        asm.Label(prefix + "_" + nameof(Labels.StatNoteOn));
+        asm.Label(ctx.StatNoteOn);
         asm.DB(0);
 
-        asm.Label(prefix + "_" + nameof(Labels.StatHwVolume));
+        asm.Label(ctx.StatHwVolume);
         asm.DB(0); // Holds the raw SN76489 volume byte
 
-        asm.Label(prefix + "_" + nameof(Labels.StatEnvActive));
+        asm.Label(ctx.StatEnvActive);
         asm.DB(0); 
 
-        asm.Label(prefix + "_" + nameof(Labels.StatEnvDataPtr));
+        asm.Label(ctx.StatEnvDataPtr);
         asm.DB(new byte[] { 0, 0 });
 
-        asm.Label(prefix + "_" + nameof(Labels.StatEnvPosOffset));
+        asm.Label(ctx.StatEnvPosOffset);
         asm.DB(0);
 
-        asm.Label(prefix + "_" + nameof(Labels.StatPEnvActive));
+        asm.Label(ctx.StatPEnvActive);
         asm.DB(0); 
 
-        asm.Label(prefix + "_" + nameof(Labels.StatPEnvDataPtr));
+        asm.Label(ctx.StatPEnvDataPtr);
         asm.DB(new byte[] { 0, 0 });
 
-        asm.Label(prefix + "_" + nameof(Labels.StatPEnvPosOffset));
+        asm.Label(ctx.StatPEnvPosOffset);
         asm.DB(0);
 
         // -- Envelope Data Tables --
         // To make it simpler, we embed the global VolumeEnvelopes table inside each channel's memory block,
         // or we can embed it once globally. Since we only loop channels here, we'll embed one copy per channel for simplicity of addressing.
-        asm.Label(prefix + "_" + nameof(Labels.DataEnvTableBase));
+        asm.Label(ctx.DataEnvTableBase);
         
         // Find max EnvId to allocate contiguous pointer table
         int maxEnvId = -1;
@@ -947,23 +921,23 @@ public class Z80DriverGenerator
         {
             if (VolumeEnvelopes.ContainsKey(i))
             {
-                asm.DW(asm.LabelRef(prefix + "_env_data_" + i));
+                asm.DW(asm.LabelRef(new AsmLabel($"{ctx.Prefix}_env_data_{i}")));
             }
             else
             {
                 // Dummy/empty
-                asm.DW(asm.LabelRef(prefix + "_env_data_empty"));
+                asm.DW(asm.LabelRef(new AsmLabel($"{ctx.Prefix}_env_data_empty")));
             }
         }
 
         // Dummy empty data
-        asm.Label(prefix + "_env_data_empty");
+        asm.Label(new AsmLabel($"{ctx.Prefix}_env_data_empty"));
         asm.DB(0xFF);
 
         // Env Array Definitions
         foreach (var kvp in VolumeEnvelopes)
         {
-            asm.Label(prefix + "_env_data_" + kvp.Key);
+            asm.Label(new AsmLabel($"{ctx.Prefix}_env_data_{kvp.Key}"));
             
             var envData = kvp.Value;
             foreach (var vol in envData.Values)
@@ -984,7 +958,7 @@ public class Z80DriverGenerator
         }
 
         // PEnv Array Definitions
-        asm.Label(prefix + "_" + nameof(Labels.DataPEnvTableBase));
+        asm.Label(ctx.DataPEnvTableBase);
         
         int maxPEnvId = -1;
         if (HwPitchEnvelopes.Count > 0)
@@ -996,21 +970,21 @@ public class Z80DriverGenerator
         {
             if (i < HwPitchEnvelopes.Count)
             {
-                asm.DW(asm.LabelRef(prefix + "_penv_data_" + i));
+                asm.DW(asm.LabelRef(new AsmLabel($"{ctx.Prefix}_penv_data_{i}")));
             }
             else
             {
-                asm.DW(asm.LabelRef(prefix + "_penv_data_empty"));
+                asm.DW(asm.LabelRef(new AsmLabel($"{ctx.Prefix}_penv_data_empty")));
             }
         }
 
-        asm.Label(prefix + "_penv_data_empty");
+        asm.Label(new AsmLabel($"{ctx.Prefix}_penv_data_empty"));
         asm.DB(0xFF);
         asm.DB(0xFF); // Align 2 bytes
 
         foreach (var penv in HwPitchEnvelopes)
         {
-            asm.Label(prefix + "_penv_data_" + penv.Id);
+            asm.Label(new AsmLabel($"{ctx.Prefix}_penv_data_{penv.Id}"));
             
             foreach (ushort hwVal in penv.AbsoluteRegisters)
             {
@@ -1031,152 +1005,4 @@ public class Z80DriverGenerator
         }
     }
 
-    private void AppendImageLoader(MZ1500Assembler asm, byte[] pcgData)
-    {
-        string prefix = "pcg_";
-
-        asm.Label("ImageLoader");
-        asm.CALL(asm.LabelRef(prefix + "CLS"));
-        asm.CALL(asm.LabelRef(prefix + "start"));
-        asm.RET();
-
-        asm.Label(prefix + "CLS");
-        asm.CALL(asm.Value((ushort)0x0DA6)); // Basic CLS routine
-        asm.LD(asm.HL, 0xD000);
-        asm.LD(asm.BC, 40 * 25);
-        asm.XOR(asm.A);
-        asm.CALL(asm.LabelRef(prefix + "MEMFIL"));
-
-        asm.LD(asm.HL, 0xD800);
-        asm.LD(asm.BC, 40 * 25);
-        asm.LD(asm.A, 0x0);
-        asm.CALL(asm.LabelRef(prefix + "MEMFIL"));
-        asm.RET();
-
-        asm.Label(prefix + "MEMFIL");
-        asm.LD(asm.D, asm.H);
-        asm.LD(asm.E, asm.L);
-        asm.INC(asm.DE);
-        asm.DEC(asm.BC);
-        asm.LD(asm.HLref, asm.A);
-        asm.LDIR();
-        asm.RET();
-
-        asm.Label(prefix + "start");
-        
-        asm.OUT(0xF1); // F1 Output
-        asm.LD(asm.A, 0x1);
-        asm.OUT(0xF0); // F0 Output for Display Priority/Screen 2
-
-        // PCG Pattern setup
-        byte e5 = 0xE5;
-
-        // Bank 3 (Green)
-        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Green-start"));
-        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Green-end"));
-        asm.LD(asm.HL, 0xD000);
-        asm.LD(asm.A, 0x3);
-        asm.OUT(e5);
-        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
-
-        // Bank 2 (Red)
-        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Red-start"));
-        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Red-end"));
-        asm.LD(asm.HL, 0xD000);
-        asm.LD(asm.A, 0x2);
-        asm.OUT(e5);
-        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
-
-        // Bank 1 (Blue)
-        asm.LD(asm.DE, asm.LabelRef(prefix + "PSGData-Blue-start"));
-        asm.LD(asm.BC, asm.LabelRef(prefix + "PSGData-Blue-end"));
-        asm.LD(asm.HL, 0xD000);
-        asm.LD(asm.A, 0x1);
-        asm.OUT(e5);
-        asm.CALL(asm.LabelRef(prefix + "LoopStart"));
-
-        asm.JP(asm.LabelRef(prefix + "LoopEnd"));
-
-        asm.Label(prefix + "LoopStart");
-        asm.LD(asm.A, asm.DEref); // Get 1 byte of PCG
-        asm.LD(asm.HLref, asm.A); // Write to VRAM
-        asm.INC(asm.DE);
-        asm.INC(asm.HL);
-
-        asm.LD(asm.A, asm.B);
-        asm.CP(asm.D);
-        asm.JP(asm.NZ, asm.LabelRef(prefix + "LoopStart"));
-        asm.LD(asm.A, asm.C);
-        asm.CP(asm.E);
-        asm.JP(asm.NZ, asm.LabelRef(prefix + "LoopStart"));
-        asm.RET();
-
-        asm.Label(prefix + "LoopEnd");
-
-        // Set Screen VRAM characters to match PCG indices
-        asm.Label(prefix + "VRAM-start");
-        asm.LD(asm.HL, 0xD400); // Screen 2 VRAM
-        asm.LD(asm.DE, 0xDC00); // Screen 2 Color Data
-        
-        asm.LD(asm.B, 0x00);
-        asm.LD(asm.C, 0b00001000); // 0x08
-        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
-        
-        asm.LD(asm.B, 0x00);
-        asm.LD(asm.C, 0b01001000); // 0x48
-        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
-        
-        asm.LD(asm.B, 0x00);
-        asm.LD(asm.C, 0b10001000); // 0x88
-        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
-        
-        asm.LD(asm.B, 0x00);
-        asm.LD(asm.C, 0b11001000); // 0xC8
-        asm.CALL(asm.LabelRef(prefix + "VRAM-loop"));
-        
-        asm.JP(asm.LabelRef(prefix + "loop_skip_pcg:")); // bypass loop symbol name collision
-
-        asm.Label(prefix + "VRAM-loop");
-        asm.LD(asm.A, 0x1);
-        asm.OUT(0xE6); // PCG Access Enable?
-
-        asm.LD(asm.HLref, asm.B); // Set char code 0~255
-        asm.INC(asm.HL);
-
-        asm.LD(asm.A, asm.C);
-        asm.LD(asm.DEref, asm.A); // Set color attribute
-        asm.INC(asm.DE);
-
-        asm.LD(asm.A, 0xFF);
-        asm.CP(asm.B);
-        asm.JP(asm.Z, asm.LabelRef(prefix + "VRAM-loop-return"));
-        asm.INC(asm.B);
-        asm.JP(asm.LabelRef(prefix + "VRAM-loop"));
-
-        asm.Label(prefix + "VRAM-loop-return");
-        asm.RET();
-
-        asm.Label(prefix + "loop_skip_pcg:");
-        asm.RET();
-
-        // Data payload
-        var greenPlane = new byte[8000];
-        var redPlane = new byte[8000];
-        var bluePlane = new byte[8000];
-        Array.Copy(pcgData, 0, greenPlane, 0, 8000);
-        Array.Copy(pcgData, 8000, redPlane, 0, 8000);
-        Array.Copy(pcgData, 16000, bluePlane, 0, 8000);
-
-        asm.Label(prefix + "PSGData-Green-start");
-        asm.DB(greenPlane);
-        asm.Label(prefix + "PSGData-Green-end");
-
-        asm.Label(prefix + "PSGData-Red-start");
-        asm.DB(redPlane);
-        asm.Label(prefix + "PSGData-Red-end");
-
-        asm.Label(prefix + "PSGData-Blue-start");
-        asm.DB(bluePlane);
-        asm.Label(prefix + "PSGData-Blue-end");
     }
-}

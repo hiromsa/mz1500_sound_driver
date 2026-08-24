@@ -200,7 +200,7 @@ public class MmlPlayerModel
         compiler.PitchEnvelopes = mmlData.PitchEnvelopes;
         
         // 5. Build Z80 Execution Binary (QDC) for hardware/emulator
-        var musicAssembler = new Z80.Z80DriverGenerator();
+        var musicAssembler = new Z80.MZ1500SoundDriverGenerator();
         musicAssembler.VolumeEnvelopes = mmlData.VolumeEnvelopes; // Z80ドライバにエンベロープ辞書を渡す
         
         // 各トラックごとにMML展開 -> Z80コマンドコンパイル -> Channelオブジェクトとしてアセンブラに登録

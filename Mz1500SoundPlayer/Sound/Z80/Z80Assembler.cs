@@ -49,7 +49,7 @@ public class MnemonicByteDataMap
     }
 }
 
-public class MZ1500Assembler
+public class Z80Assembler
 {
     private readonly List<AssemblerData> _dataList = new();
     private readonly MnemonicByteDataMap _mnemonicMap = new();
@@ -101,7 +101,7 @@ public class MZ1500Assembler
     public OpCodePart OpCodeSUB { get; } = new("SUB");
     public OpCodePart OpCodeXOR { get; } = new("XOR");
 
-    public MZ1500Assembler()
+    public Z80Assembler()
     {
         InitMap();
     }
@@ -109,13 +109,13 @@ public class MZ1500Assembler
     private void InitMap()
     {
         // 頻繁に使われるZ80命令のバイト列定義 (VB版から移植)
-        _mnemonicMap.Add(new Z80Part[]{ LabelRef("") }, new byte[]{ 0x00 }); // Dummy
+        _mnemonicMap.Add(new Z80Part[]{ LabelRef(new AsmLabel("")) }, new byte[]{ 0x00 }); // Dummy
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, A, A }, new byte[]{ 0x87 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, HL, BC }, new byte[]{ 0x09 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeADD, HL, DE }, new byte[]{ 0x19 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeAND, A }, new byte[]{ 0xA7 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, Value((ushort)0) }, new byte[]{ 0xCD });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, LabelRef("") }, new byte[]{ 0xCD });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeCALL, LabelRef(new AsmLabel("")) }, new byte[]{ 0xCD });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, A }, new byte[]{ 0xBF });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, B }, new byte[]{ 0xB8 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeCP, HLref }, new byte[]{ 0xBE });
@@ -147,7 +147,7 @@ public class MZ1500Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z }, new byte[]{ 0xCA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ }, new byte[]{ 0xC2 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C }, new byte[]{ 0xDA });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, LabelRef("") }, new byte[]{ 0xC3 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, LabelRef(new AsmLabel("")) }, new byte[]{ 0xC3 });
         
         // LD
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, A, A }, new byte[]{ 0x7F });
@@ -181,12 +181,12 @@ public class MZ1500Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, L, E }, new byte[]{ 0x6B });
 
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, Value((ushort)0) }, new byte[]{ 0x01 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef("") }, new byte[]{ 0x01 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, BC, LabelRef(new AsmLabel("")) }, new byte[]{ 0x01 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, Value((ushort)0) }, new byte[]{ 0x11 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef("") }, new byte[]{ 0x11 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DE, LabelRef(new AsmLabel("")) }, new byte[]{ 0x11 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, DE }, new byte[]{ 0x62, 0x6B }); // H=D, L=E
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, Value((ushort)0) }, new byte[]{ 0x21 });
-        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef("") }, new byte[]{ 0x21 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HL, LabelRef(new AsmLabel("")) }, new byte[]{ 0x21 });
 
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, DEref, A }, new byte[]{ 0x12 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeLD, HLref, A }, new byte[]{ 0x77 });
@@ -399,8 +399,8 @@ public class MZ1500Assembler
 
     public void ORG(ushort address) => _startAddress = address;
     
-    public void Label(string name) => _dataList.Add(new DataLabel(name));
-    public ValueLabelRef LabelRef(string name) => new(name);
+    public void Label(AsmLabel label) => _dataList.Add(new DataLabel(label));
+    public ValueLabelRef LabelRef(AsmLabel label) => new(label);
     public Value Value(ushort val) => new(val);
     public Value Value(byte val) => new(val);
 
@@ -430,7 +430,7 @@ public class MZ1500Assembler
             if (p is Value v)
                 foreach(var b in v.Bytes) _dataList.Add(new DataByte(b));
             if (p is ValueLabelRef r)
-                _dataList.Add(new DataLabelRef(r.Name));
+                _dataList.Add(new DataLabelRef(r.Label));
         }
     }
 
@@ -473,7 +473,7 @@ public class MZ1500Assembler
     public void DB(byte data) => _dataList.Add(new DataByte(data));
     public void DB(Z80Part part)
     {
-        if (part is ValueLabelRef r) _dataList.Add(new DataLabelRef(r.Name));
+        if (part is ValueLabelRef r) _dataList.Add(new DataLabelRef(r.Label));
         else if (part is Value v) foreach(var b in v.Bytes) _dataList.Add(new DataByte(b));
     }
 
@@ -481,7 +481,7 @@ public class MZ1500Assembler
     {
         if (part is ValueLabelRef r)
         {
-            _dataList.Add(new DataLabelRef(r.Name)); // LabelRefは2バイトアサインするようにPass 1で処理されている
+            _dataList.Add(new DataLabelRef(r.Label)); // LabelRefは2バイトアサインするようにPass 1で処理されている
         }
         else if (part is Value v)
         {
@@ -501,7 +501,7 @@ public class MZ1500Assembler
     public byte[] Build()
     {
         ushort addr = _startAddress;
-        var labelMap = new Dictionary<string, ushort>();
+        var labelMap = new Dictionary<AsmLabel, ushort>();
         var resolvedList = new List<AssemblerData>();
 
         // Pass 1: Resolve Labels
@@ -509,7 +509,7 @@ public class MZ1500Assembler
         {
             if (dat is DataLabel lbl)
             {
-                labelMap[lbl.Name] = addr;
+                labelMap[lbl.Label] = addr;
                 dat.Address = addr;
             }
             else if (dat is DataLabelRef)
@@ -531,7 +531,7 @@ public class MZ1500Assembler
         {
             if (dat is DataLabelRef r)
             {
-                dat.Address = labelMap[r.Name];
+                dat.Address = labelMap[r.Label];
                 byteList.AddRange(dat.GetBytes());
             }
             else
