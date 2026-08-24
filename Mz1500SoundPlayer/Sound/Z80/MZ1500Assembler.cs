@@ -146,6 +146,7 @@ public class MZ1500Assembler
         _mnemonicMap.Add(new Z80Part[]{ OpCodeINC, HL }, new byte[]{ 0x23 });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, Z }, new byte[]{ 0xCA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, NZ }, new byte[]{ 0xC2 });
+        _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, C }, new byte[]{ 0xDA });
         _mnemonicMap.Add(new Z80Part[]{ OpCodeJP, LabelRef("") }, new byte[]{ 0xC3 });
         
         // LD
