@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Mz1500SoundPlayer.Sound.Z80;
@@ -230,7 +230,8 @@ public class Z80DriverGenerator
         asm.JP(asm.LabelRef(prefix + "_" + nameof(Labels.OutputSoundByStatus)));
 
         
-        // 3. 谺｡縺ｮ繧ｳ繝槭Φ繝峨ｒ隱ｭ繧蜃ｦ逅・        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
+        // 3. 谺｡縺ｮ繧ｳ繝槭Φ繝峨ｒ隱ｭ繧蜃ｦ逅・
+        asm.Label(prefix + "_" + nameof(Labels.ReadSongDataOne));
         
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatSongDataPosition)));
         asm.LD(asm.E, asm.HLref);
@@ -584,18 +585,6 @@ public class Z80DriverGenerator
         asm.Label(prefix + "_read_noise");
         // DE is pointing to 3 bytes: NoiseCmd, DurL, DurH.
         // Similar to ReadTone, but only 1 byte for freq/ctrl instead of two.
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
-        asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
-        asm.LD(asm.HLref, 0x00);
-        asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatNoteOn)));
-        asm.LD(asm.HLref, 0x01);
-
-        // Fetch NoiseCmd and OUT
-        asm.LD(asm.A, asm.DEref);
-        asm.INC(asm.DE);
-        // -- Read Noise --
-        asm.Label(prefix + "_read_noise");
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatEnvPosOffset)));
         asm.LD(asm.HLref, 0x00);
         asm.LD(asm.HL, asm.LabelRef(prefix + "_" + nameof(Labels.StatPEnvPosOffset)));
