@@ -51,7 +51,7 @@ namespace Mz1500SoundPlayer
 
         private void RenderLoop()
         {
-            // Standard MZ PC palette (BGRA: 0xAARRGGBB in Little-Endian)
+            // Standard MZ PC palette (BGRA format: 0xAARRGGBB in Little-Endian)
             // 0: Black, 1: Blue, 2: Red, 3: Magenta, 4: Green, 5: Cyan, 6: Yellow, 7: White
             uint[] pcPalette = new uint[8]
             {
@@ -88,16 +88,17 @@ namespace Mz1500SoundPlayer
                                 byte charCode = vram[charIndex];
                                 byte attr = vram[0x800 + charIndex];
 
-                                // MZ-1500 attribute byte:
-                                // Lower 3 bits: Foreground color index
-                                // Upper 3 bits: Background color index
-                                int fgColor = hwPalette[attr & 0x07];
-                                int bgColor = hwPalette[(attr >> 4) & 0x07];
+                                // MZ-1500/700 attribute byte:
+                                // Bits 4-6: Foreground color index
+                                // Bits 0-2: Background color index
+                                int fgColor = hwPalette[(attr >> 4) & 0x07];
+                                int bgColor = hwPalette[attr & 0x07];
 
                                 uint fg = pcPalette[fgColor & 7];
                                 uint bg = pcPalette[bgColor & 7];
 
-                                int fontOffset = charCode * 8; // 8x8 character pattern
+                                // Bit 7 of attr selects upper 256 characters in CGROM
+                                int fontOffset = (charCode << 3) | ((attr & 0x80) << 4);
 
                                 for (int py = 0; py < 8; py++)
                                 {
