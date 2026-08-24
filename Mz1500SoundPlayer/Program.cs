@@ -1,14 +1,10 @@
-﻿using Avalonia;
+using Avalonia;
 using System;
-using System.Linq;
 
 namespace Mz1500SoundPlayer;
 
 class Program
 {
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args)
     {
@@ -32,7 +28,6 @@ A c+2 l4 g+ >c+ f+ g+ >c+ e<<";
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()

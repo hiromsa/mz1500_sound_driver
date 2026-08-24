@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mz1500SoundPlayer.EmulatorWindow"
+        Title="MZ-1500 Emulator"
+        Width="640" Height="400"
+        Background="#000000">
+    <Viewbox Stretch="Uniform">
+        <Image Name="ScreenImage" Width="320" Height="200" Stretch="Fill" RenderOptions.BitmapInterpolationMode="None"/>
+    </Viewbox>
+</Window>

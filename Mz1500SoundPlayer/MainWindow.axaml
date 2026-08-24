@@ -107,6 +107,9 @@
         <MenuItem Header="Remap Channels" Click="RemapButton_Click"/>
         <MenuItem Header="Clear Text" Click="ClearButton_Click"/>
       </MenuItem>
+      <MenuItem Header="E_mulator">
+        <MenuItem Header="Run (.mzt/.qdf)" Click="EmulatorRun_Click" />
+      </MenuItem>
     </Menu>
 
     <Grid ColumnDefinitions="250, 4, *, 300">

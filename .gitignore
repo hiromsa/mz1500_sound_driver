@@ -7,3 +7,7 @@ obj/
 *.user
 *.suo
 .vs/
+
+# ROM, QDF, MZT data folders
+romsample/
+qdfsample/

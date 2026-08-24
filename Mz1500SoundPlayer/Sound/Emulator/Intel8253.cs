@@ -4,19 +4,31 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 {
     public class Intel8253 : IIoDevice
     {
-        private class Channel
+        public class Channel
         {
-            public ushort CountReg;
-            public ushort CurrentCount;
-            public ushort Latch;
-            public byte Mode;
-            public byte AccessMode; // 1=L, 2=M, 3=L/M
+            public int CountReg;
+            public int CurrentCount = 0x10000;
+            public int Latch;
+            public byte Mode = 3;
+            public byte AccessMode = 3; // 1=L, 2=M, 3=L/M
             
             public bool Bcd;
             public bool RlState; // false=Lower, true=Upper (for mode 3)
             public bool Latched;
 
-            public Action OnInterrupt; // Triggered when timer reaches 0 (Mode 0) or repeats (Mode 2/3)
+            public Action? OnInterrupt;
+
+            public void Reset()
+            {
+                CountReg = 0;
+                CurrentCount = 0x10000;
+                Latch = 0;
+                Mode = 3;
+                AccessMode = 3;
+                Bcd = false;
+                RlState = false;
+                Latched = false;
+            }
 
             public void WriteCtrl(byte data)
             {
@@ -31,25 +43,25 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             {
                 if (AccessMode == 1) // LSB only
                 {
-                    CountReg = (ushort)((CountReg & 0xFF00) | data);
-                    CurrentCount = CountReg;
+                    CountReg = data;
+                    CurrentCount = (CountReg == 0) ? 0x10000 : CountReg;
                 }
                 else if (AccessMode == 2) // MSB only
                 {
-                    CountReg = (ushort)((CountReg & 0x00FF) | (data << 8));
-                    CurrentCount = CountReg;
+                    CountReg = (data << 8);
+                    CurrentCount = (CountReg == 0) ? 0x10000 : CountReg;
                 }
                 else if (AccessMode == 3) // LSB then MSB
                 {
                     if (!RlState)
                     {
-                        CountReg = (ushort)((CountReg & 0xFF00) | data);
+                        CountReg = data;
                         RlState = true;
                     }
                     else
                     {
-                        CountReg = (ushort)((CountReg & 0x00FF) | (data << 8));
-                        CurrentCount = CountReg;
+                        CountReg = (CountReg & 0xFF) | (data << 8);
+                        CurrentCount = (CountReg == 0) ? 0x10000 : CountReg;
                         RlState = false;
                     }
                 }
@@ -57,77 +69,60 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             public byte ReadCount()
             {
-                if (Latched)
+                int val = Latched ? Latch : CurrentCount;
+                if (val == 0x10000) val = 0; // 65536 is read as 0x0000
+
+                byte res = 0;
+                if (AccessMode == 1)
                 {
-                    byte res = 0;
-                    if (AccessMode == 1) res = (byte)(Latch & 0xFF);
-                    else if (AccessMode == 2) res = (byte)(Latch >> 8);
-                    else
-                    {
-                        if (!RlState)
-                        {
-                            res = (byte)(Latch & 0xFF);
-                            RlState = true;
-                        }
-                        else
-                        {
-                            res = (byte)(Latch >> 8);
-                            RlState = false;
-                            Latched = false; // unlatch
-                        }
-                    }
-                    return res;
+                    res = (byte)(val & 0xFF);
+                }
+                else if (AccessMode == 2)
+                {
+                    res = (byte)((val >> 8) & 0xFF);
                 }
                 else
                 {
-                    // If not latched, read on-the-fly
-                    byte res = 0;
-                    if (AccessMode == 1) res = (byte)(CurrentCount & 0xFF);
-                    else if (AccessMode == 2) res = (byte)(CurrentCount >> 8);
+                    if (!RlState)
+                    {
+                        res = (byte)(val & 0xFF);
+                        RlState = true;
+                    }
                     else
                     {
-                        if (!RlState)
-                        {
-                            res = (byte)(CurrentCount & 0xFF);
-                            RlState = true;
-                        }
-                        else
-                        {
-                            res = (byte)(CurrentCount >> 8);
-                            RlState = false;
-                        }
+                        res = (byte)((val >> 8) & 0xFF);
+                        RlState = false;
+                        if (Latched) Latched = false; // Unlatch after both bytes read
                     }
-                    return res;
                 }
+                return res;
             }
 
             public void LatchCommand()
             {
                 Latch = CurrentCount;
                 Latched = true;
-                if (AccessMode == 3) RlState = false;
+                RlState = false;
             }
 
-            public void Tick()
+            public bool Tick()
             {
-                if (CurrentCount > 0)
+                if (CurrentCount <= 1)
+                {
+                    OnInterrupt?.Invoke();
+                    int reload = (CountReg == 0) ? 0x10000 : CountReg;
+                    CurrentCount = reload;
+                    return true;
+                }
+                else
                 {
                     CurrentCount--;
-                    if (CurrentCount == 0)
-                    {
-                        OnInterrupt?.Invoke();
-                        
-                        if (Mode == 2 || Mode == 3)
-                        {
-                            // Auto reload
-                            CurrentCount = CountReg;
-                        }
-                    }
+                    return false;
                 }
             }
         }
 
-        private Channel[] _channels = new Channel[3];
+        private readonly Channel[] _channels = new Channel[3];
 
         public Intel8253()
         {
@@ -136,7 +131,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
         public void Reset()
         {
-            for (int i = 0; i < 3; i++) _channels[i] = new Channel();
+            for (int i = 0; i < 3; i++) _channels[i].Reset();
         }
 
         public void RegisterInterruptHandler(int channelIndex, Action handler)
@@ -179,11 +174,22 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             }
         }
 
-        // Must be called from the main emulator loop
-        public void Tick()
+        public void TickChannel0()
         {
             _channels[0].Tick();
-            _channels[1].Tick();
+        }
+
+        public void TickChannel1()
+        {
+            // In MZ-1500, Channel 1 OUT clocks Channel 2
+            if (_channels[1].Tick())
+            {
+                _channels[2].Tick();
+            }
+        }
+
+        public void TickChannel2()
+        {
             _channels[2].Tick();
         }
     }

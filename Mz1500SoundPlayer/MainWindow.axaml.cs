@@ -841,6 +841,59 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async void EmulatorRun_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new Avalonia.Controls.OpenFileDialog
+        {
+            Title = "Run Emulator File",
+            AllowMultiple = false,
+            Filters = new List<Avalonia.Controls.FileDialogFilter>
+            {
+                new Avalonia.Controls.FileDialogFilter { Name = "MZ-1500 Files", Extensions = { "mzt", "qdf" } }
+            }
+        };
+
+        var result = await dialog.ShowAsync(this);
+        if (result != null && result.Length > 0)
+        {
+            string path = result[0];
+            string ext = System.IO.Path.GetExtension(path).ToLower();
+            
+            LogTextBox.Text = $"Loading {path} in emulator...\n";
+
+            var machine = new Sound.Emulator.Mz1500Machine();
+            
+            if (ext == ".mzt")
+            {
+                if (machine.LoadMzt(path))
+                {
+                    LogTextBox.Text += "MZT loaded. Starting execution...\n";
+                    var emulatorWin = new EmulatorWindow();
+                    emulatorWin.Show();
+                    emulatorWin.Start(machine);
+                    
+                    _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+                }
+                else
+                {
+                    LogTextBox.Text += "Failed to load MZT.\n";
+                }
+            }
+            else if (ext == ".qdf")
+            {
+                // Quick disk loading (stub for now until QD is implemented)
+                LogTextBox.Text += "Starting emulator with QDF inserted (Quick Disk Emulation will handle boot)...\n";
+                var emulatorWin = new EmulatorWindow();
+                emulatorWin.Show();
+                emulatorWin.Start(machine);
+                
+                // TODO: Need QuickDisk class integration for full QD load.
+                _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+            }
+        }
+    }
+
+
     private void ChkB13hannel_Changed(object? sender, RoutedEventArgs e)
     {
         UpdateChannelMask();

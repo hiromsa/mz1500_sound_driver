@@ -8,110 +8,165 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         public Z80Processor Cpu { get; private set; }
         public Mz1500Memory Memory { get; private set; }
         public IoController Io { get; private set; }
+        public Keyboard Keyboard { get; private set; }
+        
+        private Intel8253 _pit;
+        private Intel8255 _pio;
+        private Sn76489an _psgL;
+        private Sn76489an _psgR;
+        private YM2151Core _opm;
+
+        private byte _pioPortCData = 0;
+        private bool _vblank = false;
+        private bool _blink = false;
+
+        public byte[]? CgRom => Memory.CgRom;
 
         public Mz1500Machine()
         {
             Cpu = new Z80Processor();
             Memory = new Mz1500Memory();
             Io = new IoController();
+            Keyboard = new Keyboard();
 
             Cpu.Memory = Memory;
             Cpu.PortsSpace = Io;
             
-            // Try loading MONITOR ROM
-            LoadRom();
-            
             // Setup Devices
-            var pit = new Intel8253();
-            var pio = new Intel8255();
-            var psgL = new Sn76489an();
-            var psgR = new Sn76489an();
-            var opm = new YM2151Core();
-            opm.Start(0, 44100, 4000000);
+            _pit = new Intel8253();
+            _pio = new Intel8255();
+            _psgL = new Sn76489an();
+            _psgR = new Sn76489an();
+            _opm = new YM2151Core();
+            _opm.Start(0, 44100, 4000000);
             
-            var keyboard = new Keyboard();
             var beep = new Beep();
-            var pcg = new Pcg();
 
-            // Connect 8255 to Keyboard and Beep
-            pio.OnPortARead = () => keyboard.ReadMatrix();
-            pio.OnPortCWrite = (data) => {
-                // Beep switch, motor switch, etc.
-                // Simplified beep control
-                beep.SetOn((data & 0x01) != 0); // Example, need precise MZ-1500 bit mapping
+            // Connect 8255 to Keyboard and signals
+            // Port A (Out): Strobe (lower 4 bits select matrix row)
+            _pio.OnPortAWrite = (data) => Keyboard.SetStrobe(data);
+            // Port B (In): Matrix data for selected row
+            _pio.OnPortBRead = () => Keyboard.ReadMatrix();
+            // Port C (In/Out):
+            // PC7: VBLANK (active low or high), PC6: 1.5kHz Blink, PC4: Motor remote (1 = off), PC0: Beep
+            _pio.OnPortCRead = () =>
+            {
+                byte val = (byte)(_pioPortCData & 0x0F);
+                if (!_vblank) val |= 0x80; // Display period: Bit 7 = 1, VBLANK: Bit 7 = 0
+                if (_blink) val |= 0x40;  // 1.5kHz blink
+                val |= 0x10;              // Motor remote state
+                return val;
+            };
+            _pio.OnPortCWrite = (data) =>
+            {
+                _pioPortCData = data;
+                beep.SetOn((data & 0x01) != 0);
             };
 
-            // Memory mapped I/O: 8253 is at E004-E007, 8255 is at E000-E003
-            // In Z80dotNet, we can just intercept memory writes via our Mz1500Memory,
-            // but currently Mz1500Memory just writes to RAM. We should route E000-E00F to devices.
-            Memory.SetDeviceMapper((addr, data) => 
-            {
-                if (addr >= 0xE000 && addr <= 0xE003) pio.WriteIo((byte)(addr & 3), data);
-                else if (addr >= 0xE004 && addr <= 0xE007) pit.WriteIo((byte)(addr & 3), data);
-            }, 
-            (addr) => 
-            {
-                if (addr >= 0xE000 && addr <= 0xE003) return pio.ReadIo((byte)(addr & 3));
-                else if (addr >= 0xE004 && addr <= 0xE007) return pit.ReadIo((byte)(addr & 3));
-                return 0xFF;
-            });
+            // Connect memory-mapped I/O devices
+            Memory.SetDevices(_pio, _pit);
 
-            // Standard I/O (IN/OUT)
-            // PSG
-            Io.RegisterDevice(0xF2, psgL);
-            Io.RegisterDevice(0xF3, psgR);
+            // Register standard I/O (IN/OUT) ports
+            // Memory Banking / Palette ports
+            for (byte p = 0xE0; p <= 0xE6; p++) Io.RegisterDevice(p, Memory);
+            Io.RegisterDevice(0xE8, Memory);
+            Io.RegisterDevice(0xF0, Memory);
+            Io.RegisterDevice(0xF1, Memory);
 
-            // YM2151 (uses 8-bit port addressing in IoController, but YM2151 uses 0x0708/0x0709)
-            // We'll wrap it as an IIoDevice for the IoController which only matches lower 8 bits.
-            // Port 0x08 and 0x09
-            Io.RegisterDevice(0x08, new Ym2151Wrapper(opm, 0)); // Address
-            Io.RegisterDevice(0x09, new Ym2151Wrapper(opm, 1)); // Data
+            // PSG ports
+            Io.RegisterDevice(0xE9, new PsgBothWrapper(_psgL, _psgR));
+            Io.RegisterDevice(0xF2, _psgL);
+            Io.RegisterDevice(0xF3, _psgR);
+
+            // YM2151 ports (0x08/0x09)
+            Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0)); // Address
+            Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1)); // Data
+
+            // Try loading MONITOR ROM
+            LoadRom();
+        }
+
+        private class PsgBothWrapper : IIoDevice
+        {
+            private readonly Sn76489an _left;
+            private readonly Sn76489an _right;
+            public PsgBothWrapper(Sn76489an left, Sn76489an right) { _left = left; _right = right; }
+            public void Reset() { }
+            public byte ReadIo(byte port) => 0xFF;
+            public void WriteIo(byte port, byte data) { _left.WriteIo(port, data); _right.WriteIo(port, data); }
         }
         
-        // Wrapper for YM2151 to fit IIoDevice
         private class Ym2151Wrapper : IIoDevice
         {
-            private YM2151Core _core;
-            private int _type; // 0=Addr, 1=Data
+            private readonly YM2151Core _core;
+            private readonly int _type; // 0=Addr, 1=Data
             public Ym2151Wrapper(YM2151Core core, int type) { _core = core; _type = type; }
             public void Reset() { }
-            public byte ReadIo(byte port) => 0; // Reading not implemented yet
-            public void WriteIo(byte port, byte data) {
-                // Port parameter: 0 = address register, 1 = data register.
-                _core.Write(0, _type, 0, data); 
-            }
+            public byte ReadIo(byte port) => 0;
+            public void WriteIo(byte port, byte data) => _core.Write(0, _type, 0, data);
         }
-
+        
         private void LoadRom()
         {
             try
             {
-                // Typical ROM names for MZ-1500
-                string romPath = "mz1500.rom";
-                if (!System.IO.File.Exists(romPath))
-                    romPath = "mz1500.ipl";
-                
-                if (System.IO.File.Exists(romPath))
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string romDir = System.IO.Path.Combine(baseDir, "..", "..", "..", "romsample");
+                if (!System.IO.Directory.Exists(romDir))
                 {
-                    byte[] romData = System.IO.File.ReadAllBytes(romPath);
-                    Memory.LoadBinary(0x0000, romData);
-                    Console.WriteLine($"Loaded Monitor ROM: {romPath}");
+                    romDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "romsample");
+                }
+
+                string iplPath = System.IO.Path.Combine(romDir, "IPL.ROM");
+                if (System.IO.File.Exists(iplPath))
+                {
+                    byte[] romData = System.IO.File.ReadAllBytes(iplPath);
+                    // Load IPL.ROM (first 4KB goes to 0x0000)
+                    byte[] ipl = new byte[4096];
+                    Array.Copy(romData, 0, ipl, 0, Math.Min(4096, romData.Length));
+                    Memory.LoadRom(0x0000, ipl);
+                    
+                    if (romData.Length > 4096)
+                    {
+                        int extSize = romData.Length - 4096;
+                        byte[] ext = new byte[extSize];
+                        Array.Copy(romData, 4096, ext, 0, extSize);
+                        Memory.LoadRom(0xE800, ext);
+                    }
+                    Console.WriteLine($"Loaded Monitor ROM: {iplPath}");
                 }
                 else
                 {
-                    Console.WriteLine("Monitor ROM not found. Running without ROM.");
+                    Console.WriteLine("Monitor ROM (IPL.ROM) not found.");
+                }
+
+                string fontPath = System.IO.Path.Combine(romDir, "FONT.ROM");
+                if (System.IO.File.Exists(fontPath))
+                {
+                    Memory.CgRom = System.IO.File.ReadAllBytes(fontPath);
+                    Console.WriteLine($"Loaded CGROM: {fontPath}");
+                }
+                else
+                {
+                    Memory.CgRom = new byte[0x1000];
+                    Console.WriteLine("CGROM (FONT.ROM) not found.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to load Monitor ROM: {ex.Message}");
+                Console.WriteLine($"Failed to load ROMs: {ex.Message}");
             }
         }
 
         public void Reset()
         {
             Cpu.Reset();
-            // TODO: Reset all registered IO/Memory devices
+            Memory.Reset();
+            _pit.Reset();
+            _pio.Reset();
+            _psgL.Reset();
+            _psgR.Reset();
+            Keyboard.Reset();
         }
 
         public void LoadZ80Binary(ushort address, byte[] data)
@@ -152,7 +207,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                 Console.WriteLine($"Loaded MZT: Load Addr={loadAddr:X4}, Exec Addr={execAddr:X4}, Size={size}");
                 
-                // Set PC to the execution address if we are ready to run
+                // Set PC to the execution address
                 Cpu.Registers.PC = execAddr;
                 
                 return true;
@@ -164,12 +219,87 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             }
         }
 
-        // Executes until a HALT instruction or break condition is met
+        private class TimerInterruptSource : IZ80InterruptSource
+        {
+            public bool IntLineIsActive => _pending;
+            public byte? ValueOnDataBus => 0xFF; // Mode 1/2 dummy vector
+            
+            public event EventHandler? NmiInterruptPulse;
+
+            private bool _pending = false;
+
+            public void Fire()
+            {
+                _pending = true;
+            }
+
+            public void InterruptAcknowledge()
+            {
+                _pending = false;
+            }
+        }
+
+        private ulong _lastIntTStates = 0;
+        private ulong _lastTempoTStates = 0;
+        private ulong _lastBlinkTStates = 0;
+        private ulong _lastPitCh0TStates = 0;
+        private ulong _lastPitCh1TStates = 0;
+
+        // Main CPU Run Loop
         public void Run()
         {
-            // Set some execution limits or breakpoints later for debugging
+            Cpu.ClockFrequencyInMHz = 4.0m;
+
+            var intSource = new TimerInterruptSource();
+            Cpu.RegisterInterruptSource(intSource);
+
+            Cpu.AfterInstructionExecution += (sender, args) =>
+            {
+                ulong currentTStates = Cpu.TStatesElapsedSinceStart;
+                
+                // PIT Channel 0 (894.886kHz -> every ~4 T-states at 4.0MHz)
+                if (currentTStates - _lastPitCh0TStates >= 4)
+                {
+                    _lastPitCh0TStates = currentTStates;
+                    _pit.TickChannel0();
+                }
+
+                // PIT Channel 1 (BLANK 15.7kHz -> every ~255 T-states at 4.0MHz)
+                // Channel 1 OUT automatically cascades and clocks Channel 2
+                if (currentTStates - _lastPitCh1TStates >= 255)
+                {
+                    _lastPitCh1TStates = currentTStates;
+                    _pit.TickChannel1();
+                }
+
+                // 32kHz TEMPO signal (every ~125 T-states at 4MHz)
+                if (currentTStates - _lastTempoTStates >= 125)
+                {
+                    _lastTempoTStates = currentTStates;
+                    Memory.ToggleTempo();
+                }
+
+                // 1.5kHz Blink signal (every ~2666 T-states)
+                if (currentTStates - _lastBlinkTStates >= 2666)
+                {
+                    _lastBlinkTStates = currentTStates;
+                    _blink = !_blink;
+                }
+
+                // 60Hz VBLANK and INT interrupt (4MHz / 60 = 66666 T-states)
+                if (currentTStates - _lastIntTStates >= 66666)
+                {
+                    _lastIntTStates = currentTStates;
+                    _vblank = true;
+                    intSource.Fire();
+                }
+                else if (currentTStates - _lastIntTStates >= 10000)
+                {
+                    _vblank = false;
+                }
+            };
+            
             Cpu.Continue();
         }
     }
 }
-
