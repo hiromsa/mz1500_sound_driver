@@ -1,4 +1,4 @@
-Total Instructions Executed: 5047101
+Total Instructions Executed: 10842921
 --- Last 10,000 Instructions ---
 PC: 0397 | 77 21 07
 PC: 0398 | 21 07 E0
