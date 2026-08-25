@@ -422,23 +422,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             public bool IntLineIsActive => _pendingA || _pendingB;
             
-            public byte? ValueOnDataBus
-            {
-                get
-                {
-                    if (_pendingA)
-                    {
-                        _pendingA = false;
-                        return _pioInt.VectorA;
-                    }
-                    if (_pendingB)
-                    {
-                        _pendingB = false;
-                        return _pioInt.VectorB;
-                    }
-                    return null;
-                }
-            }
+            private byte _lastAckVector = 0xFF;
+            public byte? ValueOnDataBus => _lastAckVector;
             
             public event EventHandler? NmiInterruptPulse;
 
@@ -457,8 +442,16 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             public void InterruptAcknowledge()
             {
-                _pendingA = false;
-                _pendingB = false;
+                if (_pendingA)
+                {
+                    _lastAckVector = _pioInt.VectorA;
+                    _pendingA = false;
+                }
+                else if (_pendingB)
+                {
+                    _lastAckVector = _pioInt.VectorB;
+                    _pendingB = false;
+                }
             }
         }
 
