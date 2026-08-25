@@ -10,11 +10,17 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         public IoController Io { get; private set; }
         public Keyboard Keyboard { get; private set; }
         
+        public Sn76489an PsgL => _psgL;
+        public Sn76489an PsgR => _psgR;
+        public YM2151Core Opm => _opm;
+
         private Intel8253 _pit;
         private Intel8255 _pio;
+        private Z80PioInterruptDevice _pioInt;
         private Sn76489an _psgL;
         private Sn76489an _psgR;
         private YM2151Core _opm;
+        private TimerInterruptSource? _intSource;
 
         private byte _pioPortCData = 0;
         private bool _vblank = false;
@@ -81,6 +87,14 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             // YM2151 ports (0x08/0x09)
             Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0)); // Address
             Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1)); // Data
+
+            // Z80-PIO Interrupt Controller (0xFC-0xFF)
+            _pioInt = new Z80PioInterruptDevice();
+            for (byte p = 0xFC; p <= 0xFF; p++) Io.RegisterDevice(p, _pioInt);
+
+            // Connect PIT channel 0 & 2 interrupts
+            _pit.RegisterInterruptHandler(0, () => _intSource?.Fire());
+            _pit.RegisterInterruptHandler(2, () => _intSource?.Fire());
 
             // Try loading MONITOR ROM
             LoadRom();
@@ -328,15 +342,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                 if (loadedAny)
                 {
-                    // Set standard QD execution environment:
-                    // Bank 0x0000..0x0FFF to RAM (Port 0xE0)
-                    // Bank 0xE800..0xFFFF to RAM (Port 0xE2)
-                    // Bank 0xD000..0xDFFF to VRAM (Port 0xE4)
-                    Memory.WriteIo(0xE0, 0);
-                    Memory.WriteIo(0xE2, 0);
+                    // Standard MZ-1500 memory mapping: Mon Low enabled, Mon High enabled, PCG disabled
                     Memory.WriteIo(0xE4, 0);
-                    Memory.WriteIo(0xF0, 0);
-                    Memory.WriteIo(0xF1, 0);
 
                     Cpu.Registers.PC = lastExecAddr;
                     Console.WriteLine($"QDF Loaded successfully. Starting PC = 0x{lastExecAddr:X4}");
@@ -352,10 +359,63 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             }
         }
 
+        public class Z80PioInterruptDevice : IIoDevice
+        {
+            public byte VectorA { get; set; } = 0xFF;
+            public byte VectorB { get; set; } = 0xFF;
+            public byte ModeA { get; set; } = 0;
+            public byte ModeB { get; set; } = 0;
+            public bool IntControlA { get; set; } = false;
+
+            public void Reset()
+            {
+                VectorA = 0xFF;
+                VectorB = 0xFF;
+            }
+
+            public byte ReadIo(byte port) => 0xFF;
+
+            public void WriteIo(byte port, byte data)
+            {
+                if (port == 0xFC)
+                {
+                    if ((data & 0x01) == 0)
+                    {
+                        VectorA = data;
+                    }
+                    else if ((data & 0x0F) == 0x0F)
+                    {
+                        ModeA = (byte)(data >> 6);
+                    }
+                    else if ((data & 0x0F) == 0x07)
+                    {
+                        IntControlA = (data & 0x80) != 0;
+                    }
+                }
+                else if (port == 0xFD)
+                {
+                    if ((data & 0x01) == 0)
+                    {
+                        VectorB = data;
+                    }
+                    else if ((data & 0x0F) == 0x0F)
+                    {
+                        ModeB = (byte)(data >> 6);
+                    }
+                }
+            }
+        }
+
         private class TimerInterruptSource : IZ80InterruptSource
         {
+            private readonly Z80PioInterruptDevice _pioInt;
+            public TimerInterruptSource(Z80PioInterruptDevice pioInt)
+            {
+                _pioInt = pioInt;
+            }
+
             public bool IntLineIsActive => _pending;
-            public byte? ValueOnDataBus => 0xFF; // Mode 1/2 dummy vector
+            public byte? ValueOnDataBus => _pioInt.VectorA;
             
             public event EventHandler? NmiInterruptPulse;
 
@@ -383,8 +443,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         {
             Cpu.ClockFrequencyInMHz = 4.0m;
 
-            var intSource = new TimerInterruptSource();
-            Cpu.RegisterInterruptSource(intSource);
+            _intSource = new TimerInterruptSource(_pioInt);
+            Cpu.RegisterInterruptSource(_intSource);
 
             Cpu.AfterInstructionExecution += (sender, args) =>
             {
@@ -424,7 +484,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 {
                     _lastIntTStates = currentTStates;
                     _vblank = true;
-                    intSource.Fire();
+                    _intSource?.Fire();
                 }
                 else if (currentTStates - _lastIntTStates >= 10000)
                 {
