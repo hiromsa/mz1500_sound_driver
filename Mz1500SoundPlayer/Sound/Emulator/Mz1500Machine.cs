@@ -416,7 +416,15 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             }
 
             public bool IntLineIsActive => _pending;
-            public byte? ValueOnDataBus => _pioInt.VectorA;
+            
+            public byte? ValueOnDataBus
+            {
+                get
+                {
+                    _pending = false; // Auto-acknowledge as a fallback
+                    return _pioInt.VectorA;
+                }
+            }
             
             public event EventHandler? NmiInterruptPulse;
 
@@ -457,6 +465,10 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             Cpu.RegisterInterruptSource(_intSource);
             _stopwatch.Restart();
 
+            int traceCount = 0;
+            System.IO.StreamWriter? traceWriter = null;
+            try { traceWriter = new System.IO.StreamWriter("cpu_trace.txt"); } catch { }
+
             while (!_stopRequested)
             {
                 // Execute a batch of instructions (roughly 1 frame worth = ~66666 T-states at 4MHz)
@@ -464,6 +476,23 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                 while (Cpu.TStatesElapsedSinceStart < batchEnd && !_stopRequested)
                 {
+                    if (traceWriter != null && traceCount < 50000)
+                    {
+                        ushort pc = Cpu.Registers.PC;
+                        byte b1 = Memory[pc];
+                        byte b2 = Memory[(ushort)(pc + 1)];
+                        byte b3 = Memory[(ushort)(pc + 2)];
+                        traceWriter.WriteLine($"PC: {pc:X4} | {b1:X2} {b2:X2} {b3:X2}");
+                        traceCount++;
+                        if (traceCount == 50000)
+                        {
+                            traceWriter.WriteLine("--- Trace End ---");
+                            traceWriter.Flush();
+                            traceWriter.Close();
+                            traceWriter = null;
+                        }
+                    }
+
                     Cpu.ExecuteNextInstruction();
 
                     ulong currentTStates = Cpu.TStatesElapsedSinceStart;
