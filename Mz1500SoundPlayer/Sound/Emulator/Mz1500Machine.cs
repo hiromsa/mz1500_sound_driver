@@ -40,7 +40,6 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             Cpu.Memory = Memory;
             Cpu.PortsSpace = Io;
             
-            // Setup Devices
             _pit = new Intel8253();
             _pio = new Intel8255();
             _psgL = new Sn76489an();
@@ -51,18 +50,14 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             var beep = new Beep();
 
             // Connect 8255 to Keyboard and signals
-            // Port A (Out): Strobe (lower 4 bits select matrix row)
             _pio.OnPortAWrite = (data) => Keyboard.SetStrobe(data);
-            // Port B (In): Matrix data for selected row
             _pio.OnPortBRead = () => Keyboard.ReadMatrix();
-            // Port C (In/Out):
-            // PC7: VBLANK (active low or high), PC6: 1.5kHz Blink, PC4: Motor remote (1 = off), PC0: Beep
             _pio.OnPortCRead = () =>
             {
                 byte val = (byte)(_pioPortCData & 0x0F);
-                if (!_vblank) val |= 0x80; // Display period: Bit 7 = 1, VBLANK: Bit 7 = 0
-                if (_blink) val |= 0x40;  // 1.5kHz blink
-                val |= 0x10;              // Motor remote state
+                if (!_vblank) val |= 0x80;
+                if (_blink) val |= 0x40;
+                val |= 0x10;
                 return val;
             };
             _pio.OnPortCWrite = (data) =>
@@ -71,34 +66,26 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 beep.SetOn((data & 0x01) != 0);
             };
 
-            // Connect memory-mapped I/O devices
             Memory.SetDevices(_pio, _pit);
 
-            // Register standard I/O (IN/OUT) ports
-            // Memory Banking / Palette ports
             for (byte p = 0xE0; p <= 0xE6; p++) Io.RegisterDevice(p, Memory);
             Io.RegisterDevice(0xE8, Memory);
             Io.RegisterDevice(0xF0, Memory);
             Io.RegisterDevice(0xF1, Memory);
 
-            // PSG ports
             Io.RegisterDevice(0xE9, new PsgBothWrapper(_psgL, _psgR, SoundLock));
             Io.RegisterDevice(0xF2, new PsgWrapper(_psgL, SoundLock));
             Io.RegisterDevice(0xF3, new PsgWrapper(_psgR, SoundLock));
 
-            // YM2151 ports (0x08/0x09)
-            Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0, SoundLock)); // Address
-            Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1, SoundLock)); // Data
+            Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0, SoundLock));
+            Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1, SoundLock));
 
-            // Z80-PIO Interrupt Controller (0xFC-0xFF)
             _pioInt = new Z80PioInterruptDevice();
-            for (byte p = 0xFC; p <= 0xFF; p++) Io.RegisterDevice(p, _pioInt);
+            for (int p = 0xFC; p <= 0xFF; p++) Io.RegisterDevice((byte)p, _pioInt);
 
-            // Connect PIT channel 0 & 2 interrupts
             _pit.RegisterInterruptHandler(0, () => _intSource?.Fire());
             _pit.RegisterInterruptHandler(2, () => _intSource?.Fire());
 
-            // Try loading MONITOR ROM
             LoadRom();
         }
 

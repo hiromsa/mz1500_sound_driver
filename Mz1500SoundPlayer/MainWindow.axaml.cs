@@ -860,19 +860,38 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             string ext = System.IO.Path.GetExtension(path).ToLower();
             
             LogTextBox.Text = $"Loading {path} in emulator...\n";
+            await System.Threading.Tasks.Task.Delay(10); // Force UI update
 
+            LogTextBox.Text += "[1] Creating Mz1500Machine...\n";
+            await System.Threading.Tasks.Task.Delay(10);
             var machine = new Sound.Emulator.Mz1500Machine();
+            
+            LogTextBox.Text += "[2] Machine created OK.\n";
+            await System.Threading.Tasks.Task.Delay(10);
             
             if (ext == ".mzt")
             {
+                LogTextBox.Text += "[3] Loading MZT...\n";
+                await System.Threading.Tasks.Task.Delay(10);
                 if (machine.LoadMzt(path))
                 {
-                    LogTextBox.Text += "MZT loaded. Starting execution...\n";
+                    LogTextBox.Text += "[4] MZT loaded. Creating EmulatorWindow...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     var emulatorWin = new EmulatorWindow();
+                    
+                    LogTextBox.Text += "[5] Showing window...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Show();
+                    
+                    LogTextBox.Text += "[6] Calling Start...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Start(machine);
                     
+                    LogTextBox.Text += "[7] Starting CPU on background thread...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+                    
+                    LogTextBox.Text += "[8] All done. Emulator should be running.\n";
                 }
                 else
                 {
@@ -881,14 +900,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
             else if (ext == ".qdf")
             {
+                LogTextBox.Text += "[3] Loading QDF...\n";
+                await System.Threading.Tasks.Task.Delay(10);
                 if (machine.LoadQdf(path))
                 {
-                    LogTextBox.Text += "QDF loaded. Starting execution...\n";
+                    LogTextBox.Text += "[4] QDF loaded. Creating EmulatorWindow...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     var emulatorWin = new EmulatorWindow();
+                    
+                    LogTextBox.Text += "[5] Showing window...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Show();
+                    
+                    LogTextBox.Text += "[6] Calling Start...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Start(machine);
                     
+                    LogTextBox.Text += "[7] Starting CPU on background thread...\n";
+                    await System.Threading.Tasks.Task.Delay(10);
                     _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+                    
+                    LogTextBox.Text += "[8] All done. Emulator should be running.\n";
                 }
                 else
                 {
