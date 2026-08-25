@@ -453,8 +453,15 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         private ulong _lastPitCh1TStates = 0;
 
         private readonly System.Diagnostics.Stopwatch _stopwatch = new();
+        private volatile bool _stopRequested = false;
 
-        // Main CPU Run Loop
+        public void Stop()
+        {
+            _stopRequested = true;
+        }
+
+        // Main CPU Run Loop - uses batch instruction execution instead of Cpu.Continue()
+        // to avoid blocking the thread pool and starving the UI thread.
         public void Run()
         {
             Cpu.ClockFrequencyInMHz = 4.0m;
@@ -463,65 +470,71 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             Cpu.RegisterInterruptSource(_intSource);
             _stopwatch.Restart();
 
-            Cpu.AfterInstructionExecution += (sender, args) =>
+            while (!_stopRequested)
             {
-                ulong currentTStates = Cpu.TStatesElapsedSinceStart;
-                
-                // PIT Channel 0 (894.886kHz -> every ~4 T-states at 4.0MHz)
-                if (currentTStates - _lastPitCh0TStates >= 4)
-                {
-                    _lastPitCh0TStates = currentTStates;
-                    _pit.TickChannel0();
-                }
+                // Execute a batch of instructions (roughly 1 frame worth = ~66666 T-states at 4MHz)
+                ulong batchEnd = Cpu.TStatesElapsedSinceStart + 66666;
 
-                // PIT Channel 1 (BLANK 15.7kHz -> every ~255 T-states at 4.0MHz)
-                // Channel 1 OUT automatically cascades and clocks Channel 2
-                if (currentTStates - _lastPitCh1TStates >= 255)
+                while (Cpu.TStatesElapsedSinceStart < batchEnd && !_stopRequested)
                 {
-                    _lastPitCh1TStates = currentTStates;
-                    _pit.TickChannel1();
-                }
+                    Cpu.ExecuteNextInstruction();
 
-                // 32kHz TEMPO signal (every ~125 T-states at 4MHz)
-                if (currentTStates - _lastTempoTStates >= 125)
-                {
-                    _lastTempoTStates = currentTStates;
-                    Memory.ToggleTempo();
-                }
+                    ulong currentTStates = Cpu.TStatesElapsedSinceStart;
 
-                // 1.5kHz Blink signal (every ~2666 T-states)
-                if (currentTStates - _lastBlinkTStates >= 2666)
-                {
-                    _lastBlinkTStates = currentTStates;
-                    _blink = !_blink;
-                }
-
-                // 60Hz VBLANK and INT interrupt (4MHz / 60 = 66666 T-states)
-                if (currentTStates - _lastIntTStates >= 66666)
-                {
-                    _lastIntTStates = currentTStates;
-                    _vblank = true;
-                    _intSource?.Fire();
-
-                    // Real-time 60 FPS synchronization
-                    long targetMs = (long)(currentTStates / 4000.0);
-                    long actualMs = _stopwatch.ElapsedMilliseconds;
-                    if (targetMs > actualMs)
+                    // PIT Channel 0 (894.886kHz -> every ~4 T-states at 4.0MHz)
+                    if (currentTStates - _lastPitCh0TStates >= 4)
                     {
-                        int sleepMs = (int)(targetMs - actualMs);
-                        if (sleepMs > 0 && sleepMs < 100)
-                        {
-                            System.Threading.Thread.Sleep(sleepMs);
-                        }
+                        _lastPitCh0TStates = currentTStates;
+                        _pit.TickChannel0();
+                    }
+
+                    // PIT Channel 1 (BLANK 15.7kHz -> every ~255 T-states at 4.0MHz)
+                    if (currentTStates - _lastPitCh1TStates >= 255)
+                    {
+                        _lastPitCh1TStates = currentTStates;
+                        _pit.TickChannel1();
+                    }
+
+                    // 32kHz TEMPO signal (every ~125 T-states at 4MHz)
+                    if (currentTStates - _lastTempoTStates >= 125)
+                    {
+                        _lastTempoTStates = currentTStates;
+                        Memory.ToggleTempo();
+                    }
+
+                    // 1.5kHz Blink signal (every ~2666 T-states)
+                    if (currentTStates - _lastBlinkTStates >= 2666)
+                    {
+                        _lastBlinkTStates = currentTStates;
+                        _blink = !_blink;
+                    }
+
+                    // VBLANK detect (within frame)
+                    if (currentTStates - _lastIntTStates >= 10000 && currentTStates - _lastIntTStates < 66666)
+                    {
+                        _vblank = false;
                     }
                 }
-                else if (currentTStates - _lastIntTStates >= 10000)
+
+                // End of frame: fire VBLANK interrupt
+                _vblank = true;
+                _lastIntTStates = Cpu.TStatesElapsedSinceStart;
+                _intSource?.Fire();
+
+                // Real-time synchronization: sleep to match 60 FPS
+                long targetMs = (long)(Cpu.TStatesElapsedSinceStart / 4000.0);
+                long actualMs = _stopwatch.ElapsedMilliseconds;
+                int sleepMs = (int)(targetMs - actualMs);
+                if (sleepMs > 1)
                 {
-                    _vblank = false;
+                    System.Threading.Thread.Sleep(Math.Min(sleepMs, 50));
                 }
-            };
-            
-            Cpu.Continue();
+                else
+                {
+                    // Even if we're behind, yield the thread briefly
+                    System.Threading.Thread.Sleep(0);
+                }
+            }
         }
     }
 }

@@ -180,6 +180,9 @@ namespace Mz1500SoundPlayer
                 (s, e) => RenderFrame());
             _renderTimer.Start();
 
+            // Audio disabled temporarily for debugging freeze
+            // TODO: Re-enable audio on a dedicated thread after freeze is resolved
+            /*
             try
             {
                 _audioProvider = new Sound.Emulator.EmulatorAudioProvider(_machine);
@@ -191,6 +194,7 @@ namespace Mz1500SoundPlayer
             {
                 Console.WriteLine($"Failed to start emulator audio: {ex.Message}");
             }
+            */
         }
 
         private void EmulatorWindow_Closed(object? sender, EventArgs e)
@@ -198,6 +202,7 @@ namespace Mz1500SoundPlayer
             _isRunning = false;
             _renderTimer?.Stop();
             _renderTimer = null;
+            _machine?.Stop();
 
             try
             {
