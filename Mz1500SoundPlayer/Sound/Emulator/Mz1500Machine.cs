@@ -83,8 +83,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             _pioInt = new Z80PioInterruptDevice();
             for (int p = 0xFC; p <= 0xFF; p++) Io.RegisterDevice((byte)p, _pioInt);
 
-            _pit.RegisterInterruptHandler(0, () => _intSource?.Fire());
-            _pit.RegisterInterruptHandler(2, () => _intSource?.Fire());
+            _pit.RegisterInterruptHandler(0, () => _intSource?.FireA());
+            _pit.RegisterInterruptHandler(2, () => _intSource?.FireA());
 
             LoadRom();
         }
@@ -415,29 +415,43 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 _pioInt = pioInt;
             }
 
-            public bool IntLineIsActive => _pending;
+            public bool IntLineIsActive => _pendingA || _pendingB;
             
             public byte? ValueOnDataBus
             {
                 get
                 {
-                    _pending = false; // Auto-acknowledge as a fallback
-                    return _pioInt.VectorA;
+                    if (_pendingA)
+                    {
+                        _pendingA = false;
+                        return _pioInt.VectorA;
+                    }
+                    if (_pendingB)
+                    {
+                        _pendingB = false;
+                        return _pioInt.VectorB;
+                    }
+                    return null;
                 }
             }
             
             public event EventHandler? NmiInterruptPulse;
 
-            private bool _pending = false;
+            private bool _pendingA = false;
+            private bool _pendingB = false;
 
-            public void Fire()
+            public void FireA()
             {
-                _pending = true;
+                _pendingA = true;
+            }
+
+            public void FireB()
+            {
+                _pendingB = true;
             }
 
             public void InterruptAcknowledge()
             {
-                _pending = false;
             }
         }
 
@@ -465,9 +479,10 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             Cpu.RegisterInterruptSource(_intSource);
             _stopwatch.Restart();
 
-            int traceCount = 0;
-            System.IO.StreamWriter? traceWriter = null;
-            try { traceWriter = new System.IO.StreamWriter("cpu_trace.txt"); } catch { }
+            int traceSize = 10000;
+            string[] traceBuffer = new string[traceSize];
+            int traceIndex = 0;
+            ulong totalInstructions = 0;
 
             while (!_stopRequested)
             {
@@ -476,22 +491,13 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                 while (Cpu.TStatesElapsedSinceStart < batchEnd && !_stopRequested)
                 {
-                    if (traceWriter != null && traceCount < 50000)
-                    {
-                        ushort pc = Cpu.Registers.PC;
-                        byte b1 = Memory[pc];
-                        byte b2 = Memory[(ushort)(pc + 1)];
-                        byte b3 = Memory[(ushort)(pc + 2)];
-                        traceWriter.WriteLine($"PC: {pc:X4} | {b1:X2} {b2:X2} {b3:X2}");
-                        traceCount++;
-                        if (traceCount == 50000)
-                        {
-                            traceWriter.WriteLine("--- Trace End ---");
-                            traceWriter.Flush();
-                            traceWriter.Close();
-                            traceWriter = null;
-                        }
-                    }
+                    ushort pc = Cpu.Registers.PC;
+                    byte b1 = Memory[pc];
+                    byte b2 = Memory[(ushort)(pc + 1)];
+                    byte b3 = Memory[(ushort)(pc + 2)];
+                    traceBuffer[traceIndex] = $"PC: {pc:X4} | {b1:X2} {b2:X2} {b3:X2}";
+                    traceIndex = (traceIndex + 1) % traceSize;
+                    totalInstructions++;
 
                     Cpu.ExecuteNextInstruction();
 
@@ -535,7 +541,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 // End of frame: fire VBLANK interrupt
                 _vblank = true;
                 _lastIntTStates = Cpu.TStatesElapsedSinceStart;
-                _intSource?.Fire();
+                _intSource?.FireB();
 
                 // Real-time synchronization: sleep to match 60 FPS
                 long targetMs = (long)(Cpu.TStatesElapsedSinceStart / 4000.0);
@@ -551,6 +557,21 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     System.Threading.Thread.Sleep(0);
                 }
             }
+
+            try
+            {
+                using var writer = new System.IO.StreamWriter("cpu_trace_last10k.txt");
+                writer.WriteLine($"Total Instructions Executed: {totalInstructions}");
+                writer.WriteLine("--- Last 10,000 Instructions ---");
+                int count = (int)Math.Min(totalInstructions, (ulong)traceSize);
+                int startIdx = totalInstructions < (ulong)traceSize ? 0 : traceIndex;
+                for (int i = 0; i < count; i++)
+                {
+                    int idx = (startIdx + i) % traceSize;
+                    writer.WriteLine(traceBuffer[idx]);
+                }
+            }
+            catch { }
         }
     }
 }
