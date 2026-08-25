@@ -1,0 +1,6 @@
+RAW BLOCK: Type=00, Size=64
+RAW BLOCK: Type=05, Size=8192
+[QDF BLOCK] Name: ???>??V??;?M, Type: 05, Load: CDB0, Size: 50886, Exec: 220C
+RAW BLOCK: Type=00, Size=64
+RAW BLOCK: Type=05, Size=48640
+[QDF BLOCK] Name: ~? !^/? !?, Type: 05, Load: 1812, Size: 8451, Exec: CBDD

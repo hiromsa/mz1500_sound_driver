@@ -287,7 +287,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     
                     System.IO.File.AppendAllText("qdf_blocks.txt", $"RAW BLOCK: Type={blockType:X2}, Size={blockSize}\n");
 
-                    if (blockType == 0x01 || blockType == 0x03 || blockType == 0x05 || blockType == 0x07) // Header Block
+                    if (blockType == 0x00) // Header Block
                     {
                         if (ptr + blockSize > data.Length) break;
 
@@ -298,7 +298,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
                         ushort loadAddr = (ushort)(data[ptr + 18] | (data[ptr + 19] << 8));
                         ushort fileSize = (ushort)(data[ptr + 20] | (data[ptr + 21] << 8));
-                        ushort execAddr = (ushort)(data[ptr + 24] | (data[ptr + 25] << 8));
+                        ushort execAddr = (ushort)(data[ptr + 22] | (data[ptr + 23] << 8));
                         
                         string logMsg = $"[QDF BLOCK] Name: {fileName}, Type: {blockType:X2}, Load: {loadAddr:X4}, Size: {fileSize}, Exec: {execAddr:X4}\n";
                         Console.WriteLine(logMsg);
@@ -307,7 +307,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                         currentLoadAddr = loadAddr;
                         currentFileSize = fileSize;
 
-                        if (execAddr != 0)
+                        if (execAddr != 0 && lastExecAddr == 0) // Only capture the FIRST valid execAddr (IPL/Entry point)
                         {
                             lastExecAddr = execAddr;
                         }
@@ -315,7 +315,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                         ptr += blockSize;
                         ptr += 2; // skip CRC
                     }
-                    else if (blockType == 0x02 || blockType == 0x04 || blockType == 0x06 || blockType == 0x08) // Data Block
+                    else if (blockType > 0x00) // Data Block
                     {
                         if (ptr + blockSize <= data.Length)
                         {
