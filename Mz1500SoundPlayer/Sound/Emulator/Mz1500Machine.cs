@@ -447,18 +447,18 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             public void FireA()
             {
-                if (_pioInt.IntControlA)
-                    _pendingA = true;
+                _pendingA = true;
             }
 
             public void FireB()
             {
-                if (_pioInt.IntControlB)
-                    _pendingB = true;
+                _pendingB = true;
             }
 
             public void InterruptAcknowledge()
             {
+                _pendingA = false;
+                _pendingB = false;
             }
         }
 
