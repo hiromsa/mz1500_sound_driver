@@ -352,8 +352,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     // Standard MZ-1500 memory mapping: Mon Low enabled, Mon High enabled, PCG disabled
                     Memory.WriteIo(0xE4, 0);
 
-                    Cpu.Registers.PC = lastExecAddr;
-                    Console.WriteLine($"QDF Loaded successfully. Starting PC = 0x{lastExecAddr:X4}");
+                    // Cpu.Registers.PC = lastExecAddr; // DISABLED FOR PROPER ROM BOOT TESTING
+                    Console.WriteLine($"QDF Loaded successfully. Skipped setting PC to 0x{lastExecAddr:X4}");
                     return true;
                 }
 
@@ -509,12 +509,6 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     traceBuffer[traceIndex] = $"PC: {pc:X4} | {b1:X2} {b2:X2} {b3:X2}";
                     traceIndex = (traceIndex + 1) % traceSize;
                     totalInstructions++;
-
-                    if (pc == 0x0000 && Cpu.TStatesElapsedSinceStart > 100000)
-                    {
-                        Console.WriteLine("CRASH DETECTED! Jumped to 0000H. Stopping...");
-                        _stopRequested = true;
-                    }
 
                     Cpu.ExecuteNextInstruction();
 
