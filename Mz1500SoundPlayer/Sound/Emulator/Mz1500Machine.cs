@@ -276,14 +276,18 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                         byte numBlocks = data[ptr++];
                         ptr += 2; // skip CRC
                         Console.WriteLine($"QDF Block Info: numBlocks={numBlocks}");
+                        System.IO.File.Delete("qdf_blocks.txt");
                         continue;
                     }
 
-                    byte blockType = data[ptr++];
+                    byte blockType = data[ptr];
+                    ptr++;
                     ushort blockSize = (ushort)(data[ptr] | (data[ptr + 1] << 8));
                     ptr += 2;
+                    
+                    System.IO.File.AppendAllText("qdf_blocks.txt", $"RAW BLOCK: Type={blockType:X2}, Size={blockSize}\n");
 
-                    if (blockType == 0x00 || blockType == 0x02) // Header Block
+                    if (blockType == 0x01 || blockType == 0x03 || blockType == 0x05 || blockType == 0x07) // Header Block
                     {
                         if (ptr + blockSize > data.Length) break;
 
@@ -292,11 +296,13 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                         Array.Copy(data, ptr + 1, nameBytes, 0, 17);
                         string fileName = System.Text.Encoding.ASCII.GetString(nameBytes).TrimEnd('\r', '\0', ' ');
 
+                        ushort loadAddr = (ushort)(data[ptr + 18] | (data[ptr + 19] << 8));
                         ushort fileSize = (ushort)(data[ptr + 20] | (data[ptr + 21] << 8));
-                        ushort loadAddr = (ushort)(data[ptr + 22] | (data[ptr + 23] << 8));
                         ushort execAddr = (ushort)(data[ptr + 24] | (data[ptr + 25] << 8));
-
-                        Console.WriteLine($"QDF Header: Name='{fileName}', Size=0x{fileSize:X4}, LoadAddr=0x{loadAddr:X4}, ExecAddr=0x{execAddr:X4}");
+                        
+                        string logMsg = $"[QDF BLOCK] Name: {fileName}, Type: {blockType:X2}, Load: {loadAddr:X4}, Size: {fileSize}, Exec: {execAddr:X4}\n";
+                        Console.WriteLine(logMsg);
+                        System.IO.File.AppendAllText("qdf_blocks.txt", logMsg);
 
                         currentLoadAddr = loadAddr;
                         currentFileSize = fileSize;
@@ -309,7 +315,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                         ptr += blockSize;
                         ptr += 2; // skip CRC
                     }
-                    else if (blockType == 0x01 || blockType == 0x03 || blockType == 0x05 || blockType == 0x07) // Data Block
+                    else if (blockType == 0x02 || blockType == 0x04 || blockType == 0x06 || blockType == 0x08) // Data Block
                     {
                         if (ptr + blockSize <= data.Length)
                         {
@@ -503,6 +509,12 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     traceBuffer[traceIndex] = $"PC: {pc:X4} | {b1:X2} {b2:X2} {b3:X2}";
                     traceIndex = (traceIndex + 1) % traceSize;
                     totalInstructions++;
+
+                    if (pc == 0x0000 && Cpu.TStatesElapsedSinceStart > 100000)
+                    {
+                        Console.WriteLine("CRASH DETECTED! Jumped to 0000H. Stopping...");
+                        _stopRequested = true;
+                    }
 
                     Cpu.ExecuteNextInstruction();
 
