@@ -367,6 +367,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             public byte ModeA { get; set; } = 0;
             public byte ModeB { get; set; } = 0;
             public bool IntControlA { get; set; } = false;
+            public bool IntControlB { get; set; } = false;
 
             public void Reset()
             {
@@ -402,6 +403,10 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     else if ((data & 0x0F) == 0x0F)
                     {
                         ModeB = (byte)(data >> 6);
+                    }
+                    else if ((data & 0x0F) == 0x07)
+                    {
+                        IntControlB = (data & 0x80) != 0;
                     }
                 }
             }
@@ -442,12 +447,14 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             public void FireA()
             {
-                _pendingA = true;
+                if (_pioInt.IntControlA)
+                    _pendingA = true;
             }
 
             public void FireB()
             {
-                _pendingB = true;
+                if (_pioInt.IntControlB)
+                    _pendingB = true;
             }
 
             public void InterruptAcknowledge()
