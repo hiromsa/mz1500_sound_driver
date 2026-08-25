@@ -22,6 +22,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         private YM2151Core _opm;
         private TimerInterruptSource? _intSource;
 
+        public object SoundLock { get; } = new object();
+
         private byte _pioPortCData = 0;
         private bool _vblank = false;
         private bool _blink = false;
@@ -80,13 +82,13 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             Io.RegisterDevice(0xF1, Memory);
 
             // PSG ports
-            Io.RegisterDevice(0xE9, new PsgBothWrapper(_psgL, _psgR));
-            Io.RegisterDevice(0xF2, _psgL);
-            Io.RegisterDevice(0xF3, _psgR);
+            Io.RegisterDevice(0xE9, new PsgBothWrapper(_psgL, _psgR, SoundLock));
+            Io.RegisterDevice(0xF2, new PsgWrapper(_psgL, SoundLock));
+            Io.RegisterDevice(0xF3, new PsgWrapper(_psgR, SoundLock));
 
             // YM2151 ports (0x08/0x09)
-            Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0)); // Address
-            Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1)); // Data
+            Io.RegisterDevice(0x08, new Ym2151Wrapper(_opm, 0, SoundLock)); // Address
+            Io.RegisterDevice(0x09, new Ym2151Wrapper(_opm, 1, SoundLock)); // Data
 
             // Z80-PIO Interrupt Controller (0xFC-0xFF)
             _pioInt = new Z80PioInterruptDevice();
@@ -100,24 +102,36 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             LoadRom();
         }
 
+        private class PsgWrapper : IIoDevice
+        {
+            private readonly Sn76489an _psg;
+            private readonly object _lock;
+            public PsgWrapper(Sn76489an psg, object lk) { _psg = psg; _lock = lk; }
+            public void Reset() { lock (_lock) _psg.Reset(); }
+            public byte ReadIo(byte port) => 0xFF;
+            public void WriteIo(byte port, byte data) { lock (_lock) _psg.WriteIo(port, data); }
+        }
+
         private class PsgBothWrapper : IIoDevice
         {
             private readonly Sn76489an _left;
             private readonly Sn76489an _right;
-            public PsgBothWrapper(Sn76489an left, Sn76489an right) { _left = left; _right = right; }
-            public void Reset() { }
+            private readonly object _lock;
+            public PsgBothWrapper(Sn76489an left, Sn76489an right, object lk) { _left = left; _right = right; _lock = lk; }
+            public void Reset() { lock (_lock) { _left.Reset(); _right.Reset(); } }
             public byte ReadIo(byte port) => 0xFF;
-            public void WriteIo(byte port, byte data) { _left.WriteIo(port, data); _right.WriteIo(port, data); }
+            public void WriteIo(byte port, byte data) { lock (_lock) { _left.WriteIo(port, data); _right.WriteIo(port, data); } }
         }
         
         private class Ym2151Wrapper : IIoDevice
         {
             private readonly YM2151Core _core;
             private readonly int _type; // 0=Addr, 1=Data
-            public Ym2151Wrapper(YM2151Core core, int type) { _core = core; _type = type; }
+            private readonly object _lock;
+            public Ym2151Wrapper(YM2151Core core, int type, object lk) { _core = core; _type = type; _lock = lk; }
             public void Reset() { }
             public byte ReadIo(byte port) => 0;
-            public void WriteIo(byte port, byte data) => _core.Write(0, _type, 0, data);
+            public void WriteIo(byte port, byte data) { lock (_lock) _core.Write(0, _type, 0, data); }
         }
         
         private void LoadRom()

@@ -30,12 +30,15 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 Array.Clear(_leftBuf, 0, chunk);
                 Array.Clear(_rightBuf, 0, chunk);
 
-                // Render PSG Left & Right
-                _machine.PsgL.Render(_leftBuf, 0, chunk, 44100);
-                _machine.PsgR.Render(_rightBuf, 0, chunk, 44100);
+                lock (_machine.SoundLock)
+                {
+                    // Render PSG Left & Right
+                    _machine.PsgL.Render(_leftBuf, 0, chunk, 44100);
+                    _machine.PsgR.Render(_rightBuf, 0, chunk, 44100);
 
-                // Render OPM (YM2151)
-                _machine.Opm.Update(0, _opmBuf, chunk);
+                    // Render OPM (YM2151)
+                    _machine.Opm.Update(0, _opmBuf, chunk);
+                }
 
                 for (int i = 0; i < chunk; i++)
                 {
