@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Konamiman.Z80dotNet;
 
 namespace Mz1500SoundPlayer.Sound.Emulator
@@ -16,6 +17,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
         private Intel8253 _pit;
         private Intel8255 _pio;
+        private Z80SIO _sioQd;
+        private QuickDisk _qd;
         private Z80PioInterruptDevice _pioInt;
         private Sn76489an _psgL;
         private Sn76489an _psgR;
@@ -83,10 +86,93 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             _pioInt = new Z80PioInterruptDevice();
             for (int p = 0xFC; p <= 0xFF; p++) Io.RegisterDevice((byte)p, _pioInt);
 
+            // --- FDC Dummy ---
+            var fdcDummy = new FdcDummy();
+            for (int p = 0xD8; p <= 0xDF; p++) Io.RegisterDevice((byte)p, fdcDummy);
+
+            // --- Z80SIO & QuickDisk ---
+            _sioQd = new Z80SIO();
+            _qd = new QuickDisk();
+            _qd.SioDevice = _sioQd;
+            
+            // Map SIO to F4-F7
+            int[] sioAddr = { 0, 2, 1, 3 };
+            for (int i = 0; i < 4; i++) Io.RegisterDevice((byte)(0xF4 + i), new SioWrapper(_sioQd, sioAddr[i]));
+
+            // Wire SIO to QD signals
+            _sioQd.port[0].OutputRts = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_RTSA, val, 1);
+            _sioQd.port[1].OutputDtr = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_DTRB, val, 1);
+            _sioQd.port[0].OutputSync = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_SYNC, val, 1);
+            _sioQd.port[0].OutputRxDone = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_RXDONE, val, 1);
+            _sioQd.port[0].OutputSend = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_DATA, val, 0xff);
+            _sioQd.port[0].OutputBreak = val => _qd.WriteSignal(QuickDisk.QUICKDISK_SIO_BREAK, val, 1);
+            
+            _sioQd.SetIntrLine = (next, iei, bit) => { }; // TODO: Connect to Z80 CPU interrupt if needed
+
+            // Event Scheduler Wiring
+            _sioQd.OnRegisterEvent = (id, interval) => RegisterDeviceEvent(id, interval, _sioQd.EventCallback);
+            _sioQd.OnCancelEvent = CancelDeviceEvent;
+            _qd.OnRegisterEvent = (id, interval) => RegisterDeviceEvent(id + 1000, interval, _qd.EventCallback); // offset id to avoid collision
+            _qd.OnCancelEvent = id => CancelDeviceEvent(id + 1000);
+
             _pit.RegisterInterruptHandler(0, () => _intSource?.FireA());
             _pit.RegisterInterruptHandler(2, () => _intSource?.FireA());
 
             LoadRom();
+        }
+
+        private class FdcDummy : IIoDevice
+        {
+            public void Reset() {}
+            public byte ReadIo(byte port) => 0x80; // 0x80 = Not Ready
+            public void WriteIo(byte port, byte data) {}
+        }
+
+        private class SioWrapper : IIoDevice
+        {
+            private Z80SIO _sio;
+            private int _chAddr;
+            public SioWrapper(Z80SIO sio, int chAddr) { _sio = sio; _chAddr = chAddr; }
+            public void Reset() { }
+            public byte ReadIo(byte port) => _sio.ReadIo8((uint)_chAddr);
+            public void WriteIo(byte port, byte data) => _sio.WriteIo8((uint)_chAddr, data);
+        }
+
+        private class DeviceEvent
+        {
+            public int Id;
+            public ulong TriggerTStates;
+            public Action<int> Callback;
+        }
+        private List<DeviceEvent> _deviceEvents = new List<DeviceEvent>();
+        private int _nextEventId = 1;
+
+        private int RegisterDeviceEvent(int id, double intervalUs, Action<int> callback)
+        {
+            ulong addTStates = (ulong)(intervalUs * (3579545.0 / 1000000.0)); // PhiClock = 3.58MHz (approx)
+            var ev = new DeviceEvent { Id = _nextEventId++, TriggerTStates = Cpu.TStatesElapsedSinceStart + addTStates, Callback = callback };
+            _deviceEvents.Add(ev);
+            return ev.Id;
+        }
+
+        private void CancelDeviceEvent(int eventId)
+        {
+            _deviceEvents.RemoveAll(e => e.Id == eventId);
+        }
+
+        private void ProcessDeviceEvents()
+        {
+            ulong currentTStates = Cpu.TStatesElapsedSinceStart;
+            for (int i = 0; i < _deviceEvents.Count; i++)
+            {
+                if (currentTStates >= _deviceEvents[i].TriggerTStates)
+                {
+                    var ev = _deviceEvents[i];
+                    _deviceEvents.RemoveAt(i);
+                    i--;
+                    ev.Callback(ev.Id >= 1000 ? ev.Id - 1000 : ev.Id); // recover original ID
+                }
+            }
         }
 
         private class PsgWrapper : IIoDevice
@@ -511,6 +597,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     totalInstructions++;
 
                     Cpu.ExecuteNextInstruction();
+                    ProcessDeviceEvents();
 
                     ulong currentTStates = Cpu.TStatesElapsedSinceStart;
 
