@@ -438,6 +438,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         private ulong _lastPitCh0TStates = 0;
         private ulong _lastPitCh1TStates = 0;
 
+        private readonly System.Diagnostics.Stopwatch _stopwatch = new();
+
         // Main CPU Run Loop
         public void Run()
         {
@@ -445,6 +447,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
 
             _intSource = new TimerInterruptSource(_pioInt);
             Cpu.RegisterInterruptSource(_intSource);
+            _stopwatch.Restart();
 
             Cpu.AfterInstructionExecution += (sender, args) =>
             {
@@ -485,6 +488,18 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                     _lastIntTStates = currentTStates;
                     _vblank = true;
                     _intSource?.Fire();
+
+                    // Real-time 60 FPS synchronization
+                    long targetMs = (long)(currentTStates / 4000.0);
+                    long actualMs = _stopwatch.ElapsedMilliseconds;
+                    if (targetMs > actualMs)
+                    {
+                        int sleepMs = (int)(targetMs - actualMs);
+                        if (sleepMs > 0 && sleepMs < 100)
+                        {
+                            System.Threading.Thread.Sleep(sleepMs);
+                        }
+                    }
                 }
                 else if (currentTStates - _lastIntTStates >= 10000)
                 {

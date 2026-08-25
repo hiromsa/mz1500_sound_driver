@@ -194,21 +194,21 @@ namespace Mz1500SoundPlayer
         {
             // Standard MZ PC palette (BGRA format: 0xAARRGGBB in Little-Endian)
             // 0: Black, 1: Blue, 2: Red, 3: Magenta, 4: Green, 5: Cyan, 6: Yellow, 7: White
-            uint[] pcPalette = new uint[8]
+            int[] pcPalette = new int[8]
             {
-                0xFF000000, // 0: Black
-                0xFF0000FF, // 1: Blue
-                0xFFFF0000, // 2: Red
-                0xFFFF00FF, // 3: Magenta
-                0xFF00FF00, // 4: Green
-                0xFF00FFFF, // 5: Cyan
-                0xFFFFFF00, // 6: Yellow
-                0xFFFFFFFF  // 7: White
+                unchecked((int)0xFF000000), // 0: Black
+                unchecked((int)0xFF0000FF), // 1: Blue
+                unchecked((int)0xFFFF0000), // 2: Red
+                unchecked((int)0xFFFF00FF), // 3: Magenta
+                unchecked((int)0xFF00FF00), // 4: Green
+                unchecked((int)0xFF00FFFF), // 5: Cyan
+                unchecked((int)0xFFFFFF00), // 6: Yellow
+                unchecked((int)0xFFFFFFFF)  // 7: White
             };
 
             int width = 320;
             int height = 200;
-            uint[] buffer = new uint[width * height];
+            int[] buffer = new int[width * height];
 
             while (_isRunning)
             {
@@ -239,8 +239,8 @@ namespace Mz1500SoundPlayer
                                 int fgColor = hwPalette[(textAttr >> 4) & 0x07];
                                 int bgColor = hwPalette[textAttr & 0x07];
 
-                                uint fg = pcPalette[fgColor & 7];
-                                uint bg = pcPalette[bgColor & 7];
+                                int fg = pcPalette[fgColor & 7];
+                                int bg = pcPalette[bgColor & 7];
 
                                 // Bit 7 of textAttr selects upper 256 characters in CGROM
                                 int fontOffset = (textCode << 3) | ((textAttr & 0x80) << 4);
@@ -312,7 +312,7 @@ namespace Mz1500SoundPlayer
                     if (_bitmap != null)
                     {
                         using var locked = _bitmap.Lock();
-                        Marshal.Copy((int[])(object)buffer, 0, locked.Address, buffer.Length);
+                        Marshal.Copy(buffer, 0, locked.Address, buffer.Length);
                         _screenImage?.InvalidateVisual();
                     }
                 });
