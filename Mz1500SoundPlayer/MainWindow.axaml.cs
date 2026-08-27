@@ -883,6 +883,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Show();
                     
+                    var debuggerWin = new DebuggerWindow();
+                    debuggerWin.Show();
+                    debuggerWin.SetMachine(machine);
+                    
                     LogTextBox.Text += "[6] Calling Start...\n";
                     await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Start(machine);
@@ -912,6 +916,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Show();
                     
+                    var debuggerWin = new DebuggerWindow();
+                    debuggerWin.Show();
+                    debuggerWin.SetMachine(machine);
+                    
                     LogTextBox.Text += "[6] Calling Start...\n";
                     await System.Threading.Tasks.Task.Delay(10);
                     emulatorWin.Start(machine);
@@ -928,9 +936,23 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 }
             }
         }
-    }
+        }
 
-
+        private async void EmulatorRunNoMedia_Click(object sender, RoutedEventArgs e)
+        {
+            LogTextBox.Text += "Running MZ-1500 without media...\n";
+            var machine = new Sound.Emulator.Mz1500Machine();
+            
+            var emulatorWin = new EmulatorWindow();
+            emulatorWin.Show();
+            emulatorWin.Start(machine);
+            
+            var debuggerWin = new DebuggerWindow();
+            debuggerWin.Show();
+            debuggerWin.SetMachine(machine);
+            
+            _ = System.Threading.Tasks.Task.Run(() => machine.Run());
+        }
     private void ChkB13hannel_Changed(object? sender, RoutedEventArgs e)
     {
         UpdateChannelMask();

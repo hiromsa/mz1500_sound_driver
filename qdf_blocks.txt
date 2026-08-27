@@ -1,0 +1,6 @@
+RAW BLOCK: Type=00, Size=64
+[QDF BLOCK] Name: GALAGA PCG GALAG, Type: 00, Load: 0000, Size: 8192, Exec: B000
+RAW BLOCK: Type=05, Size=8192
+RAW BLOCK: Type=00, Size=64
+[QDF BLOCK] Name: GALAGA MZ-1500AG, Type: 00, Load: 0000, Size: 48640, Exec: 1200
+RAW BLOCK: Type=05, Size=48640

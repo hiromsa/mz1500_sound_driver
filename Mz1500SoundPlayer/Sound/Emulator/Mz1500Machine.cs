@@ -115,8 +115,8 @@ namespace Mz1500SoundPlayer.Sound.Emulator
             _qd.OnRegisterEvent = (id, interval) => RegisterDeviceEvent(id + 1000, interval, _qd.EventCallback); // offset id to avoid collision
             _qd.OnCancelEvent = id => CancelDeviceEvent(id + 1000);
 
-            _pit.RegisterInterruptHandler(0, () => _intSource?.FireA());
-            _pit.RegisterInterruptHandler(2, () => _intSource?.FireA());
+            // _pit.RegisterInterruptHandler(0, () => _intSource?.FireA());
+            // _pit.RegisterInterruptHandler(2, () => _intSource?.FireA());
 
             LoadRom();
         }

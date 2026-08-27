@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Core Launch (console)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/Mz1500SoundPlayer/bin/Debug/net9.0/Mz1500SoundPlayer.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/Mz1500SoundPlayer",
+      "stopAtEntry": false,
+      "console": "integratedTerminal"
+    }
+  ]
+}

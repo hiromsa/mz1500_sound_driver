@@ -47,6 +47,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
         private void SetByte(int address, byte value)
         {
             byte port = (byte)(address & 0xFF);
+            System.IO.File.AppendAllText("debug_log.txt", $"[IO WRITE] port={port:X2} val={value:X2}\n");
             if (_portMap.TryGetValue(port, out var device))
             {
                 device.WriteIo(port, value);

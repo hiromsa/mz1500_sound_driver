@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mz1500SoundPlayer.DebuggerWindow"
+        Title="MZ-1500 Debugger" Width="600" Height="600">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+        <!-- Control Panel -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+            <Button Name="BtnPause" Content="Pause" Click="BtnPause_Click"/>
+            <Button Name="BtnResume" Content="Resume" Click="BtnResume_Click"/>
+            <Button Name="BtnStep" Content="Step Into" Click="BtnStep_Click"/>
+            <TextBlock Name="TxtStatus" VerticalAlignment="Center" FontWeight="Bold" />
+        </StackPanel>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*">
+            <!-- Registers & State -->
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Text="CPU Registers" FontWeight="Bold" Margin="0,0,0,5" />
+                <TextBox Name="TxtRegisters" IsReadOnly="True" Height="150" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" />
+                
+                <TextBlock Text="Memory Dump (Hex)" FontWeight="Bold" Margin="0,10,0,5" />
+                <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,0,5">
+                    <TextBlock Text="Address:" VerticalAlignment="Center" />
+                    <TextBox Name="TxtDumpAddress" Width="80" Text="0000" />
+                    <Button Name="BtnDump" Content="View" Click="BtnDump_Click" />
+                </StackPanel>
+                <TextBox Name="TxtMemory" IsReadOnly="True" Height="250" AcceptsReturn="True" FontFamily="Consolas" />
+            </StackPanel>
+
+            <!-- Logs -->
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="Event Log (Key/IO/Trace)" FontWeight="Bold" Margin="0,0,0,5" />
+                <ListBox Name="LstLogs" Height="440" FontFamily="Consolas" FontSize="11" />
+            </StackPanel>
+        </Grid>
+        
+        <!-- Refresh Timer implicitly running in code-behind -->
+    </Grid>
+</Window>

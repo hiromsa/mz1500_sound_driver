@@ -42,7 +42,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 case 0: return _dirA_In && OnPortARead != null ? OnPortARead() : _porta;
                 case 1: return _dirB_In && OnPortBRead != null ? OnPortBRead() : _portb;
                 case 2: return OnPortCRead != null ? OnPortCRead() : _portc; // simplified C read
-                case 3: return _ctrl;
+                case 3: return 0xFF; // Control port is write-only
             }
             return 0xFF;
         }
@@ -88,6 +88,7 @@ namespace Mz1500SoundPlayer.Sound.Emulator
                 _modeB = (data & 0x04) != 0 ? 1 : 0;
                 _dirB_In = (data & 0x02) != 0;
                 _dirCLower_In = (data & 0x01) != 0;
+                // EmulatorLogger.Instance.Log("8255", $"WriteControl: {data:X2} -> DirAIn={_dirA_In}, DirBIn={_dirB_In}");
 
                 // Reset ports on mode change
                 _porta = 0;

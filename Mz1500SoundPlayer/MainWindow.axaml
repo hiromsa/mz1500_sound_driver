@@ -109,6 +109,7 @@
       </MenuItem>
       <MenuItem Header="E_mulator">
         <MenuItem Header="Run (.mzt/.qdf)" Click="EmulatorRun_Click" />
+        <MenuItem Header="Run (No media)" Click="EmulatorRunNoMedia_Click" />
       </MenuItem>
     </Menu>
 

@@ -327,8 +327,65 @@ public class Z80SIO
                     if (!port[ch].stat_intr) { port[ch].stat_intr = true; UpdateIntr(); }
                 }
                 break;
-            // DCD, CTS, SYNC, CLK系などは文字数都合上省略していますがC++と全く同様の条件分岐を実装します。
-            // ...
+            case SIG_Z80SIO_DCD_CH0:
+            case SIG_Z80SIO_DCD_CH1:
+                if (port[ch].dcd != signal)
+                {
+                    port[ch].dcd = signal;
+                    if (!signal && (port[ch].wr[3] & 0x20) != 0) port[ch].wr[3] |= 1; // auto enables
+                    if (!port[ch].stat_intr) { port[ch].stat_intr = true; UpdateIntr(); }
+                }
+                break;
+            case SIG_Z80SIO_CTS_CH0:
+            case SIG_Z80SIO_CTS_CH1:
+                if (port[ch].cts != signal)
+                {
+                    port[ch].cts = signal;
+                    if (!signal && (port[ch].wr[3] & 0x20) != 0)
+                    {
+                        if ((port[ch].wr[4] & 0x0c) != 0 && port[ch].shift_reg == -1 && !port[ch].send.Empty())
+                            RegisterFirstSendEvent(ch);
+                        else
+                            RegisterSendEvent(ch);
+                        port[ch].wr[5] |= 8;
+                    }
+                    if (!port[ch].stat_intr) { port[ch].stat_intr = true; UpdateIntr(); }
+                }
+                break;
+            case SIG_Z80SIO_SYNC_CH0:
+            case SIG_Z80SIO_SYNC_CH1:
+                if (port[ch].sync != signal)
+                {
+                    port[ch].sync = signal;
+                    if (!port[ch].stat_intr) { port[ch].stat_intr = true; UpdateIntr(); }
+                }
+                break;
+            case SIG_Z80SIO_TX_CLK_CH0:
+            case SIG_Z80SIO_TX_CLK_CH1:
+                if (port[ch].prev_tx_clock_signal != signal)
+                {
+                    if (port[ch].tx_bits_x2_remain > 0 && --port[ch].tx_bits_x2_remain == 0) EventCallback(EVENT_SEND + ch);
+                    port[ch].prev_tx_clock_signal = signal;
+                }
+                break;
+            case SIG_Z80SIO_RX_CLK_CH0:
+            case SIG_Z80SIO_RX_CLK_CH1:
+                if (port[ch].prev_rx_clock_signal != signal)
+                {
+                    if (port[ch].rx_bits_x2_remain > 0 && --port[ch].rx_bits_x2_remain == 0) EventCallback(EVENT_RECV + ch);
+                    port[ch].prev_rx_clock_signal = signal;
+                }
+                break;
+            case SIG_Z80SIO_CLEAR_CH0:
+            case SIG_Z80SIO_CLEAR_CH1:
+                if ((data & mask) != 0)
+                {
+                    CancelRecvEvent(ch);
+                    port[ch].rtmp.Clear();
+                    port[ch].recv.Clear();
+                    if (port[ch].recv_intr > 0) { port[ch].recv_intr = 0; UpdateIntr(); }
+                }
+                break;
         }
     }
 

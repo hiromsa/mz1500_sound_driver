@@ -16,6 +16,14 @@ namespace Mz1500SoundPlayer
         private Sound.Emulator.Mz1500Machine? _machine;
         private bool _isRunning = false;
 
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            Sound.Emulator.EmulatorLogger.Instance.Log("UI", "EMULATOR WINDOW OPENED!");
+            Sound.Emulator.EmulatorLogger.Instance.Log("UI", "この状態でキーボードの M や Q などを押してください。");
+            this.Focus(); // Ensure window has focus for key events
+        }
+
         public EmulatorWindow()
         {
             InitializeComponent();
@@ -37,16 +45,23 @@ namespace Mz1500SoundPlayer
 
         private void EmulatorWindow_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
         {
+            Sound.Emulator.EmulatorLogger.Instance.Log("UI", $"KeyDown: {e.Key}");
             if (_machine == null) return;
             var pos = MapKeyToMatrix(e.Key);
             if (pos.HasValue)
             {
+                Sound.Emulator.EmulatorLogger.Instance.Log("UI", $"Mapped to Matrix: row={pos.Value.row}, col={pos.Value.col}");
                 _machine.Keyboard.SetKeyDown(pos.Value.row, pos.Value.col);
+            }
+            else
+            {
+                Sound.Emulator.EmulatorLogger.Instance.Log("UI", $"Key not mapped.");
             }
         }
 
         private void EmulatorWindow_KeyUp(object? sender, Avalonia.Input.KeyEventArgs e)
         {
+            Sound.Emulator.EmulatorLogger.Instance.Log("UI", $"KeyUp: {e.Key}");
             if (_machine == null) return;
             var pos = MapKeyToMatrix(e.Key);
             if (pos.HasValue)
